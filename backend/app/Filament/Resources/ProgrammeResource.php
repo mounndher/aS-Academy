@@ -49,21 +49,9 @@ class ProgrammeResource extends Resource
                     ->placeholder('Ex: 2 jours')
                     ->maxLength(255),
 
-                Forms\Components\KeyValue::make('steps')
-                    ->label('Étapes du programme')
-                    ->keyLabel('Titre')
-                    ->valueLabel('Description')
-                    ->columnSpanFull(),
+             
 
-                Forms\Components\FileUpload::make('pdf_program')
-                    ->label('Programme PDF')
-                    ->acceptedFileTypes([
-                        'application/pdf',
-                    ])
-                    ->directory('programmes')
-                    ->disk('public')
-                    ->downloadable()
-                    ->openable(),
+                
 
                 Forms\Components\Toggle::make('is_active')
                     ->label('Actif')

@@ -13,13 +13,11 @@ class Programme extends Model
         'slug',
         'description',
         'duration',
-        'steps',
-        'pdf_program',
         'is_active',
     ];
 
     protected $casts = [
-        'steps' => 'array',
+       
         'is_active' => 'boolean',
     ];
 

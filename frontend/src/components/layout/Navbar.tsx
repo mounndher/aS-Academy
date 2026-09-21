@@ -1,27 +1,56 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import { cn } from "@/utils/cn";
+
 import { site } from "@/data/site";
+
 import { useSiteUI } from "@/context/SiteUIContext";
 import { useSectionNav } from "@/hooks/useSectionNav";
+
 import { Button } from "@/components/ui/Button";
+
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+
   const { menuOpen, setMenuOpen, openBooking } = useSiteUI();
+
   const goTo = useSectionNav();
   const navigate = useNavigate();
 
+  const { pathname } = useLocation();
+
+  const { settings } = useSiteSettings();
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
+
     onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+
+    window.addEventListener("scroll", onScroll, {
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
-  const { pathname } = useLocation();
-  // Only the home page has a dark hero under the transparent navbar.
+  /**
+   * Only the home page has a dark hero
+   * under the transparent navbar.
+   */
   const solid = (scrolled || pathname !== "/") && !menuOpen;
+
+  /**
+   * Site settings from Laravel.
+   * Fallback keeps the navbar working if API is unavailable.
+   */
+  const siteName = settings?.site_name || "AS Academy";
+
+  const logo = settings?.logo || null;
 
   return (
     <header
@@ -41,22 +70,39 @@ export function Navbar() {
             goTo("accueil");
           }}
           className="flex items-baseline gap-2.5 transition-opacity duration-500 hover:opacity-70"
-          aria-label="AS Academy — Accueil"
+          aria-label={`${siteName} — Accueil`}
         >
-          <span className="font-serif text-[26px] font-semibold leading-none tracking-[0.02em] lg:text-[30px]">
-            AS
-          </span>
-          <span className="label text-[10px] tracking-[0.36em]">Academy</span>
+          {logo ? (
+            <img
+              src={logo}
+              alt={siteName}
+              className="h-10 w-auto object-contain lg:h-12"
+            />
+          ) : (
+            <>
+              <span className="font-serif text-[26px] font-semibold leading-none tracking-[0.02em] lg:text-[30px]">
+                AS
+              </span>
+
+              <span className="label text-[10px] tracking-[0.36em]">
+                Academy
+              </span>
+            </>
+          )}
         </button>
 
         {/* Desktop navigation */}
-        <nav className="hidden items-center gap-8 lg:flex xl:gap-10" aria-label="Navigation principale">
+        <nav
+          className="hidden items-center gap-8 lg:flex xl:gap-10"
+          aria-label="Navigation principale"
+        >
           {site.nav.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => {
                 setMenuOpen(false);
+
                 if (item.id === "formations") {
                   navigate("/formations");
                 } else {
@@ -90,13 +136,18 @@ export function Navbar() {
             <span
               className={cn(
                 "absolute h-px w-7 bg-current transition-transform duration-500 ease-luxury",
-                menuOpen ? "translate-y-0 rotate-45" : "-translate-y-[4px]",
+                menuOpen
+                  ? "translate-y-0 rotate-45"
+                  : "-translate-y-[4px]",
               )}
             />
+
             <span
               className={cn(
                 "absolute h-px w-7 bg-current transition-transform duration-500 ease-luxury",
-                menuOpen ? "translate-y-0 -rotate-45" : "translate-y-[4px]",
+                menuOpen
+                  ? "translate-y-0 -rotate-45"
+                  : "translate-y-[4px]",
               )}
             />
           </button>

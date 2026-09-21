@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormationDayResource\Pages;
+use App\Models\Formation;
 use App\Models\FormationDay;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -13,11 +14,10 @@ use Filament\Tables\Table;
 class FormationDayResource extends Resource
 {
     protected static ?string $model = FormationDay::class;
-    protected static ?string $navigationGroup = 'Formations';
-
-    protected static ?int $navigationSort = 4;
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+
+    protected static ?string $navigationGroup = 'Formations';
 
     protected static ?string $navigationLabel = 'Dates de formation';
 
@@ -25,48 +25,99 @@ class FormationDayResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Dates de formation';
 
+    protected static ?int $navigationSort = 4;
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('formation_id')
-                    ->label('Formation')
-                    ->relationship('formation', 'title')
-                    ->searchable()
-                    ->preload()
-                    ->required(),
+                Forms\Components\Section::make('Formation')
+                    ->schema([
+                        Forms\Components\Select::make('formation_id')
+                            ->label('Formation')
+                            ->relationship(
+                                'formation',
+                                'title'
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->native(false),
+                    ]),
 
-                Forms\Components\DatePicker::make('date')
-                    ->label('Date')
-                    ->required()
-                    ->native(false),
+                Forms\Components\Section::make('CPF')
+    ->schema([
 
-                Forms\Components\TextInput::make('max_places')
-                    ->label('Nombre maximum de places')
-                    ->numeric()
-                    ->required()
-                    ->minValue(1)
-                    ->default(10),
+        Forms\Components\Toggle::make('cpf_eligible')
+            ->label('Session éligible au CPF')
+            ->live()
+            ->default(false),
 
-                Forms\Components\TextInput::make('remaining_places')
-                    ->label('Places restantes')
-                    ->numeric()
-                    ->required()
-                    ->minValue(0)
-                    ->default(10),
+        Forms\Components\TextInput::make('cpf_price')
+            ->label('Prix CPF (€)')
+            ->numeric()
+            ->prefix('€')
+            ->minValue(0)
+            ->visible(fn (Forms\Get $get) => $get('cpf_eligible')),
 
-                Forms\Components\Select::make('status')
-                    ->label('Statut')
-                    ->options([
-                        'available' => 'Disponible',
-                        'full' => 'Complet',
-                        'cancelled' => 'Annulée',
-                        'completed' => 'Terminée',
+    ])
+    ->columns(2),
+
+                Forms\Components\Section::make('Lieu et dates')
+                    ->schema([
+                        Forms\Components\TextInput::make('city')
+                            ->label('Ville')
+                            ->placeholder('Paris')
+                            ->required()
+                            ->maxLength(255),
+
+                        Forms\Components\DatePicker::make('start_date')
+                            ->label('Date de début')
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->firstDayOfWeek(1),
+
+                        Forms\Components\DatePicker::make('end_date')
+                            ->label('Date de fin')
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->firstDayOfWeek(1)
+                            ->afterOrEqual('start_date'),
                     ])
-                    ->required()
-                    ->default('available'),
-            ])
-            ->columns(2);
+                    ->columns(3),
+
+                Forms\Components\Section::make('Places disponibles')
+                    ->schema([
+                        Forms\Components\TextInput::make('max_places')
+                            ->label('Nombre maximum de places')
+                            ->numeric()
+                            ->minValue(1)
+                            ->required()
+                            ->default(6),
+
+                        Forms\Components\TextInput::make('remaining_places')
+                            ->label('Places restantes')
+                            ->numeric()
+                            ->minValue(0)
+                            ->required()
+                            ->default(6),
+
+                        Forms\Components\Select::make('status')
+                            ->label('Statut')
+                            ->options([
+                                'available' => 'Disponible',
+                                'full' => 'Complet',
+                                'cancelled' => 'Annulée',
+                                'finished' => 'Terminée',
+                            ])
+                            ->required()
+                            ->default('available')
+                            ->native(false),
+                    ])
+                    ->columns(3),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -78,63 +129,53 @@ class FormationDayResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('date')
-                    ->label('Date')
+                Tables\Columns\TextColumn::make('city')
+                    ->label('Ville')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('start_date')
+                    ->label('Début')
+                    ->date('d/m/Y')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('end_date')
+                    ->label('Fin')
                     ->date('d/m/Y')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('max_places')
-                    ->label('Places max')
+                    ->label('Places')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('remaining_places')
-                    ->label('Places restantes')
+                    ->label('Restantes')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('status')
+                Tables\Columns\BadgeColumn::make('status')
                     ->label('Statut')
-                    ->badge()
+                    ->colors([
+                        'success' => 'available',
+                        'danger' => 'full',
+                        'warning' => 'cancelled',
+                        'gray' => 'finished',
+                    ])
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'available' => 'Disponible',
                         'full' => 'Complet',
                         'cancelled' => 'Annulée',
-                        'completed' => 'Terminée',
+                        'finished' => 'Terminée',
                         default => $state,
                     }),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Créé le')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
             ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Statut')
-                    ->options([
-                        'available' => 'Disponible',
-                        'full' => 'Complet',
-                        'cancelled' => 'Annulée',
-                        'completed' => 'Terminée',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('formation_id')
-                    ->label('Formation')
-                    ->relationship('formation', 'title'),
-            ])
+            ->defaultSort('start_date', 'asc')
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('Modifier'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteBulkAction::make(),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
     }
 
     public static function getPages(): array

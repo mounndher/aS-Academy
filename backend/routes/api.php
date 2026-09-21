@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Contenu\GallerySectionController;
 use App\Http\Controllers\Api\ContactMessageController;
 
 use App\Http\Controllers\Api\Contenu\TrainingExperienceController;
+use App\Http\Controllers\Api\Contenu\SiteSettingController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -56,9 +57,10 @@ Route::prefix('contenu')->group(function () {
     ]);
 Route::get('gallery', [GallerySectionController::class, 'index']);
 Route::get('contact', [ContactSectionController::class, 'index']);
-Route::get(
-    '/contenu/training-experience',
+Route::get('/training-experience',
     [TrainingExperienceController::class, 'index']
 );
+
+Route::get('/settings', [SiteSettingController::class, 'index']);
 
 });

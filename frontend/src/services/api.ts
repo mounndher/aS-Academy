@@ -6,7 +6,7 @@ import type { ContactApiResponse } from "../types/contact";
 import type {
   TrainingExperienceApiResponse,
 } from "@/types/trainingExperience";
-
+import type { SiteSettingApiResponse } from "@/types/siteSetting";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -120,6 +120,16 @@ export async function getTrainingExperience(): Promise<TrainingExperienceApiResp
     throw new Error(
       "Erreur lors du chargement de l'expérience de formation"
     );
+  }
+
+  return response.json();
+}
+
+export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
+  const response = await fetch(`${API_URL}/contenu/settings`);
+
+  if (!response.ok) {
+    throw new Error("Erreur lors du chargement des paramètres du site");
   }
 
   return response.json();
