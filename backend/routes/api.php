@@ -5,13 +5,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\FormationController;
 use App\Http\Controllers\Api\ProgrammeController;
 use App\Http\Controllers\Api\FormationDayController;
+
+use App\Http\Controllers\Api\Contenu\FormationInformationController;
 use App\Http\Controllers\Api\Contenu\HeroSectionController;
 use App\Http\Controllers\Api\Contenu\IntroductionSectionController;
 use App\Http\Controllers\Api\Contenu\AcademySectionController;
 use App\Http\Controllers\Api\Contenu\ContactSectionController;
 use App\Http\Controllers\Api\Contenu\GallerySectionController;
 use App\Http\Controllers\Api\ContactMessageController;
-
+use App\Http\Controllers\Api\Contenu\PortfolioController;
 use App\Http\Controllers\Api\Contenu\TrainingExperienceController;
 use App\Http\Controllers\Api\Contenu\SiteSettingController;
 /*
@@ -45,7 +47,7 @@ Route::get('/programmes/{slug}', [ProgrammeController::class, 'show']);
 ////
 Route::prefix('contenu')->group(function () {
     Route::get('/hero', [HeroSectionController::class, 'show']);
-    
+
 
     Route::get('/introduction', [
         IntroductionSectionController::class,
@@ -62,5 +64,9 @@ Route::get('/training-experience',
 );
 
 Route::get('/settings', [SiteSettingController::class, 'index']);
-
+Route::get('/portfolio', [PortfolioController::class, 'index']);
+Route::get(
+    '/formation-information',
+    [FormationInformationController::class, 'index']
+);
 });

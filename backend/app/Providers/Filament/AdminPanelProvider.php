@@ -27,10 +27,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandName('S-Academy')
-           
+
             //->brandLogo(asset('images/logo.png'))
             //->brandLogoHeight('2.5rem')
             ->login()
+            ->passwordReset()
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -13,20 +13,31 @@ return new class extends Migration
     {
         Schema::create('formation_days', function (Blueprint $table) {
             $table->id();
-              $table->foreignId('formation_id')
-            ->constrained('formations')
-            ->cascadeOnDelete();
 
-        $table->date('date');
+            $table->foreignId('formation_id')
+                ->constrained('formations')
+                ->cascadeOnDelete();
 
-        $table->unsignedInteger('max_places');
-        $table->unsignedInteger('remaining_places');
+            $table->string('city');
 
-        $table->string('status')->default('available');
+            $table->date('start_date');
 
-        $table->timestamps();
+            $table->time('start_time')->nullable();
 
-        $table->unique(['formation_id', 'date']);
+            $table->time('end_time')->nullable();
+
+            $table->unsignedInteger('max_places');
+
+            $table->unsignedInteger('remaining_places');
+
+            $table->string('status')->default('available');
+
+            $table->timestamps();
+
+            $table->unique(
+                ['formation_id', 'city', 'start_date'],
+                'formation_days_formation_id_city_start_date_unique'
+            );
         });
     }
 
