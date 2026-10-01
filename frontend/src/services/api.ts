@@ -5,8 +5,12 @@ import type { GalleryApiResponse } from "../types/gallery";
 import type { ContactApiResponse } from "../types/contact";
 import type {
   TrainingExperienceApiResponse,
-} from "@/types/trainingExperience";
-import type { SiteSettingApiResponse } from "@/types/siteSetting";
+} from "../types/trainingExperience";
+import type { SiteSettingApiResponse } from "../types/siteSetting";
+import type { PortfolioApiResponse } from "../types/portfolio";
+import type {
+  FormationInformationApiResponse,
+} from "../types/formationInformation";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,12 +34,13 @@ export async function getHeroSection(): Promise<HeroApiResponse> {
   return response.json();
 }
 
-
 export async function getIntroductionSection(): Promise<IntroductionApiResponse> {
   const response = await fetch(`${API_URL}/contenu/introduction`);
 
   if (!response.ok) {
-    throw new Error("Erreur lors du chargement de la section Introduction");
+    throw new Error(
+      "Erreur lors du chargement de la section Introduction"
+    );
   }
 
   return response.json();
@@ -64,6 +69,7 @@ export async function getContactSection(): Promise<ContactApiResponse> {
 
   return response.json();
 }
+
 export interface ContactMessagePayload {
   first_name: string;
   last_name: string;
@@ -129,7 +135,58 @@ export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
   const response = await fetch(`${API_URL}/contenu/settings`);
 
   if (!response.ok) {
-    throw new Error("Erreur lors du chargement des paramètres du site");
+    throw new Error(
+      "Erreur lors du chargement des paramètres du site"
+    );
+  }
+
+  return response.json();
+}
+
+/* =========================================================
+   PORTFOLIO
+   ========================================================= */
+
+export async function getPortfolio(): Promise<PortfolioApiResponse> {
+  const response = await fetch(
+    `${API_URL}/contenu/portfolio`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Erreur lors du chargement du portfolio"
+    );
+  }
+
+  return response.json();
+}
+
+/* =========================================================
+   STORAGE
+   ========================================================= */
+
+export function getStorageUrl(path: string | null): string {
+  if (!path) {
+    return "";
+  }
+
+  if (path.startsWith("http")) {
+    return path;
+  }
+
+  return `http://127.0.0.1:8000/storage/${path}`;
+}
+
+
+export async function getFormationInformation(): Promise<FormationInformationApiResponse> {
+  const response = await fetch(
+    `${API_URL}/contenu/formation-information`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Erreur lors du chargement des informations des formations"
+    );
   }
 
   return response.json();
