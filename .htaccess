@@ -19,7 +19,7 @@
     # ==========================================
     # Laravel Storage
     # ==========================================
-    RewriteRule ^storage/(.*)$ backend/storage/app/public/$1 [L]
+    RewriteRule ^storage/(.*)$ backend/public/storage/$1 [L]
 
     # ==========================================
     # React images
