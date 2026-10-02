@@ -46,7 +46,6 @@ class HeroSectionResource extends Resource
     {
         return $form
             ->schema([
-
                 Forms\Components\TextInput::make('eyebrow')
                     ->label('Texte supérieur')
                     ->placeholder('AS ACADEMY — FORMATION PROFESSIONNELLE')
@@ -113,6 +112,7 @@ class HeroSectionResource extends Resource
                         'image/jpeg',
                         'image/png',
                         'image/webp',
+                        'image/avif',
                     ])
                     ->imageEditor()
                     ->disk('public')
@@ -133,7 +133,12 @@ class HeroSectionResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Image')
-                    ->disk('public'),
+                    ->state(fn ($record) => $record->image
+                        ? asset('storage/' . $record->image)
+                        : null
+                    )
+                    ->size(60)
+                    ->square(),
 
                 Tables\Columns\TextColumn::make('title')
                     ->label('Titre')
