@@ -1,0 +1,44 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ==========================================
+    # Laravel Admin
+    # ==========================================
+    RewriteRule ^admin(?:/(.*))?$ backend/public/index.php [L,QSA]
+
+    # ==========================================
+    # Laravel API
+    # ==========================================
+    RewriteRule ^api(?:/(.*))?$ backend/public/index.php [L,QSA]
+
+    # ==========================================
+    # Laravel Livewire
+    # ==========================================
+    RewriteRule ^livewire(?:/(.*))?$ backend/public/index.php [L,QSA]
+
+    # ==========================================
+    # Laravel Storage
+    # ==========================================
+    RewriteRule ^storage/(.*)$ backend/storage/app/public/$1 [L]
+
+    # ==========================================
+    # React images
+    # ==========================================
+    RewriteRule ^images/(.*)$ frontend/dist/images/$1 [L]
+
+    # ==========================================
+    # React frontend
+    # ==========================================
+    RewriteRule ^$ frontend/dist/index.html [L]
+
+    # ==========================================
+    # Existing frontend files
+    # ==========================================
+    RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -f
+    RewriteRule ^(.+)$ frontend/dist/$1 [L]
+
+    # ==========================================
+    # React Router fallback
+    # ==========================================
+    RewriteRule ^ frontend/dist/index.html [L]
+</IfModule>
