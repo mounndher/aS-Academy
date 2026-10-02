@@ -39,8 +39,9 @@ class HeroSectionController extends Controller
                     'link' => $hero->secondary_button_link,
                 ],
 
+                // Image stored in backend/public/hero/
                 'image' => $hero->image
-                    ? asset('storage/' . $hero->image)
+                    ? asset($hero->image)
                     : null,
 
                 'is_active' => $hero->is_active,

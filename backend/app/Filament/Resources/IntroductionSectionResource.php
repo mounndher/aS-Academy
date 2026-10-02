@@ -26,31 +26,31 @@ class IntroductionSectionResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Introduction';
 
-    /*
-    |--------------------------------------------------------------------------
-    | Une seule Introduction
-    |--------------------------------------------------------------------------
-    */
-
+    /**
+     * Allow only one Introduction section.
+     */
     public static function canCreate(): bool
     {
         return ! IntroductionSection::exists();
     }
 
+    /**
+     * Disable deletion.
+     */
     public static function canDelete($record): bool
     {
         return false;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Form
-    |--------------------------------------------------------------------------
-    */
-
     public static function form(Form $form): Form
     {
         return $form->schema([
+
+            /*
+            |--------------------------------------------------------------------------
+            | Contenu principal
+            |--------------------------------------------------------------------------
+            */
 
             Forms\Components\Section::make('Contenu principal')
                 ->schema([
@@ -63,7 +63,7 @@ class IntroductionSectionResource extends Resource
 
                     Forms\Components\TextInput::make('title')
                         ->label('Titre')
-                        ->placeholder("L’EXPERTISE")
+                        ->placeholder('L’EXPERTISE')
                         ->required()
                         ->maxLength(255),
 
@@ -97,6 +97,12 @@ class IntroductionSectionResource extends Resource
                     Forms\Components\FileUpload::make('image_primary')
                         ->label('Image principale')
                         ->image()
+                        ->acceptedFileTypes([
+                            'image/jpeg',
+                            'image/png',
+                            'image/webp',
+                            'image/avif',
+                        ])
                         ->imageEditor()
                         ->disk('public')
                         ->directory('introduction')
@@ -106,6 +112,12 @@ class IntroductionSectionResource extends Resource
                     Forms\Components\FileUpload::make('image_secondary')
                         ->label('Image secondaire')
                         ->image()
+                        ->acceptedFileTypes([
+                            'image/jpeg',
+                            'image/png',
+                            'image/webp',
+                            'image/avif',
+                        ])
                         ->imageEditor()
                         ->disk('public')
                         ->directory('introduction')
@@ -214,26 +226,44 @@ class IntroductionSectionResource extends Resource
                 ])
                 ->columns(2),
 
+            /*
+            |--------------------------------------------------------------------------
+            | Status
+            |--------------------------------------------------------------------------
+            */
+
             Forms\Components\Toggle::make('is_active')
                 ->label('Actif')
                 ->default(true),
+
         ]);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Table
-    |--------------------------------------------------------------------------
-    */
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
 
+                /*
+                |--------------------------------------------------------------------------
+                | Primary Image
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\ImageColumn::make('image_primary')
                     ->label('Image')
-                    ->disk('public'),
+                    ->state(fn ($record) => $record->image_primary
+                        ? asset($record->image_primary)
+                        : null
+                    )
+                    ->size(60)
+                    ->square(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Content
+                |--------------------------------------------------------------------------
+                */
 
                 Tables\Columns\TextColumn::make('title')
                     ->label('Titre')
@@ -242,9 +272,21 @@ class IntroductionSectionResource extends Resource
                 Tables\Columns\TextColumn::make('subtitle')
                     ->label('Sous-titre'),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Active
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Actif')
                     ->boolean(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Created
+                |--------------------------------------------------------------------------
+                */
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Créé le')
@@ -269,9 +311,7 @@ class IntroductionSectionResource extends Resource
     {
         return [
             'index' => Pages\ListIntroductionSections::route('/'),
-
             'create' => Pages\CreateIntroductionSection::route('/create'),
-
             'edit' => Pages\EditIntroductionSection::route('/{record}/edit'),
         ];
     }

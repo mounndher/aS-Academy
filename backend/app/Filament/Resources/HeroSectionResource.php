@@ -131,15 +131,14 @@ class HeroSectionResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('image')
-                    ->label('Image')
-                    ->state(fn ($record) => $record->image
-                        ? asset('storage/' . $record->image)
-                        : null
-                    )
-                    ->size(60)
-                    ->square(),
-
+               Tables\Columns\ImageColumn::make('image')
+    ->label('Image')
+    ->state(fn ($record) => $record->image
+        ? asset($record->image)
+        : null
+    )
+    ->size(60)
+    ->square(),
                 Tables\Columns\TextColumn::make('title')
                     ->label('Titre')
                     ->searchable(),
