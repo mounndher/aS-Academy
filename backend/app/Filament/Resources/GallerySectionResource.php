@@ -27,7 +27,7 @@ class GallerySectionResource extends Resource
     protected static ?int $navigationSort = 4;
 
     /**
-     * Allow only one Gallery section.
+     * Une seule section Gallery.
      */
     public static function canCreate(): bool
     {
@@ -35,7 +35,7 @@ class GallerySectionResource extends Resource
     }
 
     /**
-     * Disable deletion.
+     * Pas de suppression.
      */
     public static function canDelete($record): bool
     {
@@ -92,7 +92,9 @@ class GallerySectionResource extends Resource
             */
 
             Forms\Components\Section::make('Images')
-                ->description('Ajoutez les 6 images de la galerie Instagram.')
+                ->description(
+                    'Ajoutez les 6 images de la galerie Instagram.'
+                )
                 ->schema([
 
                     Forms\Components\FileUpload::make('image_1')
@@ -211,6 +213,12 @@ class GallerySectionResource extends Resource
     {
         return $table
             ->columns([
+
+                Tables\Columns\ImageColumn::make('image_1')
+                    ->label('Image')
+                    ->disk('public')
+                    ->size(60)
+                    ->square(),
 
                 Tables\Columns\TextColumn::make('title')
                     ->label('Titre')
