@@ -22,7 +22,7 @@ class TrainingExperienceController extends Controller
 
         $imageUrl = function (?string $image): ?string {
             return $image
-                ? asset('storage/' . $image)
+                ? asset($image)
                 : null;
         };
 

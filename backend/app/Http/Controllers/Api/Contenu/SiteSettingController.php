@@ -27,11 +27,11 @@ class SiteSettingController extends Controller
                 'tagline' => $settings->tagline,
 
                 'logo' => $settings->logo
-                    ? asset('storage/' . $settings->logo)
+                    ? asset($settings->logo)
                     : null,
 
                 'favicon' => $settings->favicon
-                    ? asset('storage/' . $settings->favicon)
+                    ? asset($settings->favicon)
                     : null,
 
                 'contact' => [

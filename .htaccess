@@ -2,32 +2,66 @@
 
     RewriteEngine On
 
-    # AVIF MIME TYPE
+    # AVIF
     AddType image/avif .avif
 
+
+    # =========================================================
     # LARAVEL ADMIN
+    # =========================================================
+
     RewriteRule ^admin(?:/(.*))?$ backend/public/index.php [L,QSA]
 
+
+    # =========================================================
     # LARAVEL API
+    # =========================================================
+
     RewriteRule ^api(?:/(.*))?$ backend/public/index.php [L,QSA]
 
+
+    # =========================================================
     # LARAVEL LIVEWIRE
+    # =========================================================
+
     RewriteRule ^livewire(?:/(.*))?$ backend/public/index.php [L,QSA]
 
-    # LARAVEL PUBLIC IMAGES
-    RewriteRule ^hero/(.*)$ backend/public/hero/$1 [L]
 
+    # =========================================================
+    # ALL FILES/FOLDERS FROM backend/public
+    # =========================================================
+
+    RewriteCond %{DOCUMENT_ROOT}/backend/public/$1 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/backend/public/$1 -d
+    RewriteRule ^(.+)$ backend/public/$1 [L]
+
+
+    # =========================================================
     # REACT IMAGES
+    # =========================================================
+
     RewriteRule ^images/(.*)$ frontend/dist/images/$1 [L]
 
-    # REACT FRONTEND ROOT
+
+    # =========================================================
+    # REACT ROOT
+    # =========================================================
+
     RewriteRule ^$ frontend/dist/index.html [L]
 
+
+    # =========================================================
     # REACT STATIC FILES
+    # =========================================================
+
     RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -f
     RewriteRule ^(.+)$ frontend/dist/$1 [L]
 
+
+    # =========================================================
     # REACT ROUTER FALLBACK
+    # =========================================================
+
     RewriteRule ^ frontend/dist/index.html [L]
 
 </IfModule>

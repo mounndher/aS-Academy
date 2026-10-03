@@ -38,11 +38,11 @@ class IntroductionSectionController extends Controller
                     $introduction->secondary_description,
 
                 'image_primary' => $introduction->image_primary
-                    ? asset('storage/' . $introduction->image_primary)
+                    ? asset($introduction->image_primary)
                     : null,
 
                 'image_secondary' => $introduction->image_secondary
-                    ? asset('storage/' . $introduction->image_secondary)
+                    ? asset($introduction->image_secondary)
                     : null,
 
                 'bottom_title' => $introduction->bottom_title,

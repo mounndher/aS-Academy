@@ -39,11 +39,11 @@ class AcademySectionController extends Controller
                     $academy->secondary_description,
 
                 'image_primary' => $academy->image_primary
-                    ? asset('storage/' . $academy->image_primary)
+                    ? asset($academy->image_primary)
                     : null,
 
                 'image_secondary' => $academy->image_secondary
-                    ? asset('storage/' . $academy->image_secondary)
+                    ? asset($academy->image_secondary)
                     : null,
 
                 'stats' => [

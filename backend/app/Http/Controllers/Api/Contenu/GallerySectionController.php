@@ -31,27 +31,27 @@ class GallerySectionController extends Controller
 
                 'images' => [
                     $gallery->image_1
-                        ? asset('storage/' . $gallery->image_1)
+                        ? asset($gallery->image_1)
                         : null,
 
                     $gallery->image_2
-                        ? asset('storage/' . $gallery->image_2)
+                        ? asset($gallery->image_2)
                         : null,
 
                     $gallery->image_3
-                        ? asset('storage/' . $gallery->image_3)
+                        ? asset($gallery->image_3)
                         : null,
 
                     $gallery->image_4
-                        ? asset('storage/' . $gallery->image_4)
+                        ? asset($gallery->image_4)
                         : null,
 
                     $gallery->image_5
-                        ? asset('storage/' . $gallery->image_5)
+                        ? asset($gallery->image_5)
                         : null,
 
                     $gallery->image_6
-                        ? asset('storage/' . $gallery->image_6)
+                        ? asset($gallery->image_6)
                         : null,
                 ],
 
