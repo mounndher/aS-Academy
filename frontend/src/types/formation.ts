@@ -1,14 +1,19 @@
-export interface FormationPlanning {
+export interface FormationProgramme {
+  id: number;
+  name: string;
+}
+
+export interface FormationDay {
   id: number;
   city: string;
 
   start_date: string;
   end_date: string;
 
-  price: string | number;
+  price: number | string;
 
   cpf_eligible: boolean;
-  cpf_price: string | number | null;
+  cpf_price: number | string | null;
 
   max_places: number;
   remaining_places: number;
@@ -19,12 +24,12 @@ export interface FormationPlanning {
 export interface Formation {
   id: number;
 
-  programme_id: number | null;
-  programme: string | null;
+  programme_id: number;
+
+  programme: FormationProgramme | null;
 
   title: string;
   slug: string;
-
   description: string | null;
 
   steps: Array<{
@@ -35,24 +40,16 @@ export interface Formation {
   image: string | null;
   pdf_program: string | null;
 
-  personal_price: string | number | null;
-
+  personal_price: number | string;
   has_sale: boolean;
-  sale_price: string | number | null;
+  sale_price: number | string | null;
 
   installment_enabled: boolean;
   installment_count: number | null;
 
-  deposit_amount: string | number | null;
-
   is_active: boolean;
 
-  planning?: FormationPlanning[];
-}
-
-export interface FormationApiResponse {
-  success: boolean;
-  data: Formation;
+  formation_days: FormationDay[];
 }
 
 export interface FormationsApiResponse {
@@ -60,18 +57,7 @@ export interface FormationsApiResponse {
   data: Formation[];
 }
 
-export interface PlanningFormation {
-  formation_id: number;
-  formation: string;
-  slug: string;
-
-  programme_id: number | null;
-  programme: string | null;
-
-  planning: FormationPlanning[];
-}
-
-export interface PlanningApiResponse {
+export interface FormationApiResponse {
   success: boolean;
-  data: PlanningFormation[];
+  data: Formation;
 }
