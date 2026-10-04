@@ -5,12 +5,30 @@ import { useSiteUI } from "@/context/SiteUIContext";
 import { useFormationInformation } from "@/hooks/useFormationInformation";
 import { useFormations } from "@/hooks/useFormations";
 
+import { getStorageUrl } from "@/services/api";
+
 import { Button } from "@/components/ui/Button";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 
 import { Meta } from "./FormationCard";
+
+function formatPrice(price: string | number | null) {
+  if (price === null || price === undefined) {
+    return "Sur demande";
+  }
+
+  return `${Number(price).toLocaleString("fr-FR")} €`;
+}
+
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(date));
+}
 
 export function FormationGrid() {
   const { requestDate } = useSiteUI();
@@ -28,13 +46,12 @@ export function FormationGrid() {
   const information = formationInformationData?.information;
 
   /*
-   * Client currently has one formation.
-   * If more formations are added later, this will still work.
+   * We use the formation coming from Laravel.
    */
   const formation = formations[0];
 
   /*
-   * Loading
+   * LOADING
    */
   if (loading) {
     return (
@@ -52,7 +69,7 @@ export function FormationGrid() {
   }
 
   /*
-   * Error
+   * ERROR
    */
   if (error) {
     return (
@@ -70,7 +87,7 @@ export function FormationGrid() {
   }
 
   /*
-   * No formation
+   * NO FORMATION
    */
   if (!formation) {
     return (
@@ -88,16 +105,19 @@ export function FormationGrid() {
   }
 
   /*
-   * Formation sessions / planning
+   * FORMATION DAYS
    */
-  const formationDays = formation.formation_days ?? [];
+  const formationDays = formation.formationDays ?? [];
 
+  /*
+   * AVAILABLE DAYS
+   */
   const availableDays = formationDays.filter(
     (day) => day.status === "available"
   );
 
   /*
-   * Cities from database
+   * CITIES
    */
   const cities = [
     ...new Set(
@@ -106,53 +126,47 @@ export function FormationGrid() {
   ];
 
   /*
-   * Lowest normal price
-   *
-   * Example:
-   * Bordeaux = 700 €
-   * Paris = 850 €
-   *
-   * Result = 700 €
+   * PRICES
    */
   const prices = formationDays
-    .map((day) => Number(day.price))
-    .filter((price) => !Number.isNaN(price));
+    .map((day) =>
+      day.personal_price !== null
+        ? Number(day.personal_price)
+        : null
+    )
+    .filter(
+      (price): price is number =>
+        price !== null && !Number.isNaN(price)
+    );
 
   const startingPrice =
     prices.length > 0
       ? Math.min(...prices)
-      : Number(formation.personal_price);
+      : null;
 
   /*
-   * CPF price
+   * CPF
    */
-  const cpfDay = formationDays.find(
-    (day) =>
-      day.cpf_eligible &&
+  const cpfPrices = formationDays
+    .map((day) =>
       day.cpf_price !== null
-  );
+        ? Number(day.cpf_price)
+        : null
+    )
+    .filter(
+      (price): price is number =>
+        price !== null && !Number.isNaN(price)
+    );
 
-  const cpfPrice = cpfDay
-    ? Number(cpfDay.cpf_price)
-    : null;
+  const cpfPrice =
+    cpfPrices.length > 0
+      ? Math.min(...cpfPrices)
+      : null;
 
   /*
-   * Format price
+   * IMAGE
    */
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("fr-FR", {
-      maximumFractionDigits: 0,
-    }).format(price);
-
-  /*
-   * Format date
-   */
-  const formatDate = (date: string) =>
-    new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(date));
+  const imageUrl = getStorageUrl(formation.image);
 
   return (
     <section
@@ -161,9 +175,9 @@ export function FormationGrid() {
     >
       <div className="wrap">
 
-        {/* =====================================================
-            SECTION HEADER
-        ===================================================== */}
+        {/* =========================================
+            HEADER
+        ========================================= */}
 
         <SectionHeader
           label={
@@ -171,33 +185,32 @@ export function FormationGrid() {
             "Formations"
           }
           title={[
-            information?.title || "Notre",
-            information?.subtitle ||
-              "Formation",
+            information?.title || "Nos",
+            information?.subtitle || "Formations",
           ]}
           subtitle={
             information?.description ||
             formation.description ||
-            "Formation extension de cils — choisissez votre ville et votre date."
+            "Choisissez votre ville et votre date, puis réservez en ligne."
           }
         />
 
-        {/* =====================================================
+        {/* =========================================
             MAIN FORMATION
-        ===================================================== */}
+        ========================================= */}
 
         <article className="group mt-20 grid gap-10 lg:mt-28 lg:grid-cols-12 lg:items-end lg:gap-14">
 
-          {/* IMAGE */}
+          {/* IMAGE FROM LARAVEL */}
 
           <Link
             to={`/formations/${formation.slug}`}
             className="block lg:col-span-6"
             aria-label={`Découvrir ${formation.title}`}
           >
-            {formation.image ? (
+            {imageUrl ? (
               <ImageReveal
-                src={formation.image}
+                src={imageUrl}
                 alt={formation.title}
                 className="aspect-[4/5] w-full sm:aspect-[4/3] lg:aspect-[4/5]"
                 priority
@@ -217,43 +230,46 @@ export function FormationGrid() {
 
             <Reveal>
 
-              <p className="label flex items-center gap-4 text-ink/40">
+              {/* PROGRAMME FROM LARAVEL */}
 
+              <p className="label flex items-center gap-4 text-ink/40">
                 <span className="font-serif text-lg tracking-normal text-ink/60">
                   01
                 </span>
 
                 <span className="h-px w-6 bg-current" />
 
-                {formation.programme?.name ||
-                  "Formation"}
-
+                {formation.programme || "Formation"}
               </p>
 
-              <h3 className="display mt-5 text-[clamp(2.2rem,6.5vw,4.25rem)]">
+              {/* TITLE FROM LARAVEL */}
 
+              <h3 className="display mt-5 text-[clamp(2.2rem,6.5vw,4.25rem)]">
                 <Link
                   to={`/formations/${formation.slug}`}
                   className="transition-opacity duration-500 hover:opacity-60"
                 >
                   {formation.title}
                 </Link>
-
               </h3>
 
               <p className="mt-3 font-serif text-xl italic text-ink/55 md:text-2xl">
                 Extension de cils
               </p>
 
-              <p className="mt-6 max-w-md text-base font-light leading-relaxed text-ink/60">
-                {formation.description}
-              </p>
+              {/* DESCRIPTION FROM LARAVEL */}
+
+              {formation.description && (
+                <p className="mt-6 max-w-md text-base font-light leading-relaxed text-ink/60">
+                  {formation.description}
+                </p>
+              )}
 
             </Reveal>
 
-            {/* =================================================
+            {/* =========================================
                 METADATA
-            ================================================= */}
+            ========================================= */}
 
             <Reveal delay={0.15}>
 
@@ -277,14 +293,14 @@ export function FormationGrid() {
 
                 <Meta
                   label="Tarif"
-                  value={`dès ${formatPrice(
-                    startingPrice
-                  )} €`}
+                  value={
+                    startingPrice !== null
+                      ? `dès ${formatPrice(startingPrice)}`
+                      : "Sur demande"
+                  }
                   sub={
-                    cpfPrice
-                      ? `CPF ${formatPrice(
-                          cpfPrice
-                        )} €`
+                    cpfPrice !== null
+                      ? `CPF ${formatPrice(cpfPrice)}`
                       : "Financement personnel"
                   }
                   className="col-span-2 sm:col-span-1"
@@ -307,12 +323,13 @@ export function FormationGrid() {
               </div>
 
             </Reveal>
+
           </div>
         </article>
 
-        {/* =====================================================
+        {/* =========================================
             PLANNING
-        ===================================================== */}
+        ========================================= */}
 
         <div className="mt-24 lg:mt-36">
 
@@ -322,7 +339,7 @@ export function FormationGrid() {
 
               <div>
                 <p className="label text-ink/50">
-                  Planning des formations
+                  Prochaines formations
                 </p>
 
                 <p className="mt-2 text-sm font-light text-ink/50">
@@ -342,14 +359,16 @@ export function FormationGrid() {
 
           </Reveal>
 
-          {/* =================================================
+          {/* =========================================
               SESSION CARDS
-          ================================================= */}
+          ========================================= */}
 
           {availableDays.length > 0 ? (
+
             <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
               {availableDays.map((day, index) => (
+
                 <Reveal
                   key={day.id}
                   delay={index * 0.08}
@@ -384,31 +403,26 @@ export function FormationGrid() {
 
                         <span className="font-medium">
                           {formatPrice(
-                            Number(day.price)
-                          )} €
+                            day.personal_price
+                          )}
                         </span>
                       </div>
 
-                      {/* CPF */}
+                      {day.cpf_price !== null && (
+                        <div className="mt-2 flex items-center justify-between">
 
-                      {day.cpf_eligible &&
-                        day.cpf_price !== null && (
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="text-sm text-ink/50">
-                              CPF
-                            </span>
+                          <span className="text-sm text-ink/50">
+                            CPF
+                          </span>
 
-                            <span className="font-medium">
-                              {formatPrice(
-                                Number(
-                                  day.cpf_price
-                                )
-                              )} €
-                            </span>
-                          </div>
-                        )}
+                          <span className="font-medium">
+                            {formatPrice(
+                              day.cpf_price
+                            )}
+                          </span>
 
-                      {/* PLACES */}
+                        </div>
+                      )}
 
                       <div className="mt-2 flex items-center justify-between">
 
@@ -417,8 +431,8 @@ export function FormationGrid() {
                         </span>
 
                         <span className="font-medium">
-                          {day.remaining_places}{" "}
-                          / {day.max_places}
+                          {day.remaining_places} /{" "}
+                          {day.max_places}
                         </span>
 
                       </div>
@@ -439,13 +453,12 @@ export function FormationGrid() {
                   </article>
 
                 </Reveal>
+
               ))}
 
             </div>
+
           ) : (
-            /* =================================================
-               NO AVAILABLE SESSION
-            ================================================= */
 
             <Reveal>
 
@@ -471,6 +484,7 @@ export function FormationGrid() {
               </div>
 
             </Reveal>
+
           )}
 
         </div>
