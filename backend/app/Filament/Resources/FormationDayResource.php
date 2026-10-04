@@ -109,7 +109,8 @@ class FormationDayResource extends Resource
                             ->numeric()
                             ->prefix('€')
                             ->minValue(0)
-                            ->visible(fn (Forms\Get $get) => $get('cpf_eligible')),
+                            ->visible(fn (Forms\Get $get) => $get('cpf_eligible'))
+                            ->required(fn (Forms\Get $get) => $get('cpf_eligible')),
 
                     ])
                     ->columns(3),
@@ -135,7 +136,8 @@ class FormationDayResource extends Resource
                             ->numeric()
                             ->minValue(0)
                             ->required()
-                            ->default(6),
+                            ->default(6)
+                            ->lte('max_places'),
 
                         Forms\Components\Select::make('status')
                             ->label('Statut')
@@ -181,7 +183,7 @@ class FormationDayResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('price')
-                    ->label('Prix')
+                    ->label('Prix normal')
                     ->money('EUR')
                     ->sortable(),
 
