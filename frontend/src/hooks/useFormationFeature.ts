@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { getFormation } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
-export function useFormation(slug: string) {
-  const [data, setData] = useState<Formation | null>(null);
+export function useFormationFeature() {
+  const [formation, setFormation] = useState<Formation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,14 +14,16 @@ export function useFormation(slug: string) {
         setLoading(true);
         setError(null);
 
-        const response = await getFormation(slug);
+        const response = await getFormation(
+          "formation-extension-de-cils"
+        );
 
-        setData(response.data);
+        setFormation(response.data);
       } catch (err) {
-        console.error("Erreur formation:", err);
+        console.error("Formation Feature error:", err);
 
         setError(
-          "Impossible de charger la formation."
+          "Impossible de charger les informations de la formation."
         );
       } finally {
         setLoading(false);
@@ -29,10 +31,10 @@ export function useFormation(slug: string) {
     }
 
     loadFormation();
-  }, [slug]);
+  }, []);
 
   return {
-    data,
+    formation,
     loading,
     error,
   };
