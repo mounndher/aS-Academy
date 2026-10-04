@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class FormationDay extends Model
 {
@@ -16,10 +16,10 @@ class FormationDay extends Model
         'start_date',
         'end_date',
         'price',
-        'max_places',
-        'remaining_places',
         'cpf_eligible',
         'cpf_price',
+        'max_places',
+        'remaining_places',
         'status',
     ];
 
@@ -27,10 +27,10 @@ class FormationDay extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'price' => 'decimal:2',
+        'cpf_price' => 'decimal:2',
         'max_places' => 'integer',
         'remaining_places' => 'integer',
         'cpf_eligible' => 'boolean',
-        'cpf_price' => 'decimal:2',
     ];
 
     public function formation(): BelongsTo
