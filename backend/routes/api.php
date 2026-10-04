@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\FormationapiController;
+use App\Http\Controllers\Api\Contenu\FormationapiController;
 use App\Http\Controllers\Api\ProgrammeController;
 use App\Http\Controllers\Api\FormationDayController;
 use App\Http\Controllers\Api\Contenu\FormationInformationController;
