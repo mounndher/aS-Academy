@@ -13,7 +13,7 @@ import type {
 } from "../types/formationInformation";
 import type {
   FormationApiResponse,
-  FormationSingleApiResponse,
+  FormationsApiResponse,
 } from "../types/formation";
 
 
@@ -205,7 +205,7 @@ export async function getFormationInformation(): Promise<FormationInformationApi
    FORMATIONS
    ========================================================= */
 
-export async function getFormations(): Promise<FormationApiResponse> {
+export async function getFormations(): Promise<FormationsApiResponse> {
   const response = await fetch(
     `${API_URL}/contenu/formations`
   );
@@ -218,10 +218,9 @@ export async function getFormations(): Promise<FormationApiResponse> {
 
   return response.json();
 }
-
 export async function getFormation(
   slug: string
-): Promise<FormationSingleApiResponse> {
+): Promise<FormationApiResponse> {
   const response = await fetch(
     `${API_URL}/contenu/formations/${slug}`
   );
@@ -234,3 +233,4 @@ export async function getFormation(
 
   return response.json();
 }
+
