@@ -14,8 +14,7 @@ import type {
 import type {
   FormationApiResponse,
   FormationsApiResponse,
-  PlanningApiResponse,
-} from "../types/formation";
+} from "../types/formation";;
 
 
 
@@ -202,13 +201,6 @@ export async function getFormationInformation(): Promise<FormationInformationApi
 
 
 
-/* =========================================================
-   FORMATIONS
-   ========================================================= */
-
-/* =========================================================
-   FORMATIONS
-   ========================================================= */
 
 export async function getFormations(): Promise<FormationsApiResponse> {
   const response = await fetch(
@@ -234,38 +226,6 @@ export async function getFormation(
   if (!response.ok) {
     throw new Error(
       "Erreur lors du chargement de la formation"
-    );
-  }
-
-  return response.json();
-}
-
-
-export async function getFormationBySlug(
-  slug: string
-): Promise<FormationApiResponse> {
-  const response = await fetch(
-    `${API_URL}/contenu/formations/${slug}`
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "Erreur lors du chargement de la formation"
-    );
-  }
-
-  return response.json();
-}
-
-
-export async function getPlanning(): Promise<PlanningApiResponse> {
-  const response = await fetch(
-    `${API_URL}/contenu/planning`
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "Erreur lors du chargement du planning"
     );
   }
 
