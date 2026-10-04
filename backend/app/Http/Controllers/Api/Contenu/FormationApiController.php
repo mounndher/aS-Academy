@@ -9,16 +9,16 @@ use Illuminate\Http\JsonResponse;
 class FormationApiController extends Controller
 {
     /**
-     * Toutes les formations actives
+     * Get all active formations.
      */
-     public function index(): JsonResponse
+    public function index(): JsonResponse
     {
         $formations = Formation::query()
             ->with([
                 'programme',
                 'formationDays' => function ($query) {
                     $query
-                        ->whereIn('status', ['available', 'full'])
+                        ->whereDate('start_date', '>=', now()->toDateString())
                         ->orderBy('start_date');
                 },
             ])
@@ -29,7 +29,8 @@ class FormationApiController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formations->map(
-                fn (Formation $formation) => $this->formatFormation($formation)
+                fn (Formation $formation) =>
+                    $this->formatFormation($formation)
             ),
         ]);
     }
@@ -42,10 +43,9 @@ class FormationApiController extends Controller
         $formation = Formation::query()
             ->with([
                 'programme',
-
                 'formationDays' => function ($query) {
                     $query
-                        ->whereIn('status', ['available', 'full'])
+                        ->whereDate('start_date', '>=', now()->toDateString())
                         ->orderBy('start_date');
                 },
             ])
@@ -69,15 +69,12 @@ class FormationApiController extends Controller
 
             'programme_id' => $formation->programme_id,
 
-            'programme' => $formation->programme
-                ? [
-                    'id' => $formation->programme->id,
-                    'name' => $formation->programme->name,
-                ]
-                : null,
+            'programme' => $formation->programme?->name,
 
             'title' => $formation->title,
+
             'slug' => $formation->slug,
+
             'description' => $formation->description,
 
             'steps' => $formation->steps ?? [],
@@ -90,33 +87,33 @@ class FormationApiController extends Controller
                 ? asset('storage/' . $formation->pdf_program)
                 : null,
 
-            'personal_price' => $formation->personal_price,
-            'has_sale' => (bool) $formation->has_sale,
-            'sale_price' => $formation->sale_price,
-
-            'installment_enabled' => (bool) $formation->installment_enabled,
-            'installment_count' => $formation->installment_count,
-
             'is_active' => (bool) $formation->is_active,
 
-            'formation_days' => $formation->formationDays->map(function ($day) {
-                return [
-                    'id' => $day->id,
-                    'city' => $day->city,
-                    'start_date' => $day->start_date,
-                    'end_date' => $day->end_date,
+            'formationDays' => $formation->formationDays
+                ->map(function ($day) {
+                    return [
+                        'id' => $day->id,
 
-                    'price' => $day->price,
+                        'formation_id' => $day->formation_id,
 
-                    'cpf_eligible' => (bool) $day->cpf_eligible,
-                    'cpf_price' => $day->cpf_price,
+                        'city' => $day->city,
 
-                    'max_places' => $day->max_places,
-                    'remaining_places' => $day->remaining_places,
+                        'start_date' => $day->start_date,
 
-                    'status' => $day->status,
-                ];
-            })->values(),
+                        'end_date' => $day->end_date,
+
+                        'personal_price' => $day->personal_price,
+
+                        'cpf_price' => $day->cpf_price,
+
+                        'max_places' => $day->max_places,
+
+                        'remaining_places' => $day->remaining_places,
+
+                        'status' => $day->status,
+                    ];
+                })
+                ->values(),
         ];
     }
 }
