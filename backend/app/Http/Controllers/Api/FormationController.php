@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Formation;
 use Illuminate\Http\JsonResponse;
 
-class FormationController extends Controller
+class FormationapiController extends Controller
 {
     public function index(): JsonResponse
     {
@@ -21,24 +21,24 @@ class FormationController extends Controller
         ]);
     }
 
-    public function show(string $slug): JsonResponse
-    {
-        $formation = Formation::with([
-            'programme',
-            'days' => function ($query) {
-                $query
-                    ->where('status', 'available')
-                    ->whereDate('date', '>=', now()->toDateString())
-                    ->orderBy('date');
-            },
-        ])
-            ->where('slug', $slug)
-            ->where('is_active', true)
-            ->firstOrFail();
+   public function show(string $slug): JsonResponse
+{
+    $formation = Formation::with([
+        'programme',
+        'formationDays' => function ($query) {
+            $query
+                ->whereIn('status', ['available', 'full'])
+                ->whereDate('end_date', '>=', now()->toDateString())
+                ->orderBy('start_date');
+        },
+    ])
+        ->where('slug', $slug)
+        ->where('is_active', true)
+        ->firstOrFail();
 
-        return response()->json([
-            'success' => true,
-            'data' => $formation,
-        ]);
-    }
+    return response()->json([
+        'success' => true,
+        'data' => $formation,
+    ]);
+}
 }
