@@ -15,20 +15,22 @@ class FormationDay extends Model
         'city',
         'start_date',
         'end_date',
+        'price',
         'max_places',
         'remaining_places',
         'cpf_eligible',
-'cpf_price',
+        'cpf_price',
         'status',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'price' => 'decimal:2',
         'max_places' => 'integer',
         'remaining_places' => 'integer',
         'cpf_eligible' => 'boolean',
-'cpf_price' => 'decimal:2',
+        'cpf_price' => 'decimal:2',
     ];
 
     public function formation(): BelongsTo
