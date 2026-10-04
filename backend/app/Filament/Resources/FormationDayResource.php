@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormationDayResource\Pages;
-use App\Models\Formation;
 use App\Models\FormationDay;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -31,40 +30,35 @@ class FormationDayResource extends Resource
     {
         return $form
             ->schema([
+
+                /*
+                |--------------------------------------------------------------------------
+                | Formation
+                |--------------------------------------------------------------------------
+                */
+
                 Forms\Components\Section::make('Formation')
                     ->schema([
+
                         Forms\Components\Select::make('formation_id')
                             ->label('Formation')
-                            ->relationship(
-                                'formation',
-                                'title'
-                            )
+                            ->relationship('formation', 'title')
                             ->searchable()
                             ->preload()
                             ->required()
                             ->native(false),
+
                     ]),
 
-                Forms\Components\Section::make('CPF')
-    ->schema([
-
-        Forms\Components\Toggle::make('cpf_eligible')
-            ->label('Session éligible au CPF')
-            ->live()
-            ->default(false),
-
-        Forms\Components\TextInput::make('cpf_price')
-            ->label('Prix CPF (€)')
-            ->numeric()
-            ->prefix('€')
-            ->minValue(0)
-            ->visible(fn (Forms\Get $get) => $get('cpf_eligible')),
-
-    ])
-    ->columns(2),
+                /*
+                |--------------------------------------------------------------------------
+                | Lieu et dates
+                |--------------------------------------------------------------------------
+                */
 
                 Forms\Components\Section::make('Lieu et dates')
                     ->schema([
+
                         Forms\Components\TextInput::make('city')
                             ->label('Ville')
                             ->placeholder('Paris')
@@ -85,11 +79,50 @@ class FormationDayResource extends Resource
                             ->displayFormat('d/m/Y')
                             ->firstDayOfWeek(1)
                             ->afterOrEqual('start_date'),
+
                     ])
                     ->columns(3),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Tarification
+                |--------------------------------------------------------------------------
+                */
+
+                Forms\Components\Section::make('Tarification')
+                    ->schema([
+
+                        Forms\Components\TextInput::make('price')
+                            ->label('Prix normal (€)')
+                            ->numeric()
+                            ->prefix('€')
+                            ->required()
+                            ->minValue(0),
+
+                        Forms\Components\Toggle::make('cpf_eligible')
+                            ->label('Session éligible au CPF')
+                            ->live()
+                            ->default(false),
+
+                        Forms\Components\TextInput::make('cpf_price')
+                            ->label('Prix CPF (€)')
+                            ->numeric()
+                            ->prefix('€')
+                            ->minValue(0)
+                            ->visible(fn (Forms\Get $get) => $get('cpf_eligible')),
+
+                    ])
+                    ->columns(3),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Places disponibles
+                |--------------------------------------------------------------------------
+                */
+
                 Forms\Components\Section::make('Places disponibles')
                     ->schema([
+
                         Forms\Components\TextInput::make('max_places')
                             ->label('Nombre maximum de places')
                             ->numeric()
@@ -115,8 +148,10 @@ class FormationDayResource extends Resource
                             ->required()
                             ->default('available')
                             ->native(false),
+
                     ])
                     ->columns(3),
+
             ]);
     }
 
@@ -124,6 +159,7 @@ class FormationDayResource extends Resource
     {
         return $table
             ->columns([
+
                 Tables\Columns\TextColumn::make('formation.title')
                     ->label('Formation')
                     ->searchable()
@@ -144,6 +180,17 @@ class FormationDayResource extends Resource
                     ->date('d/m/Y')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('price')
+                    ->label('Prix')
+                    ->money('EUR')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('cpf_price')
+                    ->label('Prix CPF')
+                    ->money('EUR')
+                    ->placeholder('—')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('max_places')
                     ->label('Places')
                     ->sortable(),
@@ -160,21 +207,36 @@ class FormationDayResource extends Resource
                         'warning' => 'cancelled',
                         'gray' => 'finished',
                     ])
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'available' => 'Disponible',
-                        'full' => 'Complet',
-                        'cancelled' => 'Annulée',
-                        'finished' => 'Terminée',
-                        default => $state,
-                    }),
+                    ->formatStateUsing(
+                        fn (string $state): string => match ($state) {
+                            'available' => 'Disponible',
+                            'full' => 'Complet',
+                            'cancelled' => 'Annulée',
+                            'finished' => 'Terminée',
+                            default => $state,
+                        }
+                    ),
+
             ])
+
             ->defaultSort('start_date', 'asc')
+
             ->actions([
+
                 Tables\Actions\EditAction::make()
                     ->label('Modifier'),
+
+                Tables\Actions\DeleteAction::make()
+                    ->label('Supprimer'),
+
             ])
+
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
+
             ]);
     }
 
