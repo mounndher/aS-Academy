@@ -73,11 +73,11 @@ Route::get(
     Route::get('/formations/{slug}', [FormationController::class, 'show']);
 
     // Planning des formations
-    Route::get('/planning', [ProgrammePlanningController::class, 'index']);
+    Route::get('/planning', [ProgrammeController::class, 'index']);
 
     Route::get(
         '/planning/formation/{formation}',
-        [ProgrammePlanningController::class, 'show']
+        [ProgrammeController::class, 'show']
     );
 
     
