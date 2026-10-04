@@ -11,6 +11,14 @@ import type { PortfolioApiResponse } from "../types/portfolio";
 import type {
   FormationInformationApiResponse,
 } from "../types/formationInformation";
+import type {
+  FormationApiResponse,
+  FormationsApiResponse,
+  PlanningApiResponse,
+} from "../types/formation";
+
+
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -186,6 +194,26 @@ export async function getFormationInformation(): Promise<FormationInformationApi
   if (!response.ok) {
     throw new Error(
       "Erreur lors du chargement des informations des formations"
+    );
+  }
+
+  return response.json();
+}
+
+
+
+/* =========================================================
+   FORMATIONS
+   ========================================================= */
+
+export async function getFormations(): Promise<FormationsApiResponse> {
+  const response = await fetch(
+    `${API_URL}/contenu/formations`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Erreur lors du chargement des formations"
     );
   }
 
