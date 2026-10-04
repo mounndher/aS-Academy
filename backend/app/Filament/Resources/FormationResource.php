@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormationResource\Pages;
+use App\Filament\Resources\FormationResource\RelationManagers;
 use App\Models\Formation;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -33,7 +34,7 @@ class FormationResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Formation
+                | Informations générales
                 |--------------------------------------------------------------------------
                 */
 
@@ -68,50 +69,51 @@ class FormationResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Prix
+                | Tarification
                 |--------------------------------------------------------------------------
                 */
 
-               Forms\Components\Section::make('Tarification')
-    ->schema([
+                Forms\Components\Section::make('Tarification')
+                    ->schema([
 
-        Forms\Components\TextInput::make('personal_price')
-            ->label('Prix financement personnel (€)')
-            ->numeric()
-            ->prefix('€')
-            ->required()
-            ->minValue(0),
+                        Forms\Components\TextInput::make('personal_price')
+                            ->label('Prix financement personnel (€)')
+                            ->numeric()
+                            ->prefix('€')
+                            ->required()
+                            ->minValue(0),
 
-        Forms\Components\Toggle::make('has_sale')
-            ->label('Prix soldé')
-            ->live()
-            ->default(false),
+                        Forms\Components\Toggle::make('has_sale')
+                            ->label('Prix soldé')
+                            ->live()
+                            ->default(false),
 
-        Forms\Components\TextInput::make('sale_price')
-            ->label('Prix soldé (€)')
-            ->numeric()
-            ->prefix('€')
-            ->minValue(0)
-            ->visible(fn (Forms\Get $get) => $get('has_sale')),
+                        Forms\Components\TextInput::make('sale_price')
+                            ->label('Prix soldé (€)')
+                            ->numeric()
+                            ->prefix('€')
+                            ->minValue(0)
+                            ->visible(fn (Forms\Get $get) => $get('has_sale')),
 
-        Forms\Components\Toggle::make('installment_enabled')
-            ->label('Paiement en plusieurs fois')
-            ->live()
-            ->default(false),
+                        Forms\Components\Toggle::make('installment_enabled')
+                            ->label('Paiement en plusieurs fois')
+                            ->live()
+                            ->default(false),
 
-        Forms\Components\TextInput::make('installment_count')
-            ->label('Nombre de paiements')
-            ->numeric()
-            ->minValue(2)
-            ->maxValue(4)
-            ->default(2)
-            ->visible(fn (Forms\Get $get) => $get('installment_enabled')),
+                        Forms\Components\TextInput::make('installment_count')
+                            ->label('Nombre de paiements')
+                            ->numeric()
+                            ->minValue(2)
+                            ->maxValue(4)
+                            ->default(2)
+                            ->visible(fn (Forms\Get $get) => $get('installment_enabled')),
 
-    ])
-    ->columns(2),
+                    ])
+                    ->columns(2),
+
                 /*
                 |--------------------------------------------------------------------------
-                | Étapes de la formation
+                | Étapes
                 |--------------------------------------------------------------------------
                 */
 
@@ -189,7 +191,7 @@ class FormationResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Status
+                | Statut
                 |--------------------------------------------------------------------------
                 */
 
@@ -218,11 +220,6 @@ class FormationResource extends Resource
                 Tables\Columns\TextColumn::make('programme.name')
                     ->label('Programme')
                     ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Prix')
-                    ->money('EUR')
                     ->sortable(),
 
                 Tables\Columns\IconColumn::make('is_active')
@@ -268,7 +265,9 @@ class FormationResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\FormationDaysRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
