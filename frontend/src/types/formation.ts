@@ -4,43 +4,40 @@ export interface FormationDay {
   city: string;
   start_date: string;
   end_date: string;
-  price: string | number | null;
-  cpf_eligible: boolean;
-  cpf_price: string | number | null;
+  personal_price: number | string | null;
+  cpf_price: number | string | null;
   max_places: number;
   remaining_places: number;
-  status: "available" | "full" | "cancelled" | "finished";
+  status: "available" | "complete" | "cancelled" | "finished" | string;
+}
+
+export interface FormationProgramme {
+  id: number;
+  name: string;
+  slug?: string;
 }
 
 export interface Formation {
   id: number;
-  programme_id: number | null;
+  programme_id: number;
   programme: string | null;
   title: string;
   slug: string;
   description: string | null;
-  steps: {
-    title: string;
-    description?: string;
-  }[];
+  steps: string[];
   image: string | null;
   pdf_program: string | null;
-  personal_price: string | number | null;
-  has_sale: boolean;
-  sale_price: string | number | null;
-  deposit_amount: string | number | null;
-  installment_enabled: boolean;
-  installment_count: number | null;
   is_active: boolean;
-  formation_days?: FormationDay[];
+
+  formationDays: FormationDay[];
 }
 
 export interface FormationApiResponse {
   success: boolean;
-  data: Formation;
+  data: Formation[];
 }
 
-export interface FormationsApiResponse {
+export interface FormationSingleApiResponse {
   success: boolean;
-  data: Formation[];
+  data: Formation;
 }
