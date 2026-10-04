@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 
-import { eur } from "@/data/formations";
-import { mainProgramme } from "@/data/programmes";
-import { site } from "@/data/site";
+
 
 import { useScrollToState } from "@/hooks/useScrollToState";
 import { useFormations } from "@/hooks/useFormations";
