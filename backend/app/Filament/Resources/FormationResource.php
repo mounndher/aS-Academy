@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FormationResource\Pages;
-use App\Filament\Resources\FormationResource\RelationManagers;
 use App\Models\Formation;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -203,7 +202,6 @@ class FormationResource extends Resource
                             ->default(true),
 
                     ]),
-
             ]);
     }
 
@@ -220,6 +218,11 @@ class FormationResource extends Resource
                 Tables\Columns\TextColumn::make('programme.name')
                     ->label('Programme')
                     ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('personal_price')
+                    ->label('Prix personnel')
+                    ->money('EUR')
                     ->sortable(),
 
                 Tables\Columns\IconColumn::make('is_active')
@@ -265,9 +268,7 @@ class FormationResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            RelationManagers\FormationDaysRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
