@@ -5,7 +5,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\FormationController;
 use App\Http\Controllers\Api\ProgrammeController;
 use App\Http\Controllers\Api\FormationDayController;
-
 use App\Http\Controllers\Api\Contenu\FormationInformationController;
 use App\Http\Controllers\Api\Contenu\HeroSectionController;
 use App\Http\Controllers\Api\Contenu\IntroductionSectionController;
@@ -38,11 +37,11 @@ Route::get(
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::get('/formations', [FormationController::class, 'index']);
-Route::get('/formations/{slug}', [FormationController::class, 'show']);
+//Route::get('/formations', [FormationController::class, 'index']);
+//Route::get('/formations/{slug}', [FormationController::class, 'show']);
 
-Route::get('/programmes', [ProgrammeController::class, 'index']);
-Route::get('/programmes/{slug}', [ProgrammeController::class, 'show']);
+//Route::get('/programmes', [ProgrammeController::class, 'index']);
+//Route::get('/programmes/{slug}', [ProgrammeController::class, 'show']);
 
 ////
 Route::prefix('contenu')->group(function () {
@@ -69,4 +68,17 @@ Route::get(
     '/formation-information',
     [FormationInformationController::class, 'index']
 );
+    Route::get('/formations', [FormationController::class, 'index']);
+
+    Route::get('/formations/{slug}', [FormationController::class, 'show']);
+
+    // Planning des formations
+    Route::get('/planning', [ProgrammePlanningController::class, 'index']);
+
+    Route::get(
+        '/planning/formation/{formation}',
+        [ProgrammePlanningController::class, 'show']
+    );
+
+    
 });
