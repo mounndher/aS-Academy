@@ -8,6 +8,9 @@ use Illuminate\Http\JsonResponse;
 
 class FormationController extends Controller
 {
+    /**
+     * Get all active formations.
+     */
     public function index(): JsonResponse
     {
         $formations = Formation::query()
@@ -18,32 +21,15 @@ class FormationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $formations->map(function ($formation) {
-                return [
-                    'id' => $formation->id,
-                    'programme_id' => $formation->programme_id,
-                    'programme' => $formation->programme?->name,
-
-                    'title' => $formation->title,
-                    'slug' => $formation->slug,
-                    'description' => $formation->description,
-
-                    'steps' => $formation->steps,
-
-                    'image' => $formation->image
-                        ? asset('storage/' . $formation->image)
-                        : null,
-
-                    'pdf_program' => $formation->pdf_program
-                        ? asset('storage/' . $formation->pdf_program)
-                        : null,
-
-                    'is_active' => $formation->is_active,
-                ];
+            'data' => $formations->map(function (Formation $formation) {
+                return $this->formatFormation($formation);
             }),
         ]);
     }
 
+    /**
+     * Get one formation by slug.
+     */
     public function show(string $slug): JsonResponse
     {
         $formation = Formation::query()
@@ -54,27 +40,39 @@ class FormationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $formation->id,
-                'programme_id' => $formation->programme_id,
-                'programme' => $formation->programme?->name,
-
-                'title' => $formation->title,
-                'slug' => $formation->slug,
-                'description' => $formation->description,
-
-                'steps' => $formation->steps,
-
-                'image' => $formation->image
-                    ? asset('storage/' . $formation->image)
-                    : null,
-
-                'pdf_program' => $formation->pdf_program
-                    ? asset('storage/' . $formation->pdf_program)
-                    : null,
-
-                'is_active' => $formation->is_active,
-            ],
+            'data' => $this->formatFormation($formation),
         ]);
+    }
+
+    /**
+     * Format formation response.
+     */
+    private function formatFormation(Formation $formation): array
+    {
+        return [
+            'id' => $formation->id,
+
+            'programme_id' => $formation->programme_id,
+
+            'programme' => $formation->programme?->name,
+
+            'title' => $formation->title,
+
+            'slug' => $formation->slug,
+
+            'description' => $formation->description,
+
+            'steps' => $formation->steps ?? [],
+
+            'image' => $formation->image
+                ? asset('storage/' . $formation->image)
+                : null,
+
+            'pdf_program' => $formation->pdf_program
+                ? asset('storage/' . $formation->pdf_program)
+                : null,
+
+            'is_active' => (bool) $formation->is_active,
+        ];
     }
 }
