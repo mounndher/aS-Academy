@@ -3,22 +3,23 @@ import type { HeroApiResponse } from "../types/hero";
 import type { IntroductionApiResponse } from "../types/introduction";
 import type { GalleryApiResponse } from "../types/gallery";
 import type { ContactApiResponse } from "../types/contact";
-import type {
-  TrainingExperienceApiResponse,
-} from "../types/trainingExperience";
+import type { TrainingExperienceApiResponse } from "../types/trainingExperience";
 import type { SiteSettingApiResponse } from "../types/siteSetting";
 import type { PortfolioApiResponse } from "../types/portfolio";
-import type {
-  FormationInformationApiResponse,
-} from "../types/formationInformation";
-import type {
-  FormationApiResponse,
-  FormationsApiResponse,
-} from "../types/formation";
+import type { FormationInformationApiResponse } from "../types/formationInformation";
+import type { Formation } from "@/types/formation";
 
+const API_URL =
+  import.meta.env.VITE_API_URL ;
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
 
-const API_URL = import.meta.env.VITE_API_URL;
+// =========================================================
+// ACADEMY
+// =========================================================
 
 export async function getAcademySection(): Promise<AcademyApiResponse> {
   const response = await fetch(`${API_URL}/contenu/academy`);
@@ -30,6 +31,10 @@ export async function getAcademySection(): Promise<AcademyApiResponse> {
   return response.json();
 }
 
+// =========================================================
+// HERO
+// =========================================================
+
 export async function getHeroSection(): Promise<HeroApiResponse> {
   const response = await fetch(`${API_URL}/contenu/hero`);
 
@@ -39,6 +44,10 @@ export async function getHeroSection(): Promise<HeroApiResponse> {
 
   return response.json();
 }
+
+// =========================================================
+// INTRODUCTION
+// =========================================================
 
 export async function getIntroductionSection(): Promise<IntroductionApiResponse> {
   const response = await fetch(`${API_URL}/contenu/introduction`);
@@ -52,17 +61,25 @@ export async function getIntroductionSection(): Promise<IntroductionApiResponse>
   return response.json();
 }
 
+// =========================================================
+// GALLERY
+// =========================================================
+
 export async function getGallerySection(): Promise<GalleryApiResponse> {
   const response = await fetch(`${API_URL}/contenu/gallery`);
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement de la section Instagram"
+      "Erreur lors du chargement de la section Gallery"
     );
   }
 
   return response.json();
 }
+
+// =========================================================
+// CONTACT
+// =========================================================
 
 export async function getContactSection(): Promise<ContactApiResponse> {
   const response = await fetch(`${API_URL}/contenu/contact`);
@@ -75,6 +92,10 @@ export async function getContactSection(): Promise<ContactApiResponse> {
 
   return response.json();
 }
+
+// =========================================================
+// CONTACT MESSAGE
+// =========================================================
 
 export interface ContactMessagePayload {
   first_name: string;
@@ -96,17 +117,14 @@ export interface ContactMessageResponse {
 export async function sendContactMessage(
   payload: ContactMessagePayload
 ): Promise<ContactMessageResponse> {
-  const response = await fetch(
-    `${API_URL}/contact/messages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
+  const response = await fetch(`${API_URL}/contact/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
   const data = await response.json();
 
@@ -114,14 +132,17 @@ export async function sendContactMessage(
     return {
       success: false,
       message:
-        data.message ||
-        "Impossible d'envoyer votre message.",
+        data.message || "Impossible d'envoyer votre message.",
       errors: data.errors,
     };
   }
 
   return data;
 }
+
+// =========================================================
+// TRAINING EXPERIENCE
+// =========================================================
 
 export async function getTrainingExperience(): Promise<TrainingExperienceApiResponse> {
   const response = await fetch(
@@ -137,6 +158,10 @@ export async function getTrainingExperience(): Promise<TrainingExperienceApiResp
   return response.json();
 }
 
+// =========================================================
+// SITE SETTINGS
+// =========================================================
+
 export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
   const response = await fetch(`${API_URL}/contenu/settings`);
 
@@ -149,9 +174,9 @@ export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   PORTFOLIO
-   ========================================================= */
+// =========================================================
+// PORTFOLIO
+// =========================================================
 
 export async function getPortfolio(): Promise<PortfolioApiResponse> {
   const response = await fetch(
@@ -167,9 +192,9 @@ export async function getPortfolio(): Promise<PortfolioApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   STORAGE
-   ========================================================= */
+// =========================================================
+// STORAGE
+// =========================================================
 
 export function getStorageUrl(path: string | null): string {
   if (!path) {
@@ -180,9 +205,12 @@ export function getStorageUrl(path: string | null): string {
     return path;
   }
 
-  return `http://127.0.0.1:8000/storage/${path}`;
+  return `${API_URL.replace("/api", "")}/storage/${path}`;
 }
 
+// =========================================================
+// FORMATION INFORMATION
+// =========================================================
 
 export async function getFormationInformation(): Promise<FormationInformationApiResponse> {
   const response = await fetch(
@@ -198,39 +226,48 @@ export async function getFormationInformation(): Promise<FormationInformationApi
   return response.json();
 }
 
+// =========================================================
+// FORMATIONS
+// =========================================================
 
-
-
-/* =========================================================
-   FORMATIONS
-   ========================================================= */
-
-export async function getFormations(): Promise<FormationsApiResponse> {
+export async function getFormations(): Promise<Formation[]> {
   const response = await fetch(
     `${API_URL}/contenu/formations`
   );
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement des formations"
+      "Impossible de charger les formations."
     );
   }
 
-  return response.json();
+  const json: ApiResponse<Formation[]> = await response.json();
+
+  return Array.isArray(json.data) ? json.data : [];
 }
+
+// =========================================================
+// SINGLE FORMATION
+// =========================================================
+
 export async function getFormation(
   slug: string
-): Promise<FormationApiResponse> {
+): Promise<Formation> {
   const response = await fetch(
-    `${API_URL}/contenu/formations/${slug}`
+    `${API_URL}/contenu/formations/${encodeURIComponent(slug)}`
   );
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("Formation introuvable.");
+    }
+
     throw new Error(
-      "Erreur lors du chargement de la formation"
+      "Impossible de charger la formation."
     );
   }
 
-  return response.json();
-}
+  const json: ApiResponse<Formation> = await response.json();
 
+  return json.data;
+}

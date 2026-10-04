@@ -220,7 +220,7 @@ export function FormationCard({
 
           <span className="h-px w-6 bg-current" />
 
-          {formation.programme?.name || "Formation"}
+          {formation.programme || "Formation"}
         </p>
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">

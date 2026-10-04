@@ -1,41 +1,54 @@
-import { useEffect, useState } from "react";
-import {
-  getFormations,
-} from "@/services/api";
+import { useCallback, useEffect, useState } from "react";
+import { getFormations } from "@/services/api";
+import type { Formation } from "@/types/formation";
 
-import type {
-  Formation,
-} from "@/types/formation";
+interface UseFormationsReturn {
+  formations: Formation[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
 
-export function useFormations() {
-  const [data, setData] = useState<Formation[]>([]);
+export function useFormations(): UseFormationsReturn {
+  const [formations, setFormations] = useState<Formation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
+  const loadFormations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const response = await getFormations();
+      const data = await getFormations();
 
-        setData(response.data);
-      } catch (err) {
-        console.error(err);
-        setError(
-          "Impossible de charger les formations."
-        );
-      } finally {
-        setLoading(false);
-      }
+      console.log("FORMATIONS API:", data);
+
+      setFormations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Erreur formations:", err);
+
+      setFormations([]);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger les formations."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    load();
   }, []);
 
+  useEffect(() => {
+    loadFormations();
+  }, [loadFormations]);
+
   return {
-    data,
+    formations,
     loading,
     error,
+    refetch: loadFormations,
   };
 }
+
+export default useFormations;

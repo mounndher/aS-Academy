@@ -1,494 +1,153 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
-import { useSiteUI } from "@/context/SiteUIContext";
-
-import { useFormationInformation } from "@/hooks/useFormationInformation";
 import { useFormations } from "@/hooks/useFormations";
-
 import { getStorageUrl } from "@/services/api";
 
-import { Button } from "@/components/ui/Button";
-import { ImageReveal } from "@/components/ui/ImageReveal";
-import { Reveal } from "@/components/ui/Reveal";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-
-import { Meta } from "./FormationCard";
-
-function formatPrice(price: string | number | null) {
-  if (price === null || price === undefined) {
-    return "Sur demande";
-  }
-
-  return `${Number(price).toLocaleString("fr-FR")} €`;
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
-}
-
 export function FormationGrid() {
-  const { requestDate } = useSiteUI();
-
   const {
-    data: formationInformationData,
-  } = useFormationInformation();
-
-  const {
-    data: formations,
+    formations = [],
     loading,
     error,
   } = useFormations();
 
-  const information = formationInformationData?.information;
-
-  /*
-   * We use the formation coming from Laravel.
-   */
-  const formation = formations[0];
-
-  /*
-   * LOADING
-   */
   if (loading) {
     return (
-      <section
-        id="formations"
-        className="scroll-mt-16 bg-white py-24 lg:py-40"
-      >
-        <div className="wrap">
-          <p className="text-sm text-ink/50">
-            Chargement des formations...
-          </p>
+      <section className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse overflow-hidden bg-gray-100"
+              >
+                <div className="h-72 bg-gray-200" />
+
+                <div className="space-y-4 p-6">
+                  <div className="h-4 w-24 bg-gray-200" />
+                  <div className="h-7 w-3/4 bg-gray-200" />
+                  <div className="h-4 w-full bg-gray-200" />
+                  <div className="h-4 w-2/3 bg-gray-200" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     );
   }
 
-  /*
-   * ERROR
-   */
   if (error) {
     return (
-      <section
-        id="formations"
-        className="scroll-mt-16 bg-white py-24 lg:py-40"
-      >
-        <div className="wrap">
-          <p className="text-sm text-red-500">
-            Impossible de charger les formations.
-          </p>
+      <section className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-red-600">{error}</p>
+          </div>
         </div>
       </section>
     );
   }
 
-  /*
-   * NO FORMATION
-   */
-  if (!formation) {
+  if (formations.length === 0) {
     return (
-      <section
-        id="formations"
-        className="scroll-mt-16 bg-white py-24 lg:py-40"
-      >
-        <div className="wrap">
-          <p className="text-sm text-ink/50">
-            Aucune formation disponible pour le moment.
-          </p>
+      <section className="py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="py-12 text-center">
+            <p className="text-gray-500">
+              Aucune formation disponible pour le moment.
+            </p>
+          </div>
         </div>
       </section>
     );
   }
-
-  /*
-   * FORMATION DAYS
-   */
-  const formationDays = formation.formationDays ?? [];
-
-  /*
-   * AVAILABLE DAYS
-   */
-  const availableDays = formationDays.filter(
-    (day) => day.status === "available"
-  );
-
-  /*
-   * CITIES
-   */
-  const cities = [
-    ...new Set(
-      formationDays.map((day) => day.city)
-    ),
-  ];
-
-  /*
-   * PRICES
-   */
-  const prices = formationDays
-    .map((day) =>
-      day.personal_price !== null
-        ? Number(day.personal_price)
-        : null
-    )
-    .filter(
-      (price): price is number =>
-        price !== null && !Number.isNaN(price)
-    );
-
-  const startingPrice =
-    prices.length > 0
-      ? Math.min(...prices)
-      : null;
-
-  /*
-   * CPF
-   */
-  const cpfPrices = formationDays
-    .map((day) =>
-      day.cpf_price !== null
-        ? Number(day.cpf_price)
-        : null
-    )
-    .filter(
-      (price): price is number =>
-        price !== null && !Number.isNaN(price)
-    );
-
-  const cpfPrice =
-    cpfPrices.length > 0
-      ? Math.min(...cpfPrices)
-      : null;
-
-  /*
-   * IMAGE
-   */
-  const imageUrl = getStorageUrl(formation.image);
 
   return (
-    <section
-      id="formations"
-      className="scroll-mt-16 bg-white py-24 lg:py-40"
-    >
-      <div className="wrap">
+    <section className="py-20">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {formations.map((formation, index) => {
+            const image = getStorageUrl(
+              formation.image ??
+                formation.cover_image ??
+                formation.thumbnail ??
+                null
+            );
 
-        {/* =========================================
-            HEADER
-        ========================================= */}
-
-        <SectionHeader
-          label={
-            information?.eyebrow ||
-            "Formations"
-          }
-          title={[
-            information?.title || "Nos",
-            information?.subtitle || "Formations",
-          ]}
-          subtitle={
-            information?.description ||
-            formation.description ||
-            "Choisissez votre ville et votre date, puis réservez en ligne."
-          }
-        />
-
-        {/* =========================================
-            MAIN FORMATION
-        ========================================= */}
-
-        <article className="group mt-20 grid gap-10 lg:mt-28 lg:grid-cols-12 lg:items-end lg:gap-14">
-
-          {/* IMAGE FROM LARAVEL */}
-
-          <Link
-            to={`/formations/${formation.slug}`}
-            className="block lg:col-span-6"
-            aria-label={`Découvrir ${formation.title}`}
-          >
-            {imageUrl ? (
-              <ImageReveal
-                src={imageUrl}
-                alt={formation.title}
-                className="aspect-[4/5] w-full sm:aspect-[4/3] lg:aspect-[4/5]"
-                priority
-              />
-            ) : (
-              <div className="flex aspect-[4/5] w-full items-center justify-center bg-ink/5">
-                <span className="text-sm text-ink/40">
-                  Image de la formation
-                </span>
-              </div>
-            )}
-          </Link>
-
-          {/* INFORMATION */}
-
-          <div className="lg:col-span-6 lg:pb-4">
-
-            <Reveal>
-
-              {/* PROGRAMME FROM LARAVEL */}
-
-              <p className="label flex items-center gap-4 text-ink/40">
-                <span className="font-serif text-lg tracking-normal text-ink/60">
-                  01
-                </span>
-
-                <span className="h-px w-6 bg-current" />
-
-                {formation.programme || "Formation"}
-              </p>
-
-              {/* TITLE FROM LARAVEL */}
-
-              <h3 className="display mt-5 text-[clamp(2.2rem,6.5vw,4.25rem)]">
-                <Link
-                  to={`/formations/${formation.slug}`}
-                  className="transition-opacity duration-500 hover:opacity-60"
-                >
-                  {formation.title}
-                </Link>
-              </h3>
-
-              <p className="mt-3 font-serif text-xl italic text-ink/55 md:text-2xl">
-                Extension de cils
-              </p>
-
-              {/* DESCRIPTION FROM LARAVEL */}
-
-              {formation.description && (
-                <p className="mt-6 max-w-md text-base font-light leading-relaxed text-ink/60">
-                  {formation.description}
-                </p>
-              )}
-
-            </Reveal>
-
-            {/* =========================================
-                METADATA
-            ========================================= */}
-
-            <Reveal delay={0.15}>
-
-              <dl className="mt-9 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
-
-                <Meta
-                  label="Durée"
-                  value="3 jours"
-                  sub="Formation intensive"
-                />
-
-                <Meta
-                  label="Villes"
-                  value={`${cities.length} ${
-                    cities.length > 1
-                      ? "villes"
-                      : "ville"
-                  }`}
-                  sub={cities.join(" · ")}
-                />
-
-                <Meta
-                  label="Tarif"
-                  value={
-                    startingPrice !== null
-                      ? `dès ${formatPrice(startingPrice)}`
-                      : "Sur demande"
-                  }
-                  sub={
-                    cpfPrice !== null
-                      ? `CPF ${formatPrice(cpfPrice)}`
-                      : "Financement personnel"
-                  }
-                  className="col-span-2 sm:col-span-1"
-                />
-
-              </dl>
-
-              {/* CTA */}
-
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-8">
-
-                <Button
-                  to={`/formations/${formation.slug}`}
-                  variant="dark"
-                  icon="arrow"
-                >
-                  Voir les dates & réserver
-                </Button>
-
-              </div>
-
-            </Reveal>
-
-          </div>
-        </article>
-
-        {/* =========================================
-            PLANNING
-        ========================================= */}
-
-        <div className="mt-24 lg:mt-36">
-
-          <Reveal>
-
-            <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-
-              <div>
-                <p className="label text-ink/50">
-                  Prochaines formations
-                </p>
-
-                <p className="mt-2 text-sm font-light text-ink/50">
-                  Choisissez votre ville et votre date.
-                </p>
-              </div>
-
-              <Button
-                to={`/formations/${formation.slug}`}
-                variant="link-dark"
-                icon="arrow"
+            return (
+              <motion.article
+                key={formation.id}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{
+                  duration: 0.6,
+                  delay: index * 0.08,
+                }}
+                className="group overflow-hidden bg-white"
               >
-                Toutes les dates
-              </Button>
-
-            </div>
-
-          </Reveal>
-
-          {/* =========================================
-              SESSION CARDS
-          ========================================= */}
-
-          {availableDays.length > 0 ? (
-
-            <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
-              {availableDays.map((day, index) => (
-
-                <Reveal
-                  key={day.id}
-                  delay={index * 0.08}
-                >
-
-                  <article className="border border-ink/10 p-6 transition-colors duration-300 hover:border-ink/30">
-
-                    {/* CITY */}
-
-                    <p className="label text-ink/40">
-                      {day.city}
-                    </p>
-
-                    {/* DATE */}
-
-                    <h4 className="mt-4 font-serif text-2xl">
-                      {formatDate(day.start_date)}
-                    </h4>
-
-                    <p className="mt-1 text-sm text-ink/50">
-                      au {formatDate(day.end_date)}
-                    </p>
-
-                    {/* DETAILS */}
-
-                    <div className="mt-6 border-t border-ink/10 pt-5">
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-ink/50">
-                          Tarif
-                        </span>
-
-                        <span className="font-medium">
-                          {formatPrice(
-                            day.personal_price
-                          )}
+                <Link to={`/formations/${formation.slug}`}>
+                  <div className="relative h-72 overflow-hidden bg-gray-100">
+                    {image ? (
+                      <img
+                        src={image}
+                        alt={formation.title ?? "Formation"}
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                        <span className="text-sm text-gray-400">
+                          Aucune image
                         </span>
                       </div>
+                    )}
 
-                      {day.cpf_price !== null && (
-                        <div className="mt-2 flex items-center justify-between">
+                    <div className="absolute inset-0 bg-black/0 transition-colors duration-500 group-hover:bg-black/10" />
+                  </div>
+                </Link>
 
-                          <span className="text-sm text-ink/50">
-                            CPF
-                          </span>
+                <div className="p-6">
+                  {formation.category && (
+                    <p className="mb-3 text-xs uppercase tracking-[0.2em] text-[#C9A96A]">
+                      {typeof formation.category === "string"
+                        ? formation.category
+                        : formation.category.name}
+                    </p>
+                  )}
 
-                          <span className="font-medium">
-                            {formatPrice(
-                              day.cpf_price
-                            )}
-                          </span>
+                  <h3 className="mb-3 font-serif text-2xl text-[#18453B]">
+                    {formation.title}
+                  </h3>
 
-                        </div>
-                      )}
+                  {(formation.short_description ||
+                    formation.description) && (
+                    <p className="mb-5 line-clamp-3 text-sm leading-6 text-gray-600">
+                      {formation.short_description ||
+                        formation.description}
+                    </p>
+                  )}
 
-                      <div className="mt-2 flex items-center justify-between">
+                  <Link
+                    to={`/formations/${formation.slug}`}
+                    className="inline-flex items-center gap-2 text-sm font-medium uppercase tracking-[0.15em] text-[#18453B] transition-colors hover:text-[#C9A96A]"
+                  >
+                    Découvrir la formation
 
-                        <span className="text-sm text-ink/50">
-                          Places
-                        </span>
-
-                        <span className="font-medium">
-                          {day.remaining_places} /{" "}
-                          {day.max_places}
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                    {/* BUTTON */}
-
-                    <Button
-                      to={`/formations/${formation.slug}`}
-                      variant="dark"
-                      icon="arrow"
-                      className="mt-6 w-full"
-                    >
-                      Réserver
-                    </Button>
-
-                  </article>
-
-                </Reveal>
-
-              ))}
-
-            </div>
-
-          ) : (
-
-            <Reveal>
-
-              <div className="mt-14 border border-ink/10 p-10 text-center">
-
-                <p className="font-serif text-xl">
-                  Aucune session disponible
-                </p>
-
-                <p className="mt-2 text-sm font-light text-ink/50">
-                  Les prochaines dates seront bientôt disponibles.
-                </p>
-
-                <Button
-                  variant="link-dark"
-                  icon="arrow"
-                  onClick={requestDate}
-                  className="mt-5"
-                >
-                  Demander une date
-                </Button>
-
-              </div>
-
-            </Reveal>
-
-          )}
-
+                    <ArrowRight
+                      size={16}
+                      className="transition-transform duration-300 group-hover:translate-x-1"
+                    />
+                  </Link>
+                </div>
+              </motion.article>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
+
+export default FormationGrid;
