@@ -1,35 +1,50 @@
 import { useEffect, useState } from "react";
-import { getFormation } from "@/api/api";
+
+import { getFormations } from "@/services/api";
+
 import type { Formation } from "@/types/formation";
 
-export function useFormation(slug: string) {
-  const [data, setData] = useState<Formation | null>(null);
+export function useFormations() {
+  const [data, setData] = useState<Formation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) return;
+    let cancelled = false;
 
-    setLoading(true);
-    setError(null);
+    async function load() {
+      try {
+        setLoading(true);
 
-    getFormation(slug)
-      .then((response) => {
-        setData(response.data);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError(
-          "Impossible de charger la formation."
-        );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [slug]);
+        const response = await getFormations();
+
+        if (!cancelled) {
+          setData(response.data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Erreur lors du chargement des formations"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return {
-    data,
+    formations: data,
     loading,
     error,
   };
