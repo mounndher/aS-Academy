@@ -153,8 +153,8 @@ export function FormationsListPage() {
 
                   <ImageReveal
                     src={
-                      formation.image ||
-                      "/images/placeholder.jpg"
+                      formation.image 
+                      
                     }
                     alt={formation.title}
                     className="aspect-[4/5] w-full"
