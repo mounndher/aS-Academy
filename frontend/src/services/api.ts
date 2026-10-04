@@ -206,6 +206,10 @@ export async function getFormationInformation(): Promise<FormationInformationApi
    FORMATIONS
    ========================================================= */
 
+/* =========================================================
+   FORMATIONS
+   ========================================================= */
+
 export async function getFormations(): Promise<FormationsApiResponse> {
   const response = await fetch(
     `${API_URL}/contenu/formations`
@@ -214,6 +218,22 @@ export async function getFormations(): Promise<FormationsApiResponse> {
   if (!response.ok) {
     throw new Error(
       "Erreur lors du chargement des formations"
+    );
+  }
+
+  return response.json();
+}
+
+export async function getFormation(
+  slug: string
+): Promise<FormationApiResponse> {
+  const response = await fetch(
+    `${API_URL}/contenu/formations/${slug}`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Erreur lors du chargement de la formation"
     );
   }
 
