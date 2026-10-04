@@ -17,7 +17,8 @@ export function HomePage() {
     <>
       <Hero />
       <IntroSection />
-    
+       <FormationGrid />
+      <FormationFeature />
       <AcademySection />
       <TrainingExperience />
       <Gallery />
