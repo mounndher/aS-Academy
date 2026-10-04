@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\Contenu\FormationapiController;
+//use App\Http\Controllers\Api\Contenu\FormationapiController;
 use App\Http\Controllers\Api\ProgrammeController;
 use App\Http\Controllers\Api\FormationDayController;
 use App\Http\Controllers\Api\Contenu\FormationInformationController;
@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\Contenu\PortfolioController;
 use App\Http\Controllers\Api\Contenu\TrainingExperienceController;
 use App\Http\Controllers\Api\Contenu\SiteSettingController;
+use App\Http\Controllers\Api\Contenu\FormationApiController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -68,9 +69,16 @@ Route::get(
     '/formation-information',
     [FormationInformationController::class, 'index']
 );
-    Route::get('/formations', [FormationapiController::class, 'index']);
+     // Formations
+    Route::get(
+        '/formations',
+        [FormationApiController::class, 'index']
+    );
 
-    Route::get('/formations/{slug}', [FormationapiController::class, 'show']);
+    Route::get(
+        '/formations/{slug}',
+        [FormationApiController::class, 'show']
+    );
 
     // Planning des formations
     Route::get('/planning', [ProgrammeController::class, 'index']);
