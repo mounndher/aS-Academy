@@ -13,9 +13,8 @@ import type {
 } from "../types/formationInformation";
 import type {
   FormationApiResponse,
-  FormationsApiResponse,
-} from "../types/formation";;
-
+  FormationSingleApiResponse,
+} from "../types/formation";
 
 
 
@@ -202,7 +201,11 @@ export async function getFormationInformation(): Promise<FormationInformationApi
 
 
 
-export async function getFormations(): Promise<FormationsApiResponse> {
+/* =========================================================
+   FORMATIONS
+   ========================================================= */
+
+export async function getFormations(): Promise<FormationApiResponse> {
   const response = await fetch(
     `${API_URL}/contenu/formations`
   );
@@ -216,25 +219,17 @@ export async function getFormations(): Promise<FormationsApiResponse> {
   return response.json();
 }
 
-export async function getFormations(): Promise<FormationsApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/formations`);
-
-  if (!response.ok) {
-    throw new Error("Erreur lors du chargement des formations");
-  }
-
-  return response.json();
-}
-
 export async function getFormation(
   slug: string
-): Promise<FormationApiResponse> {
+): Promise<FormationSingleApiResponse> {
   const response = await fetch(
     `${API_URL}/contenu/formations/${slug}`
   );
 
   if (!response.ok) {
-    throw new Error("Erreur lors du chargement de la formation");
+    throw new Error(
+      "Erreur lors du chargement de la formation"
+    );
   }
 
   return response.json();
