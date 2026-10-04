@@ -31,7 +31,7 @@ class FormationApiController extends Controller
             'data' => $formations->map(
                 fn (Formation $formation) =>
                     $this->formatFormation($formation)
-            ),
+            )->values(),
         ]);
     }
 
@@ -69,7 +69,16 @@ class FormationApiController extends Controller
 
             'programme_id' => $formation->programme_id,
 
-            'programme' => $formation->programme?->name,
+            'programme' => $formation->programme
+                ? [
+                    'id' => $formation->programme->id,
+                    'name' => $formation->programme->name,
+                    'slug' => $formation->programme->slug,
+                    'description' => $formation->programme->description,
+                    'duration' => $formation->programme->duration,
+                    'is_active' => (bool) $formation->programme->is_active,
+                ]
+                : null,
 
             'title' => $formation->title,
 
@@ -87,6 +96,18 @@ class FormationApiController extends Controller
                 ? asset($formation->pdf_program)
                 : null,
 
+            'deposit_amount' => $formation->deposit_amount,
+
+            'personal_price' => $formation->personal_price,
+
+            'has_sale' => (bool) $formation->has_sale,
+
+            'sale_price' => $formation->sale_price,
+
+            'installment_enabled' => (bool) $formation->installment_enabled,
+
+            'installment_count' => $formation->installment_count,
+
             'is_active' => (bool) $formation->is_active,
 
             'formationDays' => $formation->formationDays
@@ -102,7 +123,10 @@ class FormationApiController extends Controller
 
                         'end_date' => $day->end_date,
 
-                        'personal_price' => $day->personal_price,
+                        // IMPORTANT:
+                        'personal_price' => $day->price,
+
+                        'cpf_eligible' => (bool) $day->cpf_eligible,
 
                         'cpf_price' => $day->cpf_price,
 
