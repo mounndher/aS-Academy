@@ -68,51 +68,7 @@ class FormationResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Tarification
-                |--------------------------------------------------------------------------
-                */
-
-                Forms\Components\Section::make('Tarification')
-                    ->schema([
-
-                        Forms\Components\TextInput::make('personal_price')
-                            ->label('Prix financement personnel (€)')
-                            ->numeric()
-                            ->prefix('€')
-                            ->required()
-                            ->minValue(0),
-
-                        Forms\Components\Toggle::make('has_sale')
-                            ->label('Prix soldé')
-                            ->live()
-                            ->default(false),
-
-                        Forms\Components\TextInput::make('sale_price')
-                            ->label('Prix soldé (€)')
-                            ->numeric()
-                            ->prefix('€')
-                            ->minValue(0)
-                            ->visible(fn (Forms\Get $get) => $get('has_sale')),
-
-                        Forms\Components\Toggle::make('installment_enabled')
-                            ->label('Paiement en plusieurs fois')
-                            ->live()
-                            ->default(false),
-
-                        Forms\Components\TextInput::make('installment_count')
-                            ->label('Nombre de paiements')
-                            ->numeric()
-                            ->minValue(2)
-                            ->maxValue(4)
-                            ->default(2)
-                            ->visible(fn (Forms\Get $get) => $get('installment_enabled')),
-
-                    ])
-                    ->columns(2),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Étapes
+                | Étapes de la formation
                 |--------------------------------------------------------------------------
                 */
 
@@ -220,14 +176,13 @@ class FormationResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('personal_price')
-                    ->label('Prix personnel')
-                    ->money('EUR')
-                    ->sortable(),
-
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Actif')
                     ->boolean(),
+
+                Tables\Columns\TextColumn::make('formationDays_count')
+                    ->label('Sessions')
+                    ->counts('formationDays'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Créé le')
