@@ -80,11 +80,11 @@ class FormationApiController extends Controller
             'steps' => $formation->steps ?? [],
 
             'image' => $formation->image
-                ? asset('storage/' . $formation->image)
+                ? asset($formation->image)
                 : null,
 
             'pdf_program' => $formation->pdf_program
-                ? asset('storage/' . $formation->pdf_program)
+                ? asset($formation->pdf_program)
                 : null,
 
             'is_active' => (bool) $formation->is_active,
