@@ -1,7 +1,5 @@
 import { AS } from "@/data/images";
-import { CPF_PRICE, DEPOSIT, eur, priceFrom } from "@/data/formations";
-import { mainProgramme } from "@/data/programmes";
-import { site } from "@/data/site";
+
 import { useSiteUI } from "@/context/SiteUIContext";
 import { Button } from "@/components/ui/Button";
 import { Headline } from "@/components/ui/Headline";
