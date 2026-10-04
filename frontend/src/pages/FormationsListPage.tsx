@@ -1,96 +1,341 @@
-import { Link } from "react-router-dom";
-import {
-  CPF_PRICE,
-  DEPOSIT,
-  dateLabel,
-  eur,
-  formationImage,
-  formations,
-  programmeOf,
-  type Formation,
-} from "@/data/formations";
-import { mainProgramme } from "@/data/programmes";
-import { site } from "@/data/site";
-import { useScrollToState } from "@/hooks/useScrollToState";
+import { useQuery } from "@tanstack/react-query";
+
+import { getFormation } from "@/services/api";
+
 import { Button } from "@/components/ui/Button";
+import { Headline } from "@/components/ui/Headline";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
-import { SectionHeader } from "@/components/ui/SectionHeader";
 
-/** One simple card per formation → "Voir la formation". */
-function Card({ formation: f, index }: { formation: Formation; index: number }) {
-  const p = programmeOf(f);
-  const img = formationImage(f);
-  const to = `/formations/${f.slug}`;
-  const d = (index % 3) * 0.08;
+import { useSiteUI } from "@/context/SiteUIContext";
 
+function Info({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
-    <article>
-      <Link to={to} aria-label={`${p.title} — ${f.city}`} className="block">
-        <ImageReveal src={img.src} alt={img.alt} className="aspect-[4/5] w-full" delay={d} priority={index < 3} />
-      </Link>
-      <Reveal delay={0.1 + d}>
-        <p className="label mt-6 text-ink/40">
-          {p.title} · {p.duration}
+    <div>
+      <p className="label text-[10px] text-ivory/40">
+        {label}
+      </p>
+
+      <p className="mt-2 font-serif text-2xl leading-none md:text-[1.75rem]">
+        {value}
+      </p>
+
+      {sub && (
+        <p className="mt-1.5 text-xs font-light text-ivory/45">
+          {sub}
         </p>
-        <h2 className="display mt-3 text-[clamp(2rem,5vw,3rem)]">
-          <Link to={to} className="transition-opacity duration-500 hover:opacity-60">
-            {f.city}
-          </Link>
-        </h2>
-        <p className="mt-1.5 font-serif text-xl text-ink/70 md:text-2xl">{dateLabel(f)}</p>
-
-        <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-ink/10 pt-5">
-          <span className="font-serif text-2xl leading-none">
-            {f.pricing ? eur(f.pricing.personal) : "Sur demande"}
-          </span>
-          <span className="text-xs font-light text-ink/50">
-            CPF {eur(f.pricing?.cpf ?? CPF_PRICE)} · Acompte {eur(f.pricing?.deposit ?? DEPOSIT)}
-          </span>
-        </div>
-
-        <Button to={to} variant="outline-dark" icon="arrow" className="mt-6 w-full sm:w-auto">
-          Voir la formation
-        </Button>
-      </Reveal>
-    </article>
+      )}
+    </div>
   );
 }
 
-/** All formations — simple grid. Add an entry in src/data/formations.ts → it appears here. */
-export function FormationsListPage() {
-  useScrollToState();
-  const p = mainProgramme;
+function formatPrice(price: string | number | null | undefined) {
+  if (price === null || price === undefined || price === "") {
+    return "Sur demande";
+  }
+
+  return `${Number(price).toLocaleString("fr-FR")} €`;
+}
+
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/**
+ * Deep-dive presentation of the Extension de Cils formation.
+ */
+export function FormationFeature() {
+  const { requestDate } = useSiteUI();
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["formation", "formation-extension-de-cils"],
+    queryFn: () =>
+      getFormation("formation-extension-de-cils"),
+  });
+
+  if (isLoading) {
+    return (
+      <section className="bg-charcoal py-24 text-ivory lg:py-40">
+        <div className="wrap">
+          <p className="text-ivory/50">
+            Chargement de la formation...
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  if (isError || !data?.data) {
+    return (
+      <section className="bg-charcoal py-24 text-ivory lg:py-40">
+        <div className="wrap">
+          <p className="text-ivory/50">
+            Impossible de charger la formation.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const formation = data.data;
+
+  const days = formation.formation_days ?? [];
+
+  const availableDays = days.filter(
+    (day) => day.status === "available"
+  );
+
+  const cities = [
+    ...new Set(
+      availableDays.map((day) => day.city)
+    ),
+  ];
+
+  const personalPrices = availableDays
+    .map((day) => Number(day.price))
+    .filter((price) => !Number.isNaN(price));
+
+  const cpfPrices = availableDays
+    .map((day) => Number(day.cpf_price))
+    .filter((price) => !Number.isNaN(price));
+
+  const minPersonalPrice =
+    personalPrices.length > 0
+      ? Math.min(...personalPrices)
+      : Number(formation.personal_price);
+
+  const cpfPrice =
+    cpfPrices.length > 0
+      ? Math.min(...cpfPrices)
+      : null;
 
   return (
-    <section className="bg-ivory pt-28 pb-24 lg:pt-36 lg:pb-36">
+    <section className="overflow-hidden bg-charcoal py-24 text-ivory lg:py-40">
       <div className="wrap">
-        <SectionHeader
-          label="Formations"
-          title={["Nos", "Formations"]}
-          subtitle={
-            <>
-              {p.title} — {p.duration}. Choisissez votre ville et vos dates, puis réservez en
-              ligne.
-            </>
-          }
-        />
 
-        <div className="mt-16 grid gap-x-8 gap-y-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
-          {formations.map((f, i) => (
-            <Card key={f.slug} formation={f} index={i} />
-          ))}
-        </div>
-
+        {/* Header */}
         <Reveal>
-          <p className="mt-20 border-t border-ink/10 pt-8 text-sm font-light text-ink/55">
-            Une autre ville ou une autre date ? Écrivez-nous sur Instagram{" "}
-            <a href={site.instagram.url} target="_blank" rel="noreferrer" className="link-line text-ink">
-              {site.instagram.handle}
-            </a>
-            .
+          <p className="label flex items-center gap-4 text-ivory/50">
+            <span className="h-px w-10 bg-current" />
+
+            Formation
           </p>
         </Reveal>
+
+        <Headline
+          lines={[formation.title]}
+          className="mt-6 text-[clamp(3rem,8.5vw,7.5rem)] text-ivory"
+        />
+
+        {/* Main content */}
+        <div className="mt-14 grid gap-14 lg:mt-24 lg:grid-cols-12 lg:gap-12">
+
+          {/* Image */}
+          <div className="relative lg:col-span-6">
+            {formation.image ? (
+              <ImageReveal
+                src={formation.image}
+                alt={formation.title}
+                className="aspect-[4/5] w-full lg:aspect-[3/4]"
+              />
+            ) : (
+              <div className="flex aspect-[4/5] items-center justify-center bg-white/5 lg:aspect-[3/4]">
+                <span className="text-sm text-ivory/40">
+                  Image à venir
+                </span>
+              </div>
+            )}
+
+            <Reveal
+              delay={0.3}
+              className="absolute bottom-5 left-5 hidden sm:block"
+            >
+              <p className="label bg-ink/50 px-4 py-3 text-[10px] text-ivory/85 backdrop-blur-sm">
+                {formation.title}
+              </p>
+            </Reveal>
+          </div>
+
+          {/* Information */}
+          <div className="flex flex-col lg:col-span-5 lg:col-start-8">
+
+            {/* Description */}
+            <Reveal>
+              <p className="font-serif text-[1.5rem] leading-[1.3] text-ivory/90 md:text-[1.8rem]">
+                {formation.description}
+              </p>
+            </Reveal>
+
+            {/* Steps */}
+            {formation.steps?.length > 0 && (
+              <div className="mt-12">
+
+                <Reveal>
+                  <p className="label text-ivory/50">
+                    Programme
+                  </p>
+                </Reveal>
+
+                <div className="mt-4 border-t border-ivory/10">
+
+                  {formation.steps.map((step, index) => (
+                    <Reveal
+                      key={index}
+                      delay={index * 0.06}
+                      y={16}
+                    >
+                      <div className="border-b border-ivory/10 py-4">
+
+                        <div className="flex items-baseline gap-6">
+                          <span className="label w-6 text-[10px] text-ivory/35">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+
+                          <span className="font-serif text-xl uppercase tracking-[0.03em] md:text-2xl">
+                            {step.title}
+                          </span>
+                        </div>
+
+                        {step.description && (
+                          <p className="ml-12 mt-2 text-sm font-light text-ivory/50">
+                            {step.description}
+                          </p>
+                        )}
+
+                      </div>
+                    </Reveal>
+                  ))}
+
+                </div>
+              </div>
+            )}
+
+            {/* Formation information */}
+            <Reveal delay={0.1}>
+              <div className="mt-12 grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-4">
+
+                <Info
+                  label="Villes"
+                  value={`${cities.length}`}
+                  sub={cities.join(" · ")}
+                />
+
+                <Info
+                  label="Personnel"
+                  value={formatPrice(minPersonalPrice)}
+                  sub="selon la ville"
+                />
+
+                <Info
+                  label="CPF"
+                  value={
+                    cpfPrice
+                      ? formatPrice(cpfPrice)
+                      : "Sur demande"
+                  }
+                />
+
+                <Info
+                  label="Acompte"
+                  value={formatPrice(formation.deposit_amount)}
+                  sub="À la réservation"
+                />
+
+              </div>
+
+              {/* Dates */}
+              {availableDays.length > 0 && (
+                <div className="mt-12">
+
+                  <p className="label text-ivory/50">
+                    Prochaines sessions
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+
+                    {availableDays.slice(0, 5).map((day) => (
+                      <div
+                        key={day.id}
+                        className="flex items-center justify-between border-b border-ivory/10 py-4"
+                      >
+                        <div>
+                          <p className="font-serif text-lg">
+                            {day.city}
+                          </p>
+
+                          <p className="text-xs text-ivory/45">
+                            {formatDate(day.start_date)}
+                            {" — "}
+                            {formatDate(day.end_date)}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="font-serif">
+                            {formatPrice(day.price)}
+                          </p>
+
+                          <p className="text-xs text-ivory/45">
+                            {day.remaining_places} place
+                            {day.remaining_places > 1
+                              ? "s"
+                              : ""}{" "}
+                            restante
+                            {day.remaining_places > 1
+                              ? "s"
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="mt-12 flex flex-col gap-3 sm:flex-row">
+
+                <Button
+                  to="/formations"
+                  variant="light"
+                  icon="arrow"
+                >
+                  Voir les dates & réserver
+                </Button>
+
+                <Button
+                  variant="outline-light"
+                  onClick={requestDate}
+                >
+                  Demander une date
+                </Button>
+
+              </div>
+
+              {/* Cities */}
+              {cities.length > 0 && (
+                <p className="mt-7 text-[10px] uppercase tracking-[0.26em] text-ivory/40">
+                  Sessions · {cities.join(" · ")}
+                </p>
+              )}
+
+            </Reveal>
+          </div>
+        </div>
       </div>
     </section>
   );
