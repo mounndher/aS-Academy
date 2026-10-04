@@ -4,17 +4,11 @@ export interface FormationDay {
   city: string;
   start_date: string;
   end_date: string;
-  personal_price: number | string | null;
-  cpf_price: number | string | null;
+  personal_price: string | number | null;
+  cpf_price: string | number | null;
   max_places: number;
   remaining_places: number;
   status: "available" | "complete" | "cancelled" | "finished" | string;
-}
-
-export interface FormationProgramme {
-  id: number;
-  name: string;
-  slug?: string;
 }
 
 export interface Formation {
@@ -24,20 +18,22 @@ export interface Formation {
   title: string;
   slug: string;
   description: string | null;
-  steps: string[];
+  steps: {
+    title: string;
+    description: string;
+  }[];
   image: string | null;
   pdf_program: string | null;
   is_active: boolean;
-
   formationDays: FormationDay[];
 }
 
 export interface FormationApiResponse {
   success: boolean;
-  data: Formation[];
+  data: Formation;
 }
 
-export interface FormationSingleApiResponse {
+export interface FormationsApiResponse {
   success: boolean;
-  data: Formation;
+  data: Formation[];
 }
