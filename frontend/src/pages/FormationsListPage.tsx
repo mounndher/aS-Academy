@@ -230,7 +230,7 @@ export function FormationsListPage() {
                                 firstDay.personal_price
                               )
                             )
-                          : "Sur demande"}
+                          : ""}
 
                       </span>
 
