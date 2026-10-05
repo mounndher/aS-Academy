@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 
-import { FormationCard } from "./FormationCard";
+import {
+  FormationCard,
+  type Formation,
+  type FormationDay,
+} from "./FormationCard";
 
 export function FormationGrid() {
   // =========================================================
@@ -24,7 +28,7 @@ export function FormationGrid() {
   // =========================================================
 
   const {
-    data,
+    formations,
     loading: formationsLoading,
     error,
   } = useFormations();
@@ -35,30 +39,6 @@ export function FormationGrid() {
 
   const information =
     formationInformation?.information;
-
-  // =========================================================
-  // FORMATIONS ARRAY
-  // =========================================================
-  //
-  // IMPORTANT:
-  // useFormations() already returns the array from:
-  //
-  // {
-  //   success: true,
-  //   data: [...]
-  // }
-  //
-  // Therefore:
-  //
-  // data ?? []
-  //
-  // NOT:
-  //
-  // data?.data ?? []
-  //
-  // =========================================================
-
-  const formations = data ?? [];
 
   // =========================================================
   // LOADING
@@ -108,6 +88,7 @@ export function FormationGrid() {
   // Example:
   //
   // Formation Extension de Cils
+  //
   //   Paris
   //   Toulouse
   //   Bruxelles
@@ -115,17 +96,20 @@ export function FormationGrid() {
   //
   // becomes:
   //
-  // Card 01 → Paris
-  // Card 02 → Toulouse
-  // Card 03 → Bruxelles
-  // Card 04 → Bordeaux
+  // Card 1 → Paris
+  // Card 2 → Toulouse
+  // Card 3 → Bruxelles
+  // Card 4 → Bordeaux
   //
   // =========================================================
 
-  const cards = formations.flatMap(
-    (formation) =>
+  const cards: Array<{
+    formation: Formation;
+    day: FormationDay;
+  }> = formations.flatMap(
+    (formation: Formation) =>
       (formation.formationDays ?? []).map(
-        (day) => ({
+        (day: FormationDay) => ({
           formation,
           day,
         })
@@ -153,7 +137,8 @@ export function FormationGrid() {
             "Formations"
           }
           title={[
-            information?.title ?? "Nos",
+            information?.title ??
+              "Nos",
             information?.subtitle ??
               "Formations",
           ]}
@@ -164,12 +149,14 @@ export function FormationGrid() {
         />
 
         {/* ===================================================
-            FORMATIONS HEADER
+            CARDS HEADER
         =================================================== */}
 
         <div className="mt-24 lg:mt-36">
+
           <Reveal>
             <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+
               <p className="label text-ink/50">
                 Prochaines formations —
                 réservation en ligne
@@ -182,6 +169,7 @@ export function FormationGrid() {
               >
                 Toutes les formations
               </Button>
+
             </div>
           </Reveal>
 
@@ -197,34 +185,49 @@ export function FormationGrid() {
               </p>
             </div>
           ) : (
-            /* ===============================================
-               CARDS
-            =============================================== */
+
+            /* =================================================
+               GRID
+            ================================================= */
 
             <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
+
               {cards.map(
                 (
                   item,
                   index
-                ) => (
-                  <FormationCard
-                    key={`${item.formation.id}-${item.day.id}`}
-                    formation={item.formation}
-                    formationDay={item.day}
-                    index={index}
-                    className={cn(
-                      index % 3 === 1 &&
-                        "lg:mt-20"
-                    )}
-                    imageAspect={
-                      index % 3 === 1
-                        ? "aspect-[4/5]"
-                        : "aspect-[4/3]"
-                    }
-                    delay={index * 0.08}
-                  />
-                )
+                ) => {
+
+                  const isMiddleCard =
+                    index % 3 === 1;
+
+                  return (
+                    <FormationCard
+                      key={`${item.formation.id}-${item.day.id}`}
+                      formation={
+                        item.formation
+                      }
+                      formationDay={
+                        item.day
+                      }
+                      index={index}
+                      className={cn(
+                        isMiddleCard &&
+                          "lg:mt-20"
+                      )}
+                      imageAspect={
+                        isMiddleCard
+                          ? "aspect-[4/5]"
+                          : "aspect-[4/3]"
+                      }
+                      delay={
+                        index * 0.08
+                      }
+                    />
+                  );
+                }
               )}
+
             </div>
           )}
         </div>
