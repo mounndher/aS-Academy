@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 class FormationApiController extends Controller
 {
     /**
-     * Get all active formations.
+     * Get all active formations with ALL formation days.
      */
     public function index(): JsonResponse
     {
@@ -17,9 +17,8 @@ class FormationApiController extends Controller
             ->with([
                 'programme',
                 'formationDays' => function ($query) {
-                    $query
-                        ->whereDate('start_date', '>=', now()->toDateString())
-                        ->orderBy('start_date');
+                    // Display ALL dates/cities
+                    $query->orderBy('start_date');
                 },
             ])
             ->where('is_active', true)
@@ -29,14 +28,13 @@ class FormationApiController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formations->map(
-                fn (Formation $formation) =>
-                    $this->formatFormation($formation)
+                fn (Formation $formation) => $this->formatFormation($formation)
             )->values(),
         ]);
     }
 
     /**
-     * Get one formation by slug.
+     * Get one formation by slug with ALL formation days.
      */
     public function show(string $slug): JsonResponse
     {
@@ -44,9 +42,8 @@ class FormationApiController extends Controller
             ->with([
                 'programme',
                 'formationDays' => function ($query) {
-                    $query
-                        ->whereDate('start_date', '>=', now()->toDateString())
-                        ->orderBy('start_date');
+                    // Display ALL dates/cities
+                    $query->orderBy('start_date');
                 },
             ])
             ->where('slug', $slug)
@@ -68,17 +65,6 @@ class FormationApiController extends Controller
             'id' => $formation->id,
 
             'programme_id' => $formation->programme_id,
-
-            'programme' => $formation->programme
-                ? [
-                    'id' => $formation->programme->id,
-                    'name' => $formation->programme->name,
-                    'slug' => $formation->programme->slug,
-                    'description' => $formation->programme->description,
-                    'duration' => $formation->programme->duration,
-                    'is_active' => (bool) $formation->programme->is_active,
-                ]
-                : null,
 
             'title' => $formation->title,
 
@@ -110,6 +96,23 @@ class FormationApiController extends Controller
 
             'is_active' => (bool) $formation->is_active,
 
+            /*
+             * Programme
+             */
+            'programme' => $formation->programme
+                ? [
+                    'id' => $formation->programme->id,
+                    'name' => $formation->programme->name,
+                    'slug' => $formation->programme->slug,
+                    'description' => $formation->programme->description,
+                    'duration' => $formation->programme->duration,
+                    'is_active' => (bool) $formation->programme->is_active,
+                ]
+                : null,
+
+            /*
+             * ALL FormationDays
+             */
             'formationDays' => $formation->formationDays
                 ->map(function ($day) {
                     return [
@@ -123,7 +126,6 @@ class FormationApiController extends Controller
 
                         'end_date' => $day->end_date,
 
-                        // IMPORTANT:
                         'personal_price' => $day->price,
 
                         'cpf_eligible' => (bool) $day->cpf_eligible,
