@@ -4,7 +4,7 @@ import { getFormationInformation } from "@/services/api";
 
 import type {
   FormationInformationApiResponse,
-} from "../types/formationInformation";
+} from "@/types/formationInformation";
 
 export function useFormationInformation() {
   const [data, setData] =
@@ -12,7 +12,8 @@ export function useFormationInformation() {
 
   const [loading, setLoading] = useState(true);
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     getFormationInformation()

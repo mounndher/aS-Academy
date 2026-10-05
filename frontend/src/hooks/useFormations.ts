@@ -24,11 +24,11 @@ export function useFormations(): UseFormationsReturn {
 
       console.log("FORMATIONS API:", response);
 
-      if (response && Array.isArray(response.data)) {
-        setFormations(response.data);
-      } else {
-        setFormations([]);
-      }
+      setFormations(
+        Array.isArray(response?.data)
+          ? response.data
+          : []
+      );
     } catch (err) {
       console.error("Erreur formations:", err);
 
