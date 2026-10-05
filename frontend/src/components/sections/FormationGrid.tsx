@@ -1,9 +1,7 @@
-import { cn } from "@/utils/cn";
-
-import { useFormations } from "@/hooks/useFormations";
-
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
+
+import { useFormations } from "@/hooks/useFormations";
 
 import {
   FormationCard,
@@ -11,18 +9,10 @@ import {
   type FormationDay,
 } from "./FormationCard";
 
-// =========================================================
-// TYPES
-// =========================================================
-
 interface FormationCardItem {
   formation: Formation;
   day: FormationDay;
 }
-
-// =========================================================
-// FORMATION GRID
-// =========================================================
 
 export function FormationGrid() {
   const {
@@ -31,9 +21,9 @@ export function FormationGrid() {
     error,
   } = useFormations();
 
-  // =======================================================
+  // =========================================================
   // LOADING
-  // =======================================================
+  // =========================================================
 
   if (loading) {
     return (
@@ -50,9 +40,9 @@ export function FormationGrid() {
     );
   }
 
-  // =======================================================
+  // =========================================================
   // ERROR
-  // =======================================================
+  // =========================================================
 
   if (error) {
     return (
@@ -69,47 +59,29 @@ export function FormationGrid() {
     );
   }
 
-  // =======================================================
-  // FORMATIONS
-  // =======================================================
-  //
-  // IMPORTANT:
-  //
-  // getFormations() returns Formation[]
-  //
-  // Therefore:
-  //
-  // data ?? []
-  //
-  // NOT:
-  //
-  // data?.data ?? []
-  //
-  // =======================================================
+  // =========================================================
+  // IMPORTANT
+  // getFormations() already returns json.data
+  // =========================================================
 
-  const formations: Formation[] =
-    data ?? [];
+  const formations = data ?? [];
 
-  // =======================================================
+  // =========================================================
   // CREATE ONE CARD PER FORMATION DAY
-  // =======================================================
   //
-  // API:
+  // Formation
+  //   ├── Paris
+  //   ├── Toulouse
+  //   ├── Bruxelles
+  //   └── Bordeaux
   //
-  // Formation Extension de Cils
-  // ├── Paris
-  // ├── Toulouse
-  // ├── Bruxelles
-  // └── Bordeaux
-  //
-  // becomes:
+  // becomes
   //
   // Card Paris
   // Card Toulouse
   // Card Bruxelles
   // Card Bordeaux
-  //
-  // =======================================================
+  // =========================================================
 
   const cards: FormationCardItem[] =
     formations.flatMap(
@@ -122,9 +94,9 @@ export function FormationGrid() {
         )
     );
 
-  // =======================================================
+  // =========================================================
   // RENDER
-  // =======================================================
+  // =========================================================
 
   return (
     <section
@@ -133,22 +105,15 @@ export function FormationGrid() {
     >
       <div className="wrap">
 
-        {/* =================================================
+        {/* ===================================================
             HEADER
-        ================================================= */}
+        =================================================== */}
 
         <Reveal>
-          <div
-            className={cn(
-              "flex flex-col gap-3",
-              "border-b border-ink/10 pb-5",
-              "sm:flex-row sm:items-end",
-              "sm:justify-between"
-            )}
-          >
+          <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+
             <p className="label text-ink/50">
-              Prochaines formations —
-              réservation en ligne
+              Prochaines formations — réservation en ligne
             </p>
 
             <Button
@@ -158,54 +123,43 @@ export function FormationGrid() {
             >
               Toutes les formations
             </Button>
+
           </div>
         </Reveal>
 
-        {/* =================================================
+        {/* ===================================================
             EMPTY
-        ================================================= */}
+        =================================================== */}
 
         {cards.length === 0 && (
           <div className="py-20">
             <p className="text-sm font-light text-ink/50">
-              Aucune formation disponible
-              pour le moment.
+              Aucune formation disponible pour le moment.
             </p>
           </div>
         )}
 
-        {/* =================================================
+        {/* ===================================================
             CARDS
-        ================================================= */}
+        =================================================== */}
 
         {cards.length > 0 && (
-          <div
-            className={cn(
-              "mt-14 grid gap-16",
-              "md:grid-cols-2 md:gap-10",
-              "lg:grid-cols-3"
-            )}
-          >
+          <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
+
             {cards.map(
               (
-                item: FormationCardItem,
-                index: number
+                item,
+                index
               ) => (
                 <FormationCard
                   key={`${item.formation.id}-${item.day.id}`}
-                  formation={
-                    item.formation
-                  }
-                  formationDay={
-                    item.day
-                  }
+                  formation={item.formation}
+                  day={item.day}
                   index={index}
-                  delay={
-                    index * 0.08
-                  }
                 />
               )
             )}
+
           </div>
         )}
 

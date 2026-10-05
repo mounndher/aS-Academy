@@ -1,59 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
-
+import { useEffect, useState } from "react";
 import { getFormations } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
-interface UseFormationsReturn {
-  formations: Formation[];
-  loading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-}
-
-export function useFormations(): UseFormationsReturn {
-  const [formations, setFormations] = useState<Formation[]>([]);
+export function useFormations() {
+  const [data, setData] = useState<Formation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadFormations = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  useEffect(() => {
+    let cancelled = false;
 
-      const response = await getFormations();
+    async function loadFormations() {
+      try {
+        setLoading(true);
+        setError(null);
 
-      console.log("FORMATIONS API:", response);
+        const formations = await getFormations();
 
-      setFormations(
-        Array.isArray(response?.data)
-          ? response.data
-          : []
-      );
-    } catch (err) {
-      console.error("Erreur formations:", err);
-
-      setFormations([]);
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Impossible de charger les formations."
-      );
-    } finally {
-      setLoading(false);
+        if (!cancelled) {
+          setData(formations);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Impossible de charger les formations."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
+
+    loadFormations();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  useEffect(() => {
-    loadFormations();
-  }, [loadFormations]);
-
   return {
-    formations,
+    data,
     loading,
     error,
-    refetch: loadFormations,
   };
 }
-
-export default useFormations;

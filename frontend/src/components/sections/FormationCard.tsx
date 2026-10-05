@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/utils/cn";
 
@@ -6,17 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
 
-// =========================================================
-// RESERVATION STATE
-// =========================================================
-
 export const RESERVE_STATE = {
   scrollTo: "reservation",
 } as const;
-
-// =========================================================
-// TYPES
-// =========================================================
 
 export interface FormationDay {
   id: number;
@@ -38,19 +29,16 @@ export interface Formation {
   title: string;
   slug: string;
   description: string | null;
-
-  steps?: {
+  steps: {
     title: string;
     description: string;
   }[];
-
   image: string | null;
   pdf_program: string | null;
 
   deposit_amount: string | null;
 
   personal_price: string | null;
-
   has_sale: boolean;
   sale_price: string | null;
 
@@ -71,72 +59,16 @@ export interface Formation {
   formationDays: FormationDay[];
 }
 
-// =========================================================
-// META
-// =========================================================
-
-export function Meta({
-  label,
-  value,
-  sub,
-  dark = false,
-  className,
-}: {
-  label: string;
-  value: ReactNode;
-  sub?: ReactNode;
-  dark?: boolean;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "border-b py-4 pr-4",
-        dark
-          ? "border-ivory/10"
-          : "border-ink/10",
-        className
-      )}
-    >
-      <dt
-        className={cn(
-          "label text-[10px]",
-          dark
-            ? "text-ivory/40"
-            : "text-ink/40"
-        )}
-      >
-        {label}
-      </dt>
-
-      <dd className="mt-2 font-serif text-xl leading-tight md:text-[1.35rem]">
-        {value}
-      </dd>
-
-      {sub && (
-        <dd
-          className={cn(
-            "mt-1 text-xs font-light",
-            dark
-              ? "text-ivory/45"
-              : "text-ink/45"
-          )}
-        >
-          {sub}
-        </dd>
-      )}
-    </div>
-  );
+interface FormationCardProps {
+  formation: Formation;
+  day: FormationDay;
+  index: number;
 }
-
-// =========================================================
-// DATE RANGE
-// =========================================================
 
 function formatDateRange(
   start: string,
   end: string
-): string {
+) {
   if (!start || !end) {
     return "";
   }
@@ -144,51 +76,33 @@ function formatDateRange(
   const startDate = new Date(start);
   const endDate = new Date(end);
 
-  if (
-    Number.isNaN(startDate.getTime()) ||
-    Number.isNaN(endDate.getTime())
-  ) {
-    return "";
-  }
+  const startDay = startDate.toLocaleDateString(
+    "fr-FR",
+    {
+      day: "2-digit",
+    }
+  );
 
-  const startDay =
-    startDate.toLocaleDateString(
-      "fr-FR",
-      {
-        day: "2-digit",
-      }
-    );
+  const endDay = endDate.toLocaleDateString(
+    "fr-FR",
+    {
+      day: "2-digit",
+    }
+  );
 
-  const endDay =
-    endDate.toLocaleDateString(
-      "fr-FR",
-      {
-        day: "2-digit",
-      }
-    );
-
-  const month =
-    endDate.toLocaleDateString(
-      "fr-FR",
-      {
-        month: "long",
-      }
-    );
+  const month = endDate.toLocaleDateString(
+    "fr-FR",
+    {
+      month: "long",
+    }
+  );
 
   return `${startDay} — ${endDay} ${month}`;
 }
 
-// =========================================================
-// PRICE
-// =========================================================
-
 function formatPrice(
-  price:
-    | string
-    | number
-    | null
-    | undefined
-): string {
+  price: string | number | null | undefined
+) {
   if (
     price === null ||
     price === undefined ||
@@ -197,150 +111,119 @@ function formatPrice(
     return "À venir";
   }
 
-  const numericPrice = Number(price);
+  return `${Number(price).toLocaleString("fr-FR")} €`;
+}
 
-  if (Number.isNaN(numericPrice)) {
-    return "À venir";
+function getStatusText(
+  day: FormationDay
+) {
+  if (day.remaining_places <= 0) {
+    return "Complet";
   }
 
-  return `${numericPrice.toLocaleString(
-    "fr-FR"
-  )} €`;
+  if (day.status === "available") {
+    return "Réserver";
+  }
+
+  return "Demander une date";
 }
-
-// =========================================================
-// PROPS
-// =========================================================
-
-interface FormationCardProps {
-  formation: Formation;
-  formationDay: FormationDay;
-  index: number;
-  className?: string;
-  imageAspect?: string;
-  delay?: number;
-}
-
-// =========================================================
-// FORMATION CARD
-// =========================================================
 
 export function FormationCard({
   formation,
-  formationDay: day,
+  day,
   index,
-  className,
-  imageAspect,
-  delay = 0,
 }: FormationCardProps) {
-  const programme =
-    formation.programme;
-
-  const duration =
-    programme?.duration ??
-    "Durée non précisée";
-
-  const image =
-    formation.image;
+  const formationSlug = formation.slug;
 
   const formationUrl =
-    `/formations/${formation.slug}`;
+    `/formations/${formationSlug}`;
 
-  // =======================================================
-  // AVAILABILITY
-  // =======================================================
+  const duration =
+    formation.programme?.duration ||
+    "À venir";
+
+  const programmeName =
+    formation.programme?.name ||
+    formation.title;
+
+  const description =
+    formation.description ||
+    formation.programme?.description ||
+    "";
 
   const isAvailable =
     day.status === "available" &&
     day.remaining_places > 0;
 
-  // =======================================================
-  // IMAGE RATIO
-  // =======================================================
-
-  const cardImageAspect =
-    imageAspect ??
-    (index === 1
-      ? "aspect-[4/5]"
-      : "aspect-[4/3]");
-
-  // =======================================================
-  // RENDER
-  // =======================================================
-
   return (
     <article
       className={cn(
         "group",
-        index === 1 && "lg:mt-20",
-        className
+        index === 1 && "lg:mt-20"
       )}
     >
-      {/* ===================================================
+      {/* =====================================================
           IMAGE
-      =================================================== */}
+      ===================================================== */}
 
       <Link
         to={formationUrl}
         aria-label={`${formation.title} — ${day.city}`}
         className="block"
       >
-        {image ? (
+        {formation.image ? (
           <ImageReveal
-            src={image}
+            src={formation.image}
             alt={formation.title}
             className={cn(
               "w-full",
-              cardImageAspect
+              index === 1
+                ? "aspect-[4/5]"
+                : "aspect-[4/3]"
             )}
-            delay={delay}
+            delay={index * 0.08}
           />
         ) : (
           <div
             className={cn(
-              "w-full bg-ink/5",
-              cardImageAspect
+              "flex w-full items-center justify-center bg-ink/5",
+              index === 1
+                ? "aspect-[4/5]"
+                : "aspect-[4/3]"
             )}
-          />
+          >
+            <span className="text-sm text-ink/40">
+              Image indisponible
+            </span>
+          </div>
         )}
       </Link>
 
-      {/* ===================================================
+      {/* =====================================================
           CONTENT
-      =================================================== */}
+      ===================================================== */}
 
       <Reveal
-        delay={delay + 0.15}
+        delay={index * 0.08 + 0.15}
       >
-        {/* =================================================
-            EYEBROW
-        ================================================= */}
+        {/* EYEBROW */}
 
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
-
           <span className="font-serif text-lg tracking-normal text-ink/60">
-            {String(index + 1).padStart(
-              2,
-              "0"
-            )}
+            {String(index + 1).padStart(2, "0")}
           </span>
 
           <span className="h-px w-6 bg-current" />
 
           <span>
-            {programme?.name ??
-              formation.title}
-
+            {programmeName}
             {duration
               ? ` · ${duration}`
               : ""}
           </span>
-
         </p>
 
-        {/* =================================================
-            CITY
-        ================================================= */}
+        {/* CITY */}
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">
           <Link
@@ -351,9 +234,7 @@ export function FormationCard({
           </Link>
         </h3>
 
-        {/* =================================================
-            DATE
-        ================================================= */}
+        {/* DATE */}
 
         <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
           {formatDateRange(
@@ -362,84 +243,96 @@ export function FormationCard({
           )}
         </p>
 
-        {/* =================================================
-            DESCRIPTION
-        ================================================= */}
+        {/* DESCRIPTION */}
 
-        {formation.description && (
+        {description && (
           <div
             className="mt-5 max-w-md text-base font-light leading-relaxed text-ink/60"
             dangerouslySetInnerHTML={{
-              __html:
-                formation.description,
+              __html: description,
             }}
           />
         )}
 
-        {/* =================================================
+        {/* =====================================================
             INFORMATION
-        ================================================= */}
+        ===================================================== */}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
 
           {/* DURÉE */}
 
-          <Meta
-            label="Durée"
-            value={duration}
-          />
+          <div className="border-b border-ink/10 py-4 pr-4">
+            <dt className="label text-[10px] text-ink/40">
+              Durée
+            </dt>
+
+            <dd className="mt-2 font-serif text-xl leading-tight">
+              {duration}
+            </dd>
+          </div>
 
           {/* TARIF */}
 
-          <Meta
-            label="Tarif"
-            value={formatPrice(
-              day.personal_price
-            )}
-            sub={
-              day.cpf_eligible &&
-              day.cpf_price
-                ? `CPF ${formatPrice(
+          <div className="border-b border-ink/10 py-4 pr-4">
+            <dt className="label text-[10px] text-ink/40">
+              Tarif
+            </dt>
+
+            <dd className="mt-2 font-serif text-xl leading-tight">
+              {formatPrice(
+                day.personal_price
+              )}
+            </dd>
+
+            {day.cpf_eligible &&
+              day.cpf_price && (
+                <dd className="mt-1 text-xs font-light text-ink/45">
+                  CPF{" "}
+                  {formatPrice(
                     day.cpf_price
-                  )}`
-                : undefined
-            }
-          />
+                  )}
+                </dd>
+              )}
+          </div>
 
           {/* ACOMPTE */}
 
-          <Meta
-            label="Acompte"
-            value={formatPrice(
-              formation.deposit_amount
-            )}
-            sub="PayPal"
-            className="col-span-2 sm:col-span-1"
-          />
+          <div className="col-span-2 border-b border-ink/10 py-4 pr-4 sm:col-span-1">
+            <dt className="label text-[10px] text-ink/40">
+              Acompte
+            </dt>
+
+            <dd className="mt-2 font-serif text-xl leading-tight">
+              {formatPrice(
+                formation.deposit_amount
+              )}
+            </dd>
+
+            <dd className="mt-1 text-xs font-light text-ink/45">
+              PayPal
+            </dd>
+          </div>
 
         </dl>
 
-        {/* =================================================
+        {/* =====================================================
             PLACES
-        ================================================= */}
+        ===================================================== */}
 
         <div className="mt-5 text-sm font-light text-ink/60">
-
           <span className="font-medium text-ink">
             {day.remaining_places}
           </span>{" "}
-
           places restantes sur{" "}
-
           <span className="font-medium text-ink">
             {day.max_places}
           </span>
-
         </div>
 
-        {/* =================================================
+        {/* =====================================================
             BUTTONS
-        ================================================= */}
+        ===================================================== */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
 
@@ -453,9 +346,7 @@ export function FormationCard({
             }
             icon="arrow"
           >
-            {isAvailable
-              ? "Réserver"
-              : "Demander une date"}
+            {getStatusText(day)}
           </Button>
 
           <Button
