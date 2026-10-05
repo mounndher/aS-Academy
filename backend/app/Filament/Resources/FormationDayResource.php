@@ -9,8 +9,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Illuminate\Support\Str;
 
 class FormationDayResource extends Resource
 {
@@ -28,6 +26,12 @@ class FormationDayResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
+    /*
+    |--------------------------------------------------------------------------
+    | FORM
+    |--------------------------------------------------------------------------
+    */
+
     public static function form(Form $form): Form
     {
         return $form
@@ -35,7 +39,7 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Formation
+                | FORMATION
                 |--------------------------------------------------------------------------
                 */
 
@@ -54,11 +58,11 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Lieu et image
+                | LIEU ET PHOTO
                 |--------------------------------------------------------------------------
                 */
 
-                Forms\Components\Section::make('Lieu et image')
+                Forms\Components\Section::make('Lieu et photo')
                     ->schema([
 
                         Forms\Components\TextInput::make('city')
@@ -76,83 +80,22 @@ class FormationDayResource extends Resource
                                 'image/webp',
                                 'image/avif',
                             ])
+                            ->disk('public')
+                            ->directory('formation-days')
+                            ->visibility('public')
                             ->imageEditor()
                             ->maxSize(5120)
-                            ->columnSpanFull()
-
-                            /*
-                            |--------------------------------------------------------------------------
-                            | SAVE DIRECTLY INTO public/formation-days
-                            |--------------------------------------------------------------------------
-                            */
-
-                            ->saveUploadedFileUsing(
-                                function (
-                                    TemporaryUploadedFile $file
-                                ): string {
-
-                                    $directory = public_path(
-                                        'formation-days'
-                                    );
-
-                                    if (! is_dir($directory)) {
-                                        mkdir(
-                                            $directory,
-                                            0755,
-                                            true
-                                        );
-                                    }
-
-                                    $extension =
-                                        $file->getClientOriginalExtension();
-
-                                    $filename =
-                                        Str::uuid()
-                                        . '.'
-                                        . $extension;
-
-                                    $file->move(
-                                        $directory,
-                                        $filename
-                                    );
-
-                                    return 'formation-days/' . $filename;
-                                }
-                            )
-
-                            /*
-                            |--------------------------------------------------------------------------
-                            | PREVIEW EXISTING IMAGE
-                            |--------------------------------------------------------------------------
-                            */
-
-                            ->getUploadedFileUsing(
-                                function ($file) {
-
-                                    if (! $file) {
-                                        return null;
-                                    }
-
-                                    if (
-                                        is_string($file) &&
-                                        str_starts_with(
-                                            $file,
-                                            'http'
-                                        )
-                                    ) {
-                                        return $file;
-                                    }
-
-                                    return asset($file);
-                                }
-                            ),
+                            ->openable()
+                            ->downloadable()
+                            ->previewable()
+                            ->columnSpanFull(),
 
                     ])
                     ->columns(2),
 
                 /*
                 |--------------------------------------------------------------------------
-                | Dates
+                | DATES
                 |--------------------------------------------------------------------------
                 */
 
@@ -179,7 +122,7 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Tarification
+                | TARIFICATION
                 |--------------------------------------------------------------------------
                 */
 
@@ -204,12 +147,12 @@ class FormationDayResource extends Resource
                             ->prefix('€')
                             ->minValue(0)
                             ->visible(
-                                fn (Forms\Get $get) =>
-                                    $get('cpf_eligible')
+                                fn (Forms\Get $get): bool =>
+                                    (bool) $get('cpf_eligible')
                             )
                             ->required(
-                                fn (Forms\Get $get) =>
-                                    $get('cpf_eligible')
+                                fn (Forms\Get $get): bool =>
+                                    (bool) $get('cpf_eligible')
                             ),
 
                     ])
@@ -217,7 +160,7 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Places
+                | PLACES DISPONIBLES
                 |--------------------------------------------------------------------------
                 */
 
@@ -257,10 +200,39 @@ class FormationDayResource extends Resource
             ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | TABLE
+    |--------------------------------------------------------------------------
+    */
+
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+
+                /*
+                |--------------------------------------------------------------------------
+                | PHOTO
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Photo')
+                    ->state(
+                        fn (FormationDay $record): ?string =>
+                            $record->image
+                                ? asset($record->image)
+                                : null
+                    )
+                    ->size(60)
+                    ->square(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | FORMATION
+                |--------------------------------------------------------------------------
+                */
 
                 Tables\Columns\TextColumn::make('formation.title')
                     ->label('Formation')
@@ -269,34 +241,42 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | IMAGE
+                | VILLE
                 |--------------------------------------------------------------------------
                 */
-
-                Tables\Columns\ImageColumn::make('image')
-                    ->label('Photo')
-                    ->state(
-                        fn ($record) => $record->image
-                            ? asset($record->image)
-                            : null
-                    )
-                    ->size(60)
-                    ->square(),
 
                 Tables\Columns\TextColumn::make('city')
                     ->label('Ville')
                     ->searchable()
                     ->sortable(),
 
+                /*
+                |--------------------------------------------------------------------------
+                | DATE DEBUT
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\TextColumn::make('start_date')
                     ->label('Début')
                     ->date('d/m/Y')
                     ->sortable(),
 
+                /*
+                |--------------------------------------------------------------------------
+                | DATE FIN
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\TextColumn::make('end_date')
                     ->label('Fin')
                     ->date('d/m/Y')
                     ->sortable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | PRIX
+                |--------------------------------------------------------------------------
+                */
 
                 Tables\Columns\TextColumn::make('price')
                     ->label('Prix normal')
@@ -309,6 +289,12 @@ class FormationDayResource extends Resource
                     ->placeholder('—')
                     ->sortable(),
 
+                /*
+                |--------------------------------------------------------------------------
+                | PLACES
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\TextColumn::make('max_places')
                     ->label('Places')
                     ->sortable(),
@@ -316,6 +302,12 @@ class FormationDayResource extends Resource
                 Tables\Columns\TextColumn::make('remaining_places')
                     ->label('Restantes')
                     ->sortable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | STATUT
+                |--------------------------------------------------------------------------
+                */
 
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Statut')
@@ -339,6 +331,12 @@ class FormationDayResource extends Resource
 
             ->defaultSort('start_date', 'asc')
 
+            /*
+            |--------------------------------------------------------------------------
+            | ACTIONS
+            |--------------------------------------------------------------------------
+            */
+
             ->actions([
 
                 Tables\Actions\EditAction::make()
@@ -349,6 +347,12 @@ class FormationDayResource extends Resource
 
             ])
 
+            /*
+            |--------------------------------------------------------------------------
+            | BULK ACTIONS
+            |--------------------------------------------------------------------------
+            */
+
             ->bulkActions([
 
                 Tables\Actions\BulkActionGroup::make([
@@ -357,6 +361,23 @@ class FormationDayResource extends Resource
 
             ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | RELATIONS
+    |--------------------------------------------------------------------------
+    */
+
+    public static function getRelations(): array
+    {
+        return [];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PAGES
+    |--------------------------------------------------------------------------
+    */
 
     public static function getPages(): array
     {
