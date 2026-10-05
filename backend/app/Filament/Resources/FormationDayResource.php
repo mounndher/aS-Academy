@@ -9,6 +9,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Support\Str;
 
 class FormationDayResource extends Resource
 {
@@ -25,12 +27,6 @@ class FormationDayResource extends Resource
     protected static ?string $pluralModelLabel = 'Dates de formation';
 
     protected static ?int $navigationSort = 4;
-
-    /*
-    |--------------------------------------------------------------------------
-    | FORM
-    |--------------------------------------------------------------------------
-    */
 
     public static function form(Form $form): Form
     {
@@ -58,11 +54,11 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Lieu, photo et dates
+                | Lieu et image
                 |--------------------------------------------------------------------------
                 */
 
-                Forms\Components\Section::make('Lieu, photo et dates')
+                Forms\Components\Section::make('Lieu et image')
                     ->schema([
 
                         Forms\Components\TextInput::make('city')
@@ -74,13 +70,94 @@ class FormationDayResource extends Resource
                         Forms\Components\FileUpload::make('image')
                             ->label('Photo de la ville')
                             ->image()
-                            ->disk('local')
-                            ->directory('public/formation-days')
-                            ->visibility('public')
-                            ->imagePreviewHeight('200')
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                                'image/avif',
+                            ])
+                            ->imageEditor()
                             ->maxSize(5120)
-                            ->nullable()
-                            ->columnSpan(1),
+                            ->columnSpanFull()
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | SAVE DIRECTLY INTO public/formation-days
+                            |--------------------------------------------------------------------------
+                            */
+
+                            ->saveUploadedFileUsing(
+                                function (
+                                    TemporaryUploadedFile $file
+                                ): string {
+
+                                    $directory = public_path(
+                                        'formation-days'
+                                    );
+
+                                    if (! is_dir($directory)) {
+                                        mkdir(
+                                            $directory,
+                                            0755,
+                                            true
+                                        );
+                                    }
+
+                                    $extension =
+                                        $file->getClientOriginalExtension();
+
+                                    $filename =
+                                        Str::uuid()
+                                        . '.'
+                                        . $extension;
+
+                                    $file->move(
+                                        $directory,
+                                        $filename
+                                    );
+
+                                    return 'formation-days/' . $filename;
+                                }
+                            )
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | PREVIEW EXISTING IMAGE
+                            |--------------------------------------------------------------------------
+                            */
+
+                            ->getUploadedFileUsing(
+                                function ($file) {
+
+                                    if (! $file) {
+                                        return null;
+                                    }
+
+                                    if (
+                                        is_string($file) &&
+                                        str_starts_with(
+                                            $file,
+                                            'http'
+                                        )
+                                    ) {
+                                        return $file;
+                                    }
+
+                                    return asset($file);
+                                }
+                            ),
+
+                    ])
+                    ->columns(2),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Dates
+                |--------------------------------------------------------------------------
+                */
+
+                Forms\Components\Section::make('Dates')
+                    ->schema([
 
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Date de début')
@@ -127,12 +204,12 @@ class FormationDayResource extends Resource
                             ->prefix('€')
                             ->minValue(0)
                             ->visible(
-                                fn (Forms\Get $get): bool =>
-                                    (bool) $get('cpf_eligible')
+                                fn (Forms\Get $get) =>
+                                    $get('cpf_eligible')
                             )
                             ->required(
-                                fn (Forms\Get $get): bool =>
-                                    (bool) $get('cpf_eligible')
+                                fn (Forms\Get $get) =>
+                                    $get('cpf_eligible')
                             ),
 
                     ])
@@ -140,7 +217,7 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Places disponibles
+                | Places
                 |--------------------------------------------------------------------------
                 */
 
@@ -180,12 +257,6 @@ class FormationDayResource extends Resource
             ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | TABLE
-    |--------------------------------------------------------------------------
-    */
-
     public static function table(Table $table): Table
     {
         return $table
@@ -196,10 +267,21 @@ class FormationDayResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                /*
+                |--------------------------------------------------------------------------
+                | IMAGE
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Photo')
-                    ->square()
-                    ->size(60),
+                    ->state(
+                        fn ($record) => $record->image
+                            ? asset($record->image)
+                            : null
+                    )
+                    ->size(60)
+                    ->square(),
 
                 Tables\Columns\TextColumn::make('city')
                     ->label('Ville')
@@ -275,12 +357,6 @@ class FormationDayResource extends Resource
 
             ]);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | PAGES
-    |--------------------------------------------------------------------------
-    */
 
     public static function getPages(): array
     {
