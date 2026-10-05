@@ -11,10 +11,14 @@ import {
   type FormationDay,
 } from "./FormationCard";
 
+/* =========================================================
+   FORMATION GRID
+========================================================= */
+
 export function FormationGrid() {
-  // =========================================================
-  // FORMATIONS
-  // =========================================================
+  /* =======================================================
+     FORMATIONS
+  ======================================================= */
 
   const {
     data: formationData,
@@ -22,9 +26,9 @@ export function FormationGrid() {
     error: formationsError,
   } = useFormations();
 
-  // =========================================================
-  // FORMATION INFORMATION
-  // =========================================================
+  /* =======================================================
+     FORMATION INFORMATION
+  ======================================================= */
 
   const {
     data: formationInformation,
@@ -34,11 +38,14 @@ export function FormationGrid() {
   const information =
     formationInformation?.information;
 
-  // =========================================================
-  // LOADING
-  // =========================================================
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
-  if (informationLoading || formationsLoading) {
+  if (
+    informationLoading ||
+    formationsLoading
+  ) {
     return (
       <section
         id="formations"
@@ -53,9 +60,9 @@ export function FormationGrid() {
     );
   }
 
-  // =========================================================
-  // ERROR
-  // =========================================================
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
   if (formationsError) {
     return (
@@ -72,88 +79,105 @@ export function FormationGrid() {
     );
   }
 
-  // =========================================================
-  // NORMALIZE FORMATIONS
-  //
-  // Supports:
-  //
-  // Formation[]
-  //
-  // OR:
-  //
-  // {
-  //   success: true,
-  //   data: Formation[]
-  // }
-  // =========================================================
+  /* =======================================================
+     NORMALIZE DATA
+  ======================================================= */
 
-  const rawData = formationData as unknown;
+  const safeFormations: Formation[] =
+    Array.isArray(formationData)
+      ? formationData
+      : [];
 
-  let safeFormations: Formation[] = [];
+  /* =======================================================
+     ONE CARD PER CITY
+     
+     Example:
 
-  if (Array.isArray(rawData)) {
-    safeFormations = rawData as Formation[];
-  } else if (
-    rawData &&
-    typeof rawData === "object" &&
-    Array.isArray(
-      (rawData as { data?: unknown }).data
-    )
-  ) {
-    safeFormations = (
-      rawData as {
-        data: Formation[];
-      }
-    ).data;
-  }
+     Paris       → 1 card
+     Toulouse    → 1 card
+     Bruxelles   → 1 card
+     Bordeaux    → 1 card
 
-  // =========================================================
-  // ONE CARD PER CITY
-  //
-  // Example:
-  //
-  // Paris       → 1 card
-  // Toulouse    → 1 card
-  // Bruxelles   → 1 card
-  // Bordeaux    → 1 card
-  //
-  // If Paris has 2 dates, Paris still gets only 1 card.
-  // =========================================================
+     If Paris has:
+
+     Paris — September
+     Paris — October
+     Paris — November
+
+     only ONE Paris card is displayed.
+
+     The first Paris date is used on the card.
+  ======================================================= */
 
   const cards: {
     formation: Formation;
     day: FormationDay;
   }[] = [];
 
-  safeFormations.forEach((formation) => {
-    const days = Array.isArray(
-      formation.formationDays
-    )
-      ? formation.formationDays
-      : [];
+  safeFormations.forEach(
+    (formation) => {
+      const days =
+        Array.isArray(
+          formation.formationDays
+        )
+          ? formation.formationDays
+          : [];
 
-    const cities = new Map<
-      string,
-      FormationDay
-    >();
+      /*
+       * Map city → first FormationDay
+       */
+      const cities =
+        new Map<
+          string,
+          FormationDay
+        >();
 
-    days.forEach((day) => {
-      if (!cities.has(day.city)) {
-        cities.set(day.city, day);
-      }
-    });
+      days.forEach((day) => {
+        /*
+         * Ignore invalid cities
+         */
+        if (
+          !day.city ||
+          day.city.trim() === ""
+        ) {
+          return;
+        }
 
-    cities.forEach((day) => {
-      cards.push({
-        formation,
-        day,
+        /*
+         * Only ONE card per city
+         */
+        const cityKey =
+          day.city
+            .trim()
+            .toLowerCase();
+
+        if (
+          !cities.has(cityKey)
+        ) {
+          cities.set(
+            cityKey,
+            day
+          );
+        }
       });
-    });
-  });
 
-  // =========================================================
-  // RENDER
-  // =========================================================
+      /*
+       * Convert cities into cards
+       */
+      cities.forEach(
+        (day) => {
+          cards.push({
+            formation,
+            day,
+          });
+        }
+      );
+    }
+  );
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
     <section
@@ -172,7 +196,8 @@ export function FormationGrid() {
             "Formations"
           }
           title={[
-            information?.title ?? "Nos",
+            information?.title ??
+              "Nos",
             information?.subtitle ??
               "Formations",
           ]}
@@ -218,8 +243,8 @@ export function FormationGrid() {
           {cards.length === 0 ? (
             <div className="mt-14 border border-ink/10 p-8">
               <p className="text-sm text-ink/50">
-                Aucune formation disponible
-                actuellement.
+                Aucune formation
+                disponible actuellement.
               </p>
             </div>
           ) : (
@@ -240,27 +265,36 @@ export function FormationGrid() {
                 ) => (
                   <FormationCard
                     key={`${formation.id}-${day.id}`}
-                    formation={formation}
-                    formationDay={day}
-                    index={index}
+                    formation={
+                      formation
+                    }
+                    formationDay={
+                      day
+                    }
+                    index={
+                      index
+                    }
                     className={
-                      index % 3 === 1
+                      index % 3 ===
+                      1
                         ? "lg:mt-20"
                         : undefined
                     }
                     imageAspect={
-                      index % 3 === 1
+                      index % 3 ===
+                      1
                         ? "aspect-[4/5]"
                         : "aspect-[4/3]"
                     }
-                    delay={index * 0.08}
+                    delay={
+                      index * 0.08
+                    }
                   />
                 )
               )}
 
             </div>
           )}
-
         </div>
       </div>
     </section>

@@ -17,7 +17,6 @@ class FormationApiController extends Controller
             ->with([
                 'programme',
                 'formationDays' => function ($query) {
-                    // Display ALL dates/cities
                     $query->orderBy('start_date');
                 },
             ])
@@ -42,7 +41,6 @@ class FormationApiController extends Controller
             ->with([
                 'programme',
                 'formationDays' => function ($query) {
-                    // Display ALL dates/cities
                     $query->orderBy('start_date');
                 },
             ])
@@ -74,10 +72,16 @@ class FormationApiController extends Controller
 
             'steps' => $formation->steps ?? [],
 
+            /*
+             * Formation main image
+             */
             'image' => $formation->image
                 ? asset($formation->image)
                 : null,
 
+            /*
+             * PDF
+             */
             'pdf_program' => $formation->pdf_program
                 ? asset($formation->pdf_program)
                 : null,
@@ -102,10 +106,15 @@ class FormationApiController extends Controller
             'programme' => $formation->programme
                 ? [
                     'id' => $formation->programme->id,
+
                     'name' => $formation->programme->name,
+
                     'slug' => $formation->programme->slug,
+
                     'description' => $formation->programme->description,
+
                     'duration' => $formation->programme->duration,
+
                     'is_active' => (bool) $formation->programme->is_active,
                 ]
                 : null,
@@ -115,12 +124,20 @@ class FormationApiController extends Controller
              */
             'formationDays' => $formation->formationDays
                 ->map(function ($day) {
+
                     return [
                         'id' => $day->id,
 
                         'formation_id' => $day->formation_id,
 
                         'city' => $day->city,
+
+                        /*
+                         * CITY IMAGE
+                         */
+                        'image' => $day->image
+                            ? asset('formation-days/' . $day->image)
+                            : null,
 
                         'start_date' => $day->start_date,
 

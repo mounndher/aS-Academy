@@ -26,6 +26,12 @@ class FormationDayResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
+    /*
+    |--------------------------------------------------------------------------
+    | FORM
+    |--------------------------------------------------------------------------
+    */
+
     public static function form(Form $form): Form
     {
         return $form
@@ -52,11 +58,11 @@ class FormationDayResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Lieu et dates
+                | Lieu, photo et dates
                 |--------------------------------------------------------------------------
                 */
 
-                Forms\Components\Section::make('Lieu et dates')
+                Forms\Components\Section::make('Lieu, photo et dates')
                     ->schema([
 
                         Forms\Components\TextInput::make('city')
@@ -64,6 +70,17 @@ class FormationDayResource extends Resource
                             ->placeholder('Paris')
                             ->required()
                             ->maxLength(255),
+
+                        Forms\Components\FileUpload::make('image')
+                            ->label('Photo de la ville')
+                            ->image()
+                            ->disk('local')
+                            ->directory('public/formation-days')
+                            ->visibility('public')
+                            ->imagePreviewHeight('200')
+                            ->maxSize(5120)
+                            ->nullable()
+                            ->columnSpan(1),
 
                         Forms\Components\DatePicker::make('start_date')
                             ->label('Date de début')
@@ -81,7 +98,7 @@ class FormationDayResource extends Resource
                             ->afterOrEqual('start_date'),
 
                     ])
-                    ->columns(3),
+                    ->columns(2),
 
                 /*
                 |--------------------------------------------------------------------------
@@ -109,8 +126,14 @@ class FormationDayResource extends Resource
                             ->numeric()
                             ->prefix('€')
                             ->minValue(0)
-                            ->visible(fn (Forms\Get $get) => $get('cpf_eligible'))
-                            ->required(fn (Forms\Get $get) => $get('cpf_eligible')),
+                            ->visible(
+                                fn (Forms\Get $get): bool =>
+                                    (bool) $get('cpf_eligible')
+                            )
+                            ->required(
+                                fn (Forms\Get $get): bool =>
+                                    (bool) $get('cpf_eligible')
+                            ),
 
                     ])
                     ->columns(3),
@@ -157,6 +180,12 @@ class FormationDayResource extends Resource
             ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | TABLE
+    |--------------------------------------------------------------------------
+    */
+
     public static function table(Table $table): Table
     {
         return $table
@@ -166,6 +195,11 @@ class FormationDayResource extends Resource
                     ->label('Formation')
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Photo')
+                    ->square()
+                    ->size(60),
 
                 Tables\Columns\TextColumn::make('city')
                     ->label('Ville')
@@ -241,6 +275,12 @@ class FormationDayResource extends Resource
 
             ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PAGES
+    |--------------------------------------------------------------------------
+    */
 
     public static function getPages(): array
     {
