@@ -14,40 +14,21 @@ import {
 } from "./FormationCard";
 
 export function FormationGrid() {
-  // =========================================================
-  // FORMATION INFORMATION
-  // =========================================================
+  const {
+    data: formationData,
+    loading: formationsLoading,
+    error,
+  } = useFormations();
 
   const {
     data: formationInformation,
     loading: informationLoading,
   } = useFormationInformation();
 
-  // =========================================================
-  // FORMATIONS
-  // =========================================================
-
-  const {
-    formations,
-    loading: formationsLoading,
-    error,
-  } = useFormations();
-
-  // =========================================================
-  // INFORMATION DATA
-  // =========================================================
-
   const information =
     formationInformation?.information;
 
-  // =========================================================
-  // LOADING
-  // =========================================================
-
-  if (
-    informationLoading ||
-    formationsLoading
-  ) {
+  if (informationLoading || formationsLoading) {
     return (
       <section
         id="formations"
@@ -61,10 +42,6 @@ export function FormationGrid() {
       </section>
     );
   }
-
-  // =========================================================
-  // ERROR
-  // =========================================================
 
   if (error) {
     return (
@@ -81,44 +58,21 @@ export function FormationGrid() {
     );
   }
 
-  // =========================================================
-  // CREATE ONE CARD PER FORMATION DAY
-  // =========================================================
-  //
-  // Example:
-  //
-  // Formation Extension de Cils
-  //
-  //   Paris
-  //   Toulouse
-  //   Bruxelles
-  //   Bordeaux
-  //
-  // becomes:
-  //
-  // Card 1 → Paris
-  // Card 2 → Toulouse
-  // Card 3 → Bruxelles
-  // Card 4 → Bordeaux
-  //
-  // =========================================================
+  // IMPORTANT
+  // useFormations() returns the array directly
+  const formations = Array.isArray(formationData)
+    ? formationData
+    : [];
 
-  const cards: Array<{
-    formation: Formation;
-    day: FormationDay;
-  }> = formations.flatMap(
-    (formation: Formation) =>
+  const cards = formations.flatMap(
+    (formation) =>
       (formation.formationDays ?? []).map(
-        (day: FormationDay) => ({
+        (day) => ({
           formation,
           day,
         })
       )
   );
-
-  // =========================================================
-  // RENDER
-  // =========================================================
 
   return (
     <section
@@ -127,9 +81,7 @@ export function FormationGrid() {
     >
       <div className="wrap">
 
-        {/* ===================================================
-            FORMATION INFORMATION
-        =================================================== */}
+        {/* FORMATION INFORMATION */}
 
         <SectionHeader
           label={
@@ -137,8 +89,7 @@ export function FormationGrid() {
             "Formations"
           }
           title={[
-            information?.title ??
-              "Nos",
+            information?.title ?? "Nos",
             information?.subtitle ??
               "Formations",
           ]}
@@ -148,15 +99,12 @@ export function FormationGrid() {
           }
         />
 
-        {/* ===================================================
-            CARDS HEADER
-        =================================================== */}
+        {/* FORMATIONS */}
 
         <div className="mt-24 lg:mt-36">
 
           <Reveal>
             <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-
               <p className="label text-ink/50">
                 Prochaines formations —
                 réservation en ligne
@@ -169,13 +117,8 @@ export function FormationGrid() {
               >
                 Toutes les formations
               </Button>
-
             </div>
           </Reveal>
-
-          {/* =================================================
-              EMPTY
-          ================================================= */}
 
           {cards.length === 0 ? (
             <div className="mt-14 border border-ink/10 p-8">
@@ -185,49 +128,28 @@ export function FormationGrid() {
               </p>
             </div>
           ) : (
-
-            /* =================================================
-               GRID
-            ================================================= */
-
             <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
-
               {cards.map(
-                (
-                  item,
-                  index
-                ) => {
-
-                  const isMiddleCard =
-                    index % 3 === 1;
-
-                  return (
-                    <FormationCard
-                      key={`${item.formation.id}-${item.day.id}`}
-                      formation={
-                        item.formation
-                      }
-                      formationDay={
-                        item.day
-                      }
-                      index={index}
-                      className={cn(
-                        isMiddleCard &&
-                          "lg:mt-20"
-                      )}
-                      imageAspect={
-                        isMiddleCard
-                          ? "aspect-[4/5]"
-                          : "aspect-[4/3]"
-                      }
-                      delay={
-                        index * 0.08
-                      }
-                    />
-                  );
-                }
+                ({ formation, day }, index) => (
+                  <FormationCard
+                    key={`${formation.id}-${day.id}`}
+                    formation={formation}
+                    formationDay={day}
+                    index={index}
+                    className={
+                      index % 3 === 1
+                        ? "lg:mt-20"
+                        : undefined
+                    }
+                    imageAspect={
+                      index % 3 === 1
+                        ? "aspect-[4/5]"
+                        : "aspect-[4/3]"
+                    }
+                    delay={index * 0.08}
+                  />
+                )
               )}
-
             </div>
           )}
         </div>
@@ -235,5 +157,4 @@ export function FormationGrid() {
     </section>
   );
 }
-
 export default FormationGrid;
