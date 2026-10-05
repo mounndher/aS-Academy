@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+
 import { getFormations } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
@@ -19,11 +20,15 @@ export function useFormations(): UseFormationsReturn {
       setLoading(true);
       setError(null);
 
-      const data = await getFormations();
+      const response = await getFormations();
 
-      console.log("FORMATIONS API:", data);
+      console.log("FORMATIONS API:", response);
 
-      setFormations(Array.isArray(data) ? data : []);
+      if (response && Array.isArray(response.data)) {
+        setFormations(response.data);
+      } else {
+        setFormations([]);
+      }
     } catch (err) {
       console.error("Erreur formations:", err);
 
