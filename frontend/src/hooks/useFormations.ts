@@ -1,50 +1,55 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
 import { getFormations } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
-export function useFormations() {
-  const [data, setData] = useState<Formation[]>([]);
+interface UseFormationsReturn {
+  formations: Formation[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useFormations(): UseFormationsReturn {
+  const [formations, setFormations] = useState<Formation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadFormations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    async function loadFormations() {
-      try {
-        setLoading(true);
-        setError(null);
+      const data = await getFormations();
 
-        const formations = await getFormations();
+      console.log("FORMATIONS API:", data);
 
-        if (!cancelled) {
-          setData(formations);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Impossible de charger les formations."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+      setFormations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Erreur formations:", err);
+
+      setFormations([]);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger les formations."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    loadFormations();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
+  useEffect(() => {
+    loadFormations();
+  }, [loadFormations]);
+
   return {
-    data,
+    formations,
     loading,
     error,
+    refetch: loadFormations,
   };
 }
+
+export default useFormations;
