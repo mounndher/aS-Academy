@@ -17,7 +17,7 @@ export function FormationGrid() {
   // =========================================================
 
   const {
-    data: formations,
+    formations,
     loading: formationsLoading,
     error,
   } = useFormations();
@@ -80,21 +80,7 @@ export function FormationGrid() {
     : [];
 
   // =========================================================
-  // CREATE ONE CARD FOR EACH FORMATION DAY
-  //
-  // Example:
-  //
-  // Formation Extension de Cils
-  //   Paris
-  //   Toulouse
-  //   Bruxelles
-  //   Bordeaux
-  //
-  // Result:
-  //   Card Paris
-  //   Card Toulouse
-  //   Card Bruxelles
-  //   Card Bordeaux
+  // ONE CARD PER FORMATION DAY
   // =========================================================
 
   const cards: {
@@ -110,6 +96,9 @@ export function FormationGrid() {
       day,
     }));
   });
+
+  console.log("FORMATIONS:", safeFormations);
+  console.log("FORMATION DAYS:", cards);
 
   // =========================================================
   // RENDER
@@ -144,8 +133,6 @@ export function FormationGrid() {
 
         <div className="mt-24 lg:mt-36">
 
-          {/* HEADER */}
-
           <Reveal>
             <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
 
@@ -164,7 +151,9 @@ export function FormationGrid() {
             </div>
           </Reveal>
 
-          {/* EMPTY */}
+          {/* =================================================
+              EMPTY
+          ================================================= */}
 
           {cards.length === 0 ? (
             <div className="mt-14 border border-ink/10 p-8">
@@ -180,27 +169,25 @@ export function FormationGrid() {
 
             <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
 
-              {cards.map(
-                ({ formation, day }, index) => (
-                  <FormationCard
-                    key={`${formation.id}-${day.id}`}
-                    formation={formation}
-                    formationDay={day}
-                    index={index}
-                    className={
-                      index % 3 === 1
-                        ? "lg:mt-20"
-                        : undefined
-                    }
-                    imageAspect={
-                      index % 3 === 1
-                        ? "aspect-[4/5]"
-                        : "aspect-[4/3]"
-                    }
-                    delay={index * 0.08}
-                  />
-                )
-              )}
+              {cards.map(({ formation, day }, index) => (
+                <FormationCard
+                  key={`${formation.id}-${day.id}`}
+                  formation={formation}
+                  formationDay={day}
+                  index={index}
+                  className={
+                    index % 3 === 1
+                      ? "lg:mt-20"
+                      : undefined
+                  }
+                  imageAspect={
+                    index % 3 === 1
+                      ? "aspect-[4/5]"
+                      : "aspect-[4/3]"
+                  }
+                  delay={index * 0.08}
+                />
+              ))}
 
             </div>
           )}
