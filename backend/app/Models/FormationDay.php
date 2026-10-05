@@ -13,6 +13,7 @@ class FormationDay extends Model
     protected $fillable = [
         'formation_id',
         'city',
+        'image',
         'start_date',
         'end_date',
         'price',
