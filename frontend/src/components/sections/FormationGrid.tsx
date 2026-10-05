@@ -272,7 +272,7 @@ export function FormationGrid() {
     );
   }
 
-  const formations = data?.data ?? [];
+ const formations = data ?? [];
 
   /*
    * Convert:
