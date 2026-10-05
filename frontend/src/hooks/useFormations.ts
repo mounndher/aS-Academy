@@ -15,7 +15,29 @@ export function useFormations() {
         setLoading(true);
         setError(null);
 
-        const formations = await getFormations();
+        const result = await getFormations();
+
+        /*
+         * API returns:
+         *
+         * {
+         *   success: true,
+         *   data: [...]
+         * }
+         *
+         * We need the array inside "data".
+         *
+         * This also supports getFormations()
+         * already returning an array.
+         */
+
+        const formations: Formation[] = Array.isArray(result)
+          ? result
+          : Array.isArray(
+              (result as { data?: Formation[] })?.data
+            )
+            ? (result as { data: Formation[] }).data
+            : [];
 
         if (!cancelled) {
           setData(formations);
