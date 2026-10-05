@@ -11,6 +11,7 @@ export interface FormationDay {
   id: number;
   formation_id: number;
   city: string;
+  image: string | null;
   start_date: string;
   end_date: string;
   personal_price: number | string | null;

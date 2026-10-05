@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
 
+/* =========================================================
+   RESERVATION STATE
+========================================================= */
+
 export const RESERVE_STATE = {
   scrollTo: "reservation",
 } as const;
@@ -73,7 +77,7 @@ export interface FormationDay {
   city: string;
 
   /*
-   * Image specific to this city/date.
+   * Image specific to this city/session.
    */
   image: string | null;
 
@@ -104,11 +108,10 @@ export interface Formation {
 
   description: string | null;
 
-  steps?: {
-    title: string;
-    description: string;
-  }[];
-
+  /*
+   * Main formation image.
+   * Used as fallback if the FormationDay has no image.
+   */
   image: string | null;
 
   pdf_program: string | null;
@@ -118,11 +121,9 @@ export interface Formation {
   personal_price: string | null;
 
   has_sale: boolean;
-
   sale_price: string | null;
 
   installment_enabled: boolean;
-
   installment_count: number | null;
 
   is_active: boolean;
@@ -143,95 +144,29 @@ export interface Formation {
    PROPS
 ========================================================= */
 
-interface FormationCardProps {
+export interface FormationCardProps {
   formation: Formation;
-
   formationDay: FormationDay;
-
   index: number;
-
   className?: string;
-
   imageAspect?: string;
-
   delay?: number;
 }
 
 /* =========================================================
-   DATE
+   PRICE FORMAT
 ========================================================= */
 
-function formatDateRange(
-  start: string,
-  end: string
-) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-
-  const startDay = startDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "2-digit",
-    }
-  );
-
-  const endDay = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "2-digit",
-    }
-  );
-
-  const startMonth =
-    startDate.toLocaleDateString(
-      "fr-FR",
-      {
-        month: "long",
-      }
-    );
-
-  const endMonth =
-    endDate.toLocaleDateString(
-      "fr-FR",
-      {
-        month: "long",
-      }
-    );
-
-  /*
-   * Same month:
-   *
-   * 10 — 12 septembre
-   *
-   * Different months:
-   *
-   * 28 septembre — 02 octobre
-   */
-  if (startMonth === endMonth) {
-    return `${startDay} — ${endDay} ${endMonth}`;
-  }
-
-  return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
-}
-
-/* =========================================================
-   PRICE
-========================================================= */
-
-function formatPrice(
-  price: string | null
-) {
+function formatPrice(price: string | null) {
   if (!price) {
     return "À venir";
   }
 
-  return `${Number(price).toLocaleString(
-    "fr-FR"
-  )} €`;
+  return `${Number(price).toLocaleString("fr-FR")} €`;
 }
 
 /* =========================================================
-   CARD
+   FORMATION CARD
 ========================================================= */
 
 export function FormationCard({
@@ -242,61 +177,71 @@ export function FormationCard({
   imageAspect = "aspect-[4/3]",
   delay = 0,
 }: FormationCardProps) {
-  /*
-   * Programme
-   */
-  const programme = f.programme;
+  /* =======================================================
+     URL
+  ======================================================= */
 
-  /*
-   * IMPORTANT:
-   *
-   * First use the image of the city/session.
-   * If there is no image for this city,
-   * use the main formation image.
-   */
-  const image =
-    day.image || f.image;
-
-  /*
-   * Formation detail URL
-   */
   const to = `/formations/${f.slug}`;
 
-  /*
-   * Availability
-   */
+  /* =======================================================
+     IMAGE
+
+     Priority:
+     1. Image of the city/session
+     2. Main formation image
+  ======================================================= */
+
+  const image = day.image || f.image;
+
+  /* =======================================================
+     CITY
+  ======================================================= */
+
+  const city = day.city || "Lieu à définir";
+
+  /* =======================================================
+     DURATION
+
+     Keep "3 jours".
+  ======================================================= */
+
+  const duration =
+    f.programme?.duration || "3 jours";
+
+  /* =======================================================
+     AVAILABILITY
+  ======================================================= */
+
   const isAvailable =
     day.status === "available" &&
     day.remaining_places > 0;
 
-  /*
-   * Date
-   */
-  const dateRange = formatDateRange(
-    day.start_date,
-    day.end_date
-  );
+  /* =======================================================
+     PRICE
+  ======================================================= */
+
+  const price = day.personal_price;
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
-    <article
-      className={cn(
-        "group",
-        className
-      )}
-    >
-      {/* =================================================
+    <article className={cn("group", className)}>
+
+      {/* ===================================================
           IMAGE
-      ================================================= */}
+      =================================================== */}
 
       <Link
         to={to}
-        aria-label={`${f.title} — ${day.city}`}
+        aria-label={`${f.title} — ${city}`}
         className="block"
       >
         {image ? (
           <ImageReveal
             src={image}
-            alt={`${f.title} — ${day.city}`}
+            alt={`${f.title} — ${city}`}
             className={cn(
               "w-full",
               imageAspect
@@ -313,22 +258,26 @@ export function FormationCard({
         )}
       </Link>
 
+      {/* ===================================================
+          CONTENT
+      =================================================== */}
+
       <Reveal delay={delay + 0.15}>
+
         {/* =================================================
             LABEL
         ================================================= */}
 
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
+
           <span className="font-serif text-lg tracking-normal text-ink/60">
-            {String(index + 1).padStart(
-              2,
-              "0"
-            )}
+            {String(index + 1).padStart(2, "0")}
           </span>
 
           <span className="h-px w-6 bg-current" />
 
-          {programme?.name ?? f.title}
+          {f.programme?.name ?? f.title}
+
         </p>
 
         {/* =================================================
@@ -336,21 +285,15 @@ export function FormationCard({
         ================================================= */}
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">
+
           <Link
             to={to}
             className="transition-opacity duration-500 hover:opacity-60"
           >
-            {day.city}
+            {city}
           </Link>
+
         </h3>
-
-        {/* =================================================
-            DATE
-        ================================================= */}
-
-        <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
-          {dateRange}
-        </p>
 
         {/* =================================================
             DESCRIPTION
@@ -367,16 +310,34 @@ export function FormationCard({
 
         {/* =================================================
             INFORMATION
+
+            Date removed.
+            PayPal removed.
+
+            We keep:
+            - Durée
+            - Tarif
+            - Acompte
         ================================================= */}
 
-        <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-2">
-          {/* PRICE */}
+        <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
+
+          {/* =================================================
+              DURATION
+          ================================================= */}
+
+          <Meta
+            label="Durée"
+            value={duration}
+          />
+
+          {/* =================================================
+              PRICE
+          ================================================= */}
 
           <Meta
             label="Tarif"
-            value={formatPrice(
-              day.personal_price
-            )}
+            value={formatPrice(price)}
             sub={
               day.cpf_eligible &&
               day.cpf_price
@@ -387,40 +348,30 @@ export function FormationCard({
             }
           />
 
-          {/* DEPOSIT */}
+          {/* =================================================
+              DEPOSIT
+          ================================================= */}
 
           <Meta
             label="Acompte"
             value={formatPrice(
               f.deposit_amount
             )}
-            sub="PayPal"
+            className="col-span-2 sm:col-span-1"
           />
+
         </dl>
-
-        {/* =================================================
-            PLACES
-        ================================================= */}
-
-        <div className="mt-4 text-xs font-light text-ink/50">
-          {day.remaining_places > 0
-            ? `${day.remaining_places} place${
-                day.remaining_places > 1
-                  ? "s"
-                  : ""
-              } disponible${
-                day.remaining_places > 1
-                  ? "s"
-                  : ""
-              }`
-            : "Complet"}
-        </div>
 
         {/* =================================================
             BUTTONS
         ================================================= */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
+
+          {/* =================================================
+              RESERVE
+          ================================================= */}
+
           <Button
             to={to}
             state={RESERVE_STATE}
@@ -436,13 +387,19 @@ export function FormationCard({
               : "Demander une date"}
           </Button>
 
+          {/* =================================================
+              DETAILS
+          ================================================= */}
+
           <Button
             to={to}
             variant="link-dark"
           >
             Voir la formation
           </Button>
+
         </div>
+
       </Reveal>
     </article>
   );

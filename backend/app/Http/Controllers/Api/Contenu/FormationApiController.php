@@ -136,7 +136,7 @@ class FormationApiController extends Controller
                          * CITY IMAGE
                          */
                         'image' => $day->image
-                            ? asset('formation-days/' . $day->image)
+                            ? asset($day->image)
                             : null,
 
                         'start_date' => $day->start_date,
