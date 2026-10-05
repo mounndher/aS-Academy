@@ -1,35 +1,77 @@
-import { Button } from "@/components/ui/Button";
-import { Reveal } from "@/components/ui/Reveal";
+import { cn } from "@/utils/cn";
 
 import { useFormations } from "@/hooks/useFormations";
+import { useFormationInformation } from "@/hooks/useFormationInformation";
 
-import {
-  FormationCard,
-  type Formation,
-  type FormationDay,
-} from "./FormationCard";
+import { Button } from "@/components/ui/Button";
+import { Reveal } from "@/components/ui/Reveal";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 
-interface FormationCardItem {
-  formation: Formation;
-  day: FormationDay;
-}
+import { FormationCard } from "./FormationCard";
 
 export function FormationGrid() {
+  // =========================================================
+  // FORMATION INFORMATION
+  // =========================================================
+
+  const {
+    data: formationInformation,
+    loading: informationLoading,
+  } = useFormationInformation();
+
+  // =========================================================
+  // FORMATIONS
+  // =========================================================
+
   const {
     data,
-    loading,
+    loading: formationsLoading,
     error,
   } = useFormations();
+
+  // =========================================================
+  // INFORMATION DATA
+  // =========================================================
+
+  const information =
+    formationInformation?.information;
+
+  // =========================================================
+  // FORMATIONS ARRAY
+  // =========================================================
+  //
+  // IMPORTANT:
+  // useFormations() already returns the array from:
+  //
+  // {
+  //   success: true,
+  //   data: [...]
+  // }
+  //
+  // Therefore:
+  //
+  // data ?? []
+  //
+  // NOT:
+  //
+  // data?.data ?? []
+  //
+  // =========================================================
+
+  const formations = data ?? [];
 
   // =========================================================
   // LOADING
   // =========================================================
 
-  if (loading) {
+  if (
+    informationLoading ||
+    formationsLoading
+  ) {
     return (
       <section
         id="formations"
-        className="bg-white py-24 lg:py-40"
+        className="scroll-mt-16 bg-white py-24 lg:py-40"
       >
         <div className="wrap">
           <p className="text-sm text-ink/50">
@@ -48,7 +90,7 @@ export function FormationGrid() {
     return (
       <section
         id="formations"
-        className="bg-white py-24 lg:py-40"
+        className="scroll-mt-16 bg-white py-24 lg:py-40"
       >
         <div className="wrap">
           <p className="text-sm text-red-500">
@@ -60,39 +102,35 @@ export function FormationGrid() {
   }
 
   // =========================================================
-  // IMPORTANT
-  // getFormations() already returns json.data
-  // =========================================================
-
-  const formations = data ?? [];
-
-  // =========================================================
   // CREATE ONE CARD PER FORMATION DAY
+  // =========================================================
   //
-  // Formation
-  //   ├── Paris
-  //   ├── Toulouse
-  //   ├── Bruxelles
-  //   └── Bordeaux
+  // Example:
   //
-  // becomes
+  // Formation Extension de Cils
+  //   Paris
+  //   Toulouse
+  //   Bruxelles
+  //   Bordeaux
   //
-  // Card Paris
-  // Card Toulouse
-  // Card Bruxelles
-  // Card Bordeaux
+  // becomes:
+  //
+  // Card 01 → Paris
+  // Card 02 → Toulouse
+  // Card 03 → Bruxelles
+  // Card 04 → Bordeaux
+  //
   // =========================================================
 
-  const cards: FormationCardItem[] =
-    formations.flatMap(
-      (formation) =>
-        (formation.formationDays ?? []).map(
-          (day) => ({
-            formation,
-            day,
-          })
-        )
-    );
+  const cards = formations.flatMap(
+    (formation) =>
+      (formation.formationDays ?? []).map(
+        (day) => ({
+          formation,
+          day,
+        })
+      )
+  );
 
   // =========================================================
   // RENDER
@@ -106,63 +144,90 @@ export function FormationGrid() {
       <div className="wrap">
 
         {/* ===================================================
-            HEADER
+            FORMATION INFORMATION
         =================================================== */}
 
-        <Reveal>
-          <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-
-            <p className="label text-ink/50">
-              Prochaines formations — réservation en ligne
-            </p>
-
-            <Button
-              to="/formations"
-              variant="link-dark"
-              icon="arrow"
-            >
-              Toutes les formations
-            </Button>
-
-          </div>
-        </Reveal>
+        <SectionHeader
+          label={
+            information?.eyebrow ??
+            "Formations"
+          }
+          title={[
+            information?.title ?? "Nos",
+            information?.subtitle ??
+              "Formations",
+          ]}
+          subtitle={
+            information?.description ??
+            "Des formations pensées pour maîtriser les techniques essentielles de l'extension de cils."
+          }
+        />
 
         {/* ===================================================
-            EMPTY
+            FORMATIONS HEADER
         =================================================== */}
 
-        {cards.length === 0 && (
-          <div className="py-20">
-            <p className="text-sm font-light text-ink/50">
-              Aucune formation disponible pour le moment.
-            </p>
-          </div>
-        )}
+        <div className="mt-24 lg:mt-36">
+          <Reveal>
+            <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <p className="label text-ink/50">
+                Prochaines formations —
+                réservation en ligne
+              </p>
 
-        {/* ===================================================
-            CARDS
-        =================================================== */}
+              <Button
+                to="/formations"
+                variant="link-dark"
+                icon="arrow"
+              >
+                Toutes les formations
+              </Button>
+            </div>
+          </Reveal>
 
-        {cards.length > 0 && (
-          <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
+          {/* =================================================
+              EMPTY
+          ================================================= */}
 
-            {cards.map(
-              (
-                item,
-                index
-              ) => (
-                <FormationCard
-                  key={`${item.formation.id}-${item.day.id}`}
-                  formation={item.formation}
-                  day={item.day}
-                  index={index}
-                />
-              )
-            )}
+          {cards.length === 0 ? (
+            <div className="mt-14 border border-ink/10 p-8">
+              <p className="text-sm text-ink/50">
+                Aucune formation disponible
+                actuellement.
+              </p>
+            </div>
+          ) : (
+            /* ===============================================
+               CARDS
+            =============================================== */
 
-          </div>
-        )}
-
+            <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
+              {cards.map(
+                (
+                  item,
+                  index
+                ) => (
+                  <FormationCard
+                    key={`${item.formation.id}-${item.day.id}`}
+                    formation={item.formation}
+                    formationDay={item.day}
+                    index={index}
+                    className={cn(
+                      index % 3 === 1 &&
+                        "lg:mt-20"
+                    )}
+                    imageAspect={
+                      index % 3 === 1
+                        ? "aspect-[4/5]"
+                        : "aspect-[4/3]"
+                    }
+                    delay={index * 0.08}
+                  />
+                )
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

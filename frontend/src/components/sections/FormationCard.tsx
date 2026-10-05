@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/utils/cn";
 
@@ -8,6 +9,58 @@ import { Reveal } from "@/components/ui/Reveal";
 export const RESERVE_STATE = {
   scrollTo: "reservation",
 } as const;
+
+export function Meta({
+  label,
+  value,
+  sub,
+  dark = false,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  dark?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "border-b py-4 pr-4",
+        dark ? "border-ivory/10" : "border-ink/10",
+        className
+      )}
+    >
+      <dt
+        className={cn(
+          "label text-[10px]",
+          dark ? "text-ivory/40" : "text-ink/40"
+        )}
+      >
+        {label}
+      </dt>
+
+      <dd className="mt-2 font-serif text-xl leading-tight md:text-[1.35rem]">
+        {value}
+      </dd>
+
+      {sub && (
+        <dd
+          className={cn(
+            "mt-1 text-xs font-light",
+            dark ? "text-ivory/45" : "text-ink/45"
+          )}
+        >
+          {sub}
+        </dd>
+      )}
+    </div>
+  );
+}
+
+// =========================================================
+// TYPES
+// =========================================================
 
 export interface FormationDay {
   id: number;
@@ -29,22 +82,18 @@ export interface Formation {
   title: string;
   slug: string;
   description: string | null;
-  steps: {
+  steps?: {
     title: string;
     description: string;
   }[];
   image: string | null;
   pdf_program: string | null;
-
   deposit_amount: string | null;
-
   personal_price: string | null;
   has_sale: boolean;
   sale_price: string | null;
-
   installment_enabled: boolean;
   installment_count: number | null;
-
   is_active: boolean;
 
   programme?: {
@@ -61,14 +110,18 @@ export interface Formation {
 
 interface FormationCardProps {
   formation: Formation;
-  day: FormationDay;
+  formationDay: FormationDay;
   index: number;
+  className?: string;
+  imageAspect?: string;
+  delay?: number;
 }
 
-function formatDateRange(
-  start: string,
-  end: string
-) {
+// =========================================================
+// HELPERS
+// =========================================================
+
+function formatDateRange(start: string, end: string) {
   if (!start || !end) {
     return "";
   }
@@ -76,137 +129,85 @@ function formatDateRange(
   const startDate = new Date(start);
   const endDate = new Date(end);
 
-  const startDay = startDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "2-digit",
-    }
-  );
+  const startDay = startDate.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+  });
 
-  const endDay = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "2-digit",
-    }
-  );
+  const endDay = endDate.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+  });
 
-  const month = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      month: "long",
-    }
-  );
+  const month = endDate.toLocaleDateString("fr-FR", {
+    month: "long",
+  });
 
   return `${startDay} — ${endDay} ${month}`;
 }
 
-function formatPrice(
-  price: string | number | null | undefined
-) {
-  if (
-    price === null ||
-    price === undefined ||
-    price === ""
-  ) {
+function formatPrice(price: string | number | null | undefined) {
+  if (price === null || price === undefined || price === "") {
     return "À venir";
   }
 
   return `${Number(price).toLocaleString("fr-FR")} €`;
 }
 
-function getStatusText(
-  day: FormationDay
-) {
-  if (day.remaining_places <= 0) {
-    return "Complet";
-  }
-
-  if (day.status === "available") {
-    return "Réserver";
-  }
-
-  return "Demander une date";
-}
+// =========================================================
+// FORMATION CARD
+// =========================================================
 
 export function FormationCard({
-  formation,
-  day,
+  formation: f,
+  formationDay: day,
   index,
+  className,
+  imageAspect = "aspect-[4/3]",
+  delay = 0,
 }: FormationCardProps) {
-  const formationSlug = formation.slug;
+  const programme = f.programme;
 
-  const formationUrl =
-    `/formations/${formationSlug}`;
+  const duration = programme?.duration ?? "3 jours";
 
-  const duration =
-    formation.programme?.duration ||
-    "À venir";
+  const image = f.image;
 
-  const programmeName =
-    formation.programme?.name ||
-    formation.title;
-
-  const description =
-    formation.description ||
-    formation.programme?.description ||
-    "";
+  const to = `/formations/${f.slug}`;
 
   const isAvailable =
     day.status === "available" &&
     day.remaining_places > 0;
 
   return (
-    <article
-      className={cn(
-        "group",
-        index === 1 && "lg:mt-20"
-      )}
-    >
+    <article className={cn("group", className)}>
       {/* =====================================================
           IMAGE
       ===================================================== */}
 
       <Link
-        to={formationUrl}
-        aria-label={`${formation.title} — ${day.city}`}
+        to={to}
+        aria-label={`${f.title} — ${day.city}`}
         className="block"
       >
-        {formation.image ? (
+        {image ? (
           <ImageReveal
-            src={formation.image}
-            alt={formation.title}
-            className={cn(
-              "w-full",
-              index === 1
-                ? "aspect-[4/5]"
-                : "aspect-[4/3]"
-            )}
-            delay={index * 0.08}
+            src={image}
+            alt={f.title}
+            className={cn("w-full", imageAspect)}
+            delay={delay}
           />
         ) : (
           <div
             className={cn(
-              "flex w-full items-center justify-center bg-ink/5",
-              index === 1
-                ? "aspect-[4/5]"
-                : "aspect-[4/3]"
+              "w-full bg-ink/5",
+              imageAspect
             )}
-          >
-            <span className="text-sm text-ink/40">
-              Image indisponible
-            </span>
-          </div>
+          />
         )}
       </Link>
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
-
-      <Reveal
-        delay={index * 0.08 + 0.15}
-      >
-        {/* EYEBROW */}
+      <Reveal delay={delay + 0.15}>
+        {/* ===================================================
+            LABEL
+        =================================================== */}
 
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
           <span className="font-serif text-lg tracking-normal text-ink/60">
@@ -216,25 +217,27 @@ export function FormationCard({
           <span className="h-px w-6 bg-current" />
 
           <span>
-            {programmeName}
-            {duration
-              ? ` · ${duration}`
-              : ""}
+            {programme?.name ?? f.title}
+            {duration ? ` · ${duration}` : ""}
           </span>
         </p>
 
-        {/* CITY */}
+        {/* ===================================================
+            CITY
+        =================================================== */}
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">
           <Link
-            to={formationUrl}
+            to={to}
             className="transition-opacity duration-500 hover:opacity-60"
           >
             {day.city}
           </Link>
         </h3>
 
-        {/* DATE */}
+        {/* ===================================================
+            DATE
+        =================================================== */}
 
         <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
           {formatDateRange(
@@ -243,82 +246,50 @@ export function FormationCard({
           )}
         </p>
 
-        {/* DESCRIPTION */}
+        {/* ===================================================
+            DESCRIPTION
+        =================================================== */}
 
-        {description && (
+        {f.description && (
           <div
             className="mt-5 max-w-md text-base font-light leading-relaxed text-ink/60"
             dangerouslySetInnerHTML={{
-              __html: description,
+              __html: f.description,
             }}
           />
         )}
 
-        {/* =====================================================
+        {/* ===================================================
             INFORMATION
-        ===================================================== */}
+        =================================================== */}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
+          <Meta
+            label="Durée"
+            value={duration}
+          />
 
-          {/* DURÉE */}
+          <Meta
+            label="Tarif"
+            value={formatPrice(day.personal_price)}
+            sub={
+              day.cpf_eligible && day.cpf_price
+                ? `CPF ${formatPrice(day.cpf_price)}`
+                : undefined
+            }
+          />
 
-          <div className="border-b border-ink/10 py-4 pr-4">
-            <dt className="label text-[10px] text-ink/40">
-              Durée
-            </dt>
-
-            <dd className="mt-2 font-serif text-xl leading-tight">
-              {duration}
-            </dd>
-          </div>
-
-          {/* TARIF */}
-
-          <div className="border-b border-ink/10 py-4 pr-4">
-            <dt className="label text-[10px] text-ink/40">
-              Tarif
-            </dt>
-
-            <dd className="mt-2 font-serif text-xl leading-tight">
-              {formatPrice(
-                day.personal_price
-              )}
-            </dd>
-
-            {day.cpf_eligible &&
-              day.cpf_price && (
-                <dd className="mt-1 text-xs font-light text-ink/45">
-                  CPF{" "}
-                  {formatPrice(
-                    day.cpf_price
-                  )}
-                </dd>
-              )}
-          </div>
-
-          {/* ACOMPTE */}
-
-          <div className="col-span-2 border-b border-ink/10 py-4 pr-4 sm:col-span-1">
-            <dt className="label text-[10px] text-ink/40">
-              Acompte
-            </dt>
-
-            <dd className="mt-2 font-serif text-xl leading-tight">
-              {formatPrice(
-                formation.deposit_amount
-              )}
-            </dd>
-
-            <dd className="mt-1 text-xs font-light text-ink/45">
-              PayPal
-            </dd>
-          </div>
-
+          <Meta
+            label="Acompte"
+            value={formatPrice(f.deposit_amount)}
+            sub="PayPal"
+            className="col-span-2 sm:col-span-1"
+          />
         </dl>
 
-        {/* =====================================================
+        {/* ===================================================
             PLACES
-        ===================================================== */}
+        =================================================== */}
 
         <div className="mt-5 text-sm font-light text-ink/60">
           <span className="font-medium text-ink">
@@ -330,14 +301,13 @@ export function FormationCard({
           </span>
         </div>
 
-        {/* =====================================================
+        {/* ===================================================
             BUTTONS
-        ===================================================== */}
+        =================================================== */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
-
           <Button
-            to={formationUrl}
+            to={to}
             state={RESERVE_STATE}
             variant={
               isAvailable
@@ -346,16 +316,17 @@ export function FormationCard({
             }
             icon="arrow"
           >
-            {getStatusText(day)}
+            {isAvailable
+              ? "Réserver"
+              : "Demander une date"}
           </Button>
 
           <Button
-            to={formationUrl}
+            to={to}
             variant="link-dark"
           >
             Voir la formation
           </Button>
-
         </div>
       </Reveal>
     </article>
