@@ -1,153 +1,222 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { cn } from "@/utils/cn";
 
-import { useFormations } from "@/hooks/useFormations";
-import { getStorageUrl } from "@/services/api";
+import {
+  CPF_PRICE,
+  eur,
+  priceFrom,
+  scheduledFormations,
+  upcomingFormations,
+} from "@/data/formations";
+
+import { mainProgramme } from "@/data/programmes";
+import { site } from "@/data/site";
+import { useSiteUI } from "@/context/SiteUIContext";
+
+import { useFormationInformation } from "@/hooks/useFormationInformation";
+
+import { Button } from "@/components/ui/Button";
+import { ImageReveal } from "@/components/ui/ImageReveal";
+import { Reveal } from "@/components/ui/Reveal";
+import { SectionHeader } from "@/components/ui/SectionHeader";
+
+import { FormationCard, Meta } from "./FormationCard";
 
 export function FormationGrid() {
+  const p = mainProgramme;
+  const { requestDate } = useSiteUI();
+
+  // Dynamic Formation Information
   const {
-    formations = [],
-    loading,
-    error,
-  } = useFormations();
+    data: formationInformation,
+    loading: formationInformationLoading,
+    error: formationInformationError,
+  } = useFormationInformation();
 
-  if (loading) {
-    return (
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="animate-pulse overflow-hidden bg-gray-100"
-              >
-                <div className="h-72 bg-gray-200" />
+  const cards = scheduledFormations.slice(0, 3);
 
-                <div className="space-y-4 p-6">
-                  <div className="h-4 w-24 bg-gray-200" />
-                  <div className="h-7 w-3/4 bg-gray-200" />
-                  <div className="h-4 w-full bg-gray-200" />
-                  <div className="h-4 w-2/3 bg-gray-200" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-red-600">{error}</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (formations.length === 0) {
-    return (
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="py-12 text-center">
-            <p className="text-gray-500">
-              Aucune formation disponible pour le moment.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const information = formationInformation?.information;
 
   return (
-    <section className="py-20">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {formations.map((formation, index) => {
-            const image = getStorageUrl(
-              formation.image ??
-                formation.cover_image ??
-                formation.thumbnail ??
-                null
-            );
+    <section
+      id="formations"
+      className="scroll-mt-16 bg-white py-24 lg:py-40"
+    >
+      <div className="wrap">
 
-            return (
-              <motion.article
-                key={formation.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{
-                  duration: 0.6,
-                  delay: index * 0.08,
-                }}
-                className="group overflow-hidden bg-white"
-              >
-                <Link to={`/formations/${formation.slug}`}>
-                  <div className="relative h-72 overflow-hidden bg-gray-100">
-                    {image ? (
-                      <img
-                        src={image}
-                        alt={formation.title ?? "Formation"}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                        <span className="text-sm text-gray-400">
-                          Aucune image
-                        </span>
-                      </div>
-                    )}
+        {/* =========================================
+            FORMATION INFORMATION - DYNAMIC
+            ========================================= */}
+        <SectionHeader
+          label={
+            information?.eyebrow ??
+            "4554"
+          }
+          title={[
+            information?.title ?? "454",
+            information?.subtitle ?? "454",
+          ]}
+          subtitle={
+            information?.description ??
+            "45454"
+          }
+        />
 
-                    <div className="absolute inset-0 bg-black/0 transition-colors duration-500 group-hover:bg-black/10" />
-                  </div>
+        {/* Optional error - only for development */}
+        {formationInformationError && (
+          <p className="mt-4 text-sm text-red-500">
+            {formationInformationError}
+          </p>
+        )}
+
+        {/* =========================================
+            EVERYTHING BELOW STAYS THE SAME
+            ========================================= */}
+
+        {/* Programme — editorial magazine feature */}
+        <article className="group mt-20 grid gap-10 lg:mt-28 lg:grid-cols-12 lg:items-end lg:gap-14">
+          <Link
+            to="/formations"
+            className="block lg:col-span-6"
+            aria-label={`Découvrir la formation ${p.title}`}
+          >
+            <ImageReveal
+              src={p.image.src}
+              alt={p.image.alt}
+              className="aspect-[4/5] w-full sm:aspect-[4/3] lg:aspect-[4/5]"
+              priority
+            />
+          </Link>
+
+          <div className="lg:col-span-6 lg:pb-4">
+            <Reveal>
+              <p className="label flex items-center gap-4 text-ink/40">
+                <span className="font-serif text-lg tracking-normal text-ink/60">
+                  01
+                </span>
+
+                <span className="h-px w-6 bg-current" />
+
+                {p.eyebrow}
+              </p>
+
+              <h3 className="display mt-5 text-[clamp(2.2rem,6.5vw,4.25rem)]">
+                <Link
+                  to="/formations"
+                  className="transition-opacity duration-500 hover:opacity-60"
+                >
+                  {p.titleLines.map((l, i) => (
+                    <span key={i} className="block">
+                      {l}
+                    </span>
+                  ))}
                 </Link>
+              </h3>
 
-                <div className="p-6">
-                  {formation.category && (
-                    <p className="mb-3 text-xs uppercase tracking-[0.2em] text-[#C9A96A]">
-                      {typeof formation.category === "string"
-                        ? formation.category
-                        : formation.category.name}
-                    </p>
-                  )}
+              <p className="mt-3 font-serif text-xl italic text-ink/55 md:text-2xl">
+                {p.subtitle}
+              </p>
 
-                  <h3 className="mb-3 font-serif text-2xl text-[#18453B]">
-                    {formation.title}
-                  </h3>
+              <p className="mt-6 max-w-md text-base font-light leading-relaxed text-ink/60">
+                {p.short}
+              </p>
+            </Reveal>
 
-                  {(formation.short_description ||
-                    formation.description) && (
-                    <p className="mb-5 line-clamp-3 text-sm leading-6 text-gray-600">
-                      {formation.short_description ||
-                        formation.description}
-                    </p>
-                  )}
+            <Reveal delay={0.15}>
+              <dl className="mt-9 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
+                <Meta
+                  label="Durée"
+                  value={p.duration}
+                  sub={p.durationDetail}
+                />
 
-                  <Link
-                    to={`/formations/${formation.slug}`}
-                    className="inline-flex items-center gap-2 text-sm font-medium uppercase tracking-[0.15em] text-[#18453B] transition-colors hover:text-[#C9A96A]"
-                  >
-                    Découvrir la formation
+                <Meta
+                  label="Villes"
+                  value={`${site.cities.length} villes`}
+                  sub={site.cities.join(" · ")}
+                />
 
-                    <ArrowRight
-                      size={16}
-                      className="transition-transform duration-300 group-hover:translate-x-1"
-                    />
-                  </Link>
-                </div>
-              </motion.article>
-            );
-          })}
+                <Meta
+                  label="Tarif"
+                  value={`dès ${priceFrom}`}
+                  sub={`CPF ${eur(CPF_PRICE)}`}
+                  className="col-span-2 sm:col-span-1"
+                />
+              </dl>
+
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-8">
+                <Button
+                  to="/formations"
+                  variant="dark"
+                  icon="arrow"
+                >
+                  Voir les dates & réserver
+                </Button>
+              </div>
+            </Reveal>
+          </div>
+        </article>
+
+        {/* Bookable formations */}
+        <div className="mt-24 lg:mt-36">
+          <Reveal>
+            <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <p className="label text-ink/50">
+                Prochaines formations — réservation en ligne
+              </p>
+
+              <Button
+                to="/formations"
+                variant="link-dark"
+                icon="arrow"
+              >
+                Toutes les formations
+              </Button>
+            </div>
+          </Reveal>
+
+          <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
+            {cards.map((f, i) => (
+              <FormationCard
+                key={f.slug}
+                formation={f}
+                index={i}
+                className={cn(i === 1 && "lg:mt-20")}
+                imageAspect={
+                  i === 1
+                    ? "aspect-[4/5]"
+                    : "aspect-[4/3]"
+                }
+                delay={i * 0.08}
+              />
+            ))}
+          </div>
+
+          {upcomingFormations.length > 0 && (
+            <Reveal>
+              <div className="mt-16 flex flex-col gap-4 border-t border-ink/10 pt-7 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-light text-ink/60">
+                  Dates à venir:{" "}
+                  <span className="text-ink">
+                    {upcomingFormations
+                      .map((f) => f.city)
+                      .join(" · ")}
+                  </span>
+                </p>
+
+                <Button
+                  variant="link-dark"
+                  icon="arrow"
+                  onClick={requestDate}
+                >
+                  Demander une date
+                </Button>
+              </div>
+            </Reveal>
+          )}
         </div>
+
       </div>
     </section>
   );
 }
-
-export default FormationGrid;
