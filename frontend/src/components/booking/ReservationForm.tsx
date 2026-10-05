@@ -1,445 +1,819 @@
-import { Check } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { cn } from "@/utils/cn";
-import type { Formation } from "@/types/useFormation";
+import { getFormation } from "@/services/api";
+import type {
+  Formation,
+  FormationDay,
+} from "@/types/formation";
 
+import { useScrollToState } from "@/hooks/useScrollToState";
 import { scrollToId } from "@/lib/scroll";
+
 import { Button } from "@/components/ui/Button";
+import { Headline } from "@/components/ui/Headline";
+import { ImageReveal } from "@/components/ui/ImageReveal";
+import { Reveal } from "@/components/ui/Reveal";
 
-type Status = "idle" | "processing" | "done";
+import { ReservationForm } from "@/components/booking/ReservationForm";
 
-const inputCls =
-  "w-full appearance-none rounded-none border-b border-ink/20 bg-transparent py-3 text-[15px] text-ink outline-none transition-colors duration-500 placeholder:text-ink/30 focus:border-ink";
+// =========================================================
+// HELPERS
+// =========================================================
 
-function Field({
+function Row({
   label,
-  children,
-  className,
+  value,
+  sub,
 }: {
   label: string;
-  children: ReactNode;
-  className?: string;
+  value: ReactNode;
+  sub?: ReactNode;
 }) {
   return (
-    <label className={cn("block", className)}>
-      <span className="label block text-[10px] text-ink/50">
+    <div className="flex items-baseline justify-between gap-6 py-4">
+      <dt className="label shrink-0 text-[10px] text-ink/45">
         {label}
-      </span>
+      </dt>
 
-      {children}
-    </label>
+      <dd className="text-right">
+        <span className="font-serif text-xl leading-tight">
+          {value}
+        </span>
+
+        {sub && (
+          <span className="mt-0.5 block text-xs font-light text-ink/50">
+            {sub}
+          </span>
+        )}
+      </dd>
+    </div>
   );
 }
 
-function PayPalMark({
-  className,
-}: {
-  className?: string;
-}) {
-  return (
-    <span
-      aria-label="PayPal"
-      className={cn(
-        "font-sans text-[15px] font-bold italic normal-case leading-none tracking-tight",
-        className
-      )}
-    >
-      Pay<span className="font-medium">Pal</span>
-    </span>
-  );
-}
+// =========================================================
+// PRICE
+// =========================================================
 
-function formatDate(date?: string | null) {
-  if (!date) return "Date à venir";
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
-}
-
-function formatPrice(value?: number | string | null) {
-  if (value === null || value === undefined || value === "") {
+function formatPrice(
+  value: number | string | null | undefined
+): string {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return "À venir";
   }
 
-  return `${Number(value).toLocaleString("fr-FR")} €`;
+  const number = Number(value);
+
+  if (Number.isNaN(number)) {
+    return "À venir";
+  }
+
+  return `${number.toLocaleString("fr-FR")} €`;
 }
 
-export function ReservationForm({
-  formation,
-}: {
-  formation: Formation;
-}) {
+// =========================================================
+// DATE
+// =========================================================
+
+function formatDate(
+  date: string | null | undefined
+): string {
+  if (!date) {
+    return "Date à venir";
+  }
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "Date à venir";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parsed);
+}
+
+// =========================================================
+// DATE RANGE
+// =========================================================
+
+function formatDateRange(
+  day: FormationDay | null
+): string {
+  if (!day) {
+    return "Date à venir";
+  }
+
+  if (!day.start_date) {
+    return "Date à venir";
+  }
+
+  const start = new Date(day.start_date);
+
+  if (Number.isNaN(start.getTime())) {
+    return "Date à venir";
+  }
+
+  if (!day.end_date) {
+    return formatDate(day.start_date);
+  }
+
+  const end = new Date(day.end_date);
+
+  if (Number.isNaN(end.getTime())) {
+    return formatDate(day.start_date);
+  }
+
+  const startDay = start.getDate();
+  const endDay = end.getDate();
+
+  const startMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    { month: "long" }
+  ).format(start);
+
+  const endMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    { month: "long" }
+  ).format(end);
+
+  const year = end.getFullYear();
+
   /*
-   * Everything comes from Laravel.
+   * Same day
    *
-   * No:
-   * @/data/formations
-   * @/data/programmes
+   * 10 septembre 2026
    */
-
-  const futureDays = formation.formationDays ?? [];
-
-  /*
-   * First available upcoming session.
-   */
-  const selectedDay =
-    futureDays.find(
-      (day) =>
-        Number(day.remaining_places) > 0 &&
-        day.status !== "full" &&
-        day.status !== "completed"
-    ) ?? futureDays[0];
-
-  const isScheduled = Boolean(selectedDay);
-
-  const city = selectedDay?.city ?? "À définir";
-
-  const startDate = selectedDay?.start_date;
-
-  const personalPrice = selectedDay?.personal_price;
-
-  const cpfPrice = selectedDay?.cpf_price;
-
-  /*
-   * The API currently does not expose a deposit field.
-   *
-   * Once you add "deposit" to FormationDay / API,
-   * this will automatically use it.
-   */
-  const deposit =
-    selectedDay?.deposit !== undefined &&
-    selectedDay?.deposit !== null
-      ? Number(selectedDay.deposit)
-      : null;
-
-  /*
-   * Payment is only possible when:
-   * - there is a scheduled session
-   * - there is a price
-   * - there is a deposit returned by the API
-   */
-  const payable =
-    isScheduled &&
-    personalPrice !== null &&
-    personalPrice !== undefined &&
-    deposit !== null;
-
-  const [status, setStatus] =
-    useState<Status>("idle");
-
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    postalCode: "",
-    city: "",
-    wish: "",
-  });
-
-  const set =
-    (key: keyof typeof form) =>
-    (value: string) => {
-      setForm((state) => ({
-        ...state,
-        [key]: value,
-      }));
-    };
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (status !== "idle") return;
-
-    setStatus("processing");
-
-    window.setTimeout(() => {
-      setStatus("done");
-      scrollToId("reservation");
-    }, 1200);
-  };
-
-  /*
-   * =========================
-   * CONFIRMATION
-   * =========================
-   */
-
-  if (status === "done") {
-    return (
-      <div className="border border-ink/15 bg-ivory p-8 md:p-12">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-ink/20">
-          <Check
-            size={22}
-            strokeWidth={1.25}
-          />
-        </span>
-
-        <p className="label mt-8 text-ink/50">
-          Confirmation
-        </p>
-
-        <h3 className="display mt-4 text-[clamp(2.25rem,7vw,3.75rem)]">
-          {payable ? (
-            <>
-              Réservation
-              <br />
-              confirmée
-            </>
-          ) : (
-            <>
-              Demande
-              <br />
-              envoyée
-            </>
-          )}
-        </h3>
-
-        <p className="mt-6 max-w-md text-base font-light leading-relaxed text-ink/70">
-          Merci {form.firstName}.{" "}
-
-          {payable
-            ? `Votre acompte de ${formatPrice(
-                deposit
-              )} a bien été enregistré par PayPal pour la formation `
-            : "Votre demande a bien été enregistrée pour la formation "}
-
-          <span className="font-medium text-ink">
-            {formation.title} — {city}
-            {isScheduled && startDate
-              ? `, ${formatDate(startDate)}`
-              : form.wish
-                ? ` (${form.wish})`
-                : ""}
-          </span>
-          .
-        </p>
-
-        <p className="mt-3 max-w-md text-base font-light leading-relaxed text-ink/70">
-          AS Academy vous confirmera votre inscription à{" "}
-          <span className="font-medium text-ink">
-            {form.email}
-          </span>
-          .
-        </p>
-
-        <p className="mt-5 text-xs font-light text-ink/40">
-          Démonstration : aucun paiement réel n'a été effectué.
-        </p>
-
-        <div className="mt-10">
-          <Button
-            to="/formations"
-            variant="dark"
-            icon="arrow"
-          >
-            Toutes les formations
-          </Button>
-        </div>
-      </div>
-    );
+  if (
+    startDay === endDay &&
+    start.getMonth() === end.getMonth() &&
+    start.getFullYear() === end.getFullYear()
+  ) {
+    return `${startDay} ${startMonth} ${year}`;
   }
 
   /*
-   * =========================
-   * FORM
-   * =========================
+   * Same month
+   *
+   * 10 — 12 septembre 2026
    */
+  if (
+    start.getMonth() === end.getMonth() &&
+    start.getFullYear() === end.getFullYear()
+  ) {
+    return `${startDay} — ${endDay} ${endMonth} ${year}`;
+  }
+
+  /*
+   * Different months
+   *
+   * 28 septembre — 2 octobre 2026
+   */
+  return `${startDay} ${startMonth} — ${endDay} ${endMonth} ${year}`;
+}
+
+// =========================================================
+// SELECT DAY
+// =========================================================
+
+function getSelectedDay(
+  formation: Formation
+): FormationDay | null {
+  const days = Array.isArray(formation.formationDays)
+    ? formation.formationDays
+    : [];
+
+  if (days.length === 0) {
+    return null;
+  }
+
+  const available = days.find(
+    (day) =>
+      Number(day.remaining_places) > 0 &&
+      day.status !== "full" &&
+      day.status !== "completed"
+  );
+
+  return available ?? days[0] ?? null;
+}
+
+// =========================================================
+// PAGE
+// =========================================================
+
+export function FormationDetailPage() {
+  const { slug } = useParams<{ slug: string }>();
+
+  useScrollToState();
+
+  const [formation, setFormation] =
+    useState<Formation | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  // =======================================================
+  // LOAD FROM LARAVEL API
+  // =======================================================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      if (!slug) {
+        setError("Formation introuvable.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await getFormation(slug);
+
+        if (!cancelled) {
+          setFormation(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Impossible de charger la formation."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  // =======================================================
+  // SELECTED DAY
+  // =======================================================
+
+  const selectedDay = useMemo(() => {
+    if (!formation) {
+      return null;
+    }
+
+    return getSelectedDay(formation);
+  }, [formation]);
+
+  // =======================================================
+  // LOADING
+  // =======================================================
+
+  if (loading) {
+    return (
+      <main className="bg-ivory">
+        <section className="pt-32 pb-24 lg:pt-40">
+          <div className="wrap">
+            <p className="label text-ink/50">
+              Chargement de la formation...
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // =======================================================
+  // ERROR
+  // =======================================================
+
+  if (error || !formation) {
+    return (
+      <main className="bg-ivory">
+        <section className="pt-32 pb-24 lg:pt-40">
+          <div className="wrap">
+            <Link
+              to="/formations"
+              className="label inline-flex items-center gap-3 text-[10px] text-ink/50"
+            >
+              <ArrowLeft
+                size={14}
+                strokeWidth={1.5}
+              />
+
+              Toutes les formations
+            </Link>
+
+            <h1 className="display mt-10 text-5xl">
+              Formation introuvable
+            </h1>
+
+            <p className="mt-5 text-ink/50">
+              {error ??
+                "Cette formation n'existe pas ou n'est plus disponible."}
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // =======================================================
+  // SAFE DATA
+  // =======================================================
+
+  const programme = formation.programme;
+
+  const steps = Array.isArray(formation.steps)
+    ? formation.steps
+    : [];
+
+  const days = Array.isArray(
+    formation.formationDays
+  )
+    ? formation.formationDays
+    : [];
+
+  const image =
+    selectedDay?.image ||
+    formation.image ||
+    null;
+
+  const city =
+    selectedDay?.city ||
+    "À définir";
+
+  const dates =
+    formatDateRange(selectedDay);
+
+  const duration =
+    programme?.duration ||
+    "À définir";
+
+  const personalPrice =
+    selectedDay?.personal_price ??
+    formation.personal_price;
+
+  const cpfPrice =
+    selectedDay?.cpf_price ?? null;
+
+  const deposit =
+    formation.deposit_amount;
+
+  const hasAvailablePlace =
+    Boolean(
+      selectedDay &&
+        Number(selectedDay.remaining_places) > 0 &&
+        selectedDay.status !== "full" &&
+        selectedDay.status !== "completed"
+    );
+
+  // =======================================================
+  // IMAGE
+  // =======================================================
+
+  const imageSrc =
+    image ||
+    "/images/placeholder.jpg";
+
+  // =======================================================
+  // DESCRIPTION
+  // =======================================================
+
+  const description =
+    formation.description || "";
+
+  // =======================================================
+  // RENDER
+  // =======================================================
 
   return (
-    <form
-      onSubmit={submit}
-      className="border border-ink/15 bg-ivory p-6 sm:p-8 md:p-10"
-    >
-      <p className="label text-ink/50">
-        Vos coordonnées
-      </p>
+    <article className="bg-ivory">
 
-      <div className="mt-6 grid gap-x-8 gap-y-6 sm:grid-cols-2">
-        <Field label="Prénom">
-          <input
-            required
-            autoComplete="given-name"
-            className={inputCls}
-            value={form.firstName}
-            onChange={(e) =>
-              set("firstName")(e.target.value)
-            }
-            placeholder="Votre prénom"
-          />
-        </Field>
+      {/* ===================================================
+          HERO / INFORMATION
+      =================================================== */}
 
-        <Field label="Nom">
-          <input
-            required
-            autoComplete="family-name"
-            className={inputCls}
-            value={form.lastName}
-            onChange={(e) =>
-              set("lastName")(e.target.value)
-            }
-            placeholder="Votre nom"
-          />
-        </Field>
+      <section className="pt-28 pb-20 lg:pt-36 lg:pb-28">
+        <div className="wrap">
 
-        <Field label="Email">
-          <input
-            required
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            className={inputCls}
-            value={form.email}
-            onChange={(e) =>
-              set("email")(e.target.value)
-            }
-            placeholder="vous@exemple.com"
-          />
-        </Field>
-
-        <Field label="Téléphone">
-          <input
-            required
-            type="tel"
-            autoComplete="tel"
-            inputMode="tel"
-            className={inputCls}
-            value={form.phone}
-            onChange={(e) =>
-              set("phone")(e.target.value)
-            }
-            placeholder="06 00 00 00 00"
-          />
-        </Field>
-
-        <Field
-          label="Adresse"
-          className="sm:col-span-2"
-        >
-          <input
-            required
-            autoComplete="street-address"
-            className={inputCls}
-            value={form.address}
-            onChange={(e) =>
-              set("address")(e.target.value)
-            }
-            placeholder="Numéro et rue"
-          />
-        </Field>
-
-        <Field label="Code postal">
-          <input
-            required
-            autoComplete="postal-code"
-            inputMode="numeric"
-            className={inputCls}
-            value={form.postalCode}
-            onChange={(e) =>
-              set("postalCode")(e.target.value)
-            }
-            placeholder="33400"
-          />
-        </Field>
-
-        <Field label="Ville">
-          <input
-            required
-            autoComplete="address-level2"
-            className={inputCls}
-            value={form.city}
-            onChange={(e) =>
-              set("city")(e.target.value)
-            }
-            placeholder="Votre ville"
-          />
-        </Field>
-
-        {!payable && (
-          <Field
-            label="Date ou période souhaitée"
-            className="sm:col-span-2"
+          {/* BACK */}
+          <Link
+            to="/formations"
+            className="label inline-flex items-center gap-3 text-[10px] text-ink/50 transition-colors hover:text-ink"
           >
-            <input
-              required
-              className={inputCls}
-              value={form.wish}
-              onChange={(e) =>
-                set("wish")(e.target.value)
-              }
-              placeholder="Ex. : mi-octobre, un week-end de novembre…"
+            <ArrowLeft
+              size={14}
+              strokeWidth={1.5}
             />
-          </Field>
-        )}
-      </div>
 
-      {payable && (
-        <div className="mt-12 border-t border-ink/15 pt-8">
-          <div className="flex items-baseline justify-between gap-4">
-            <p className="label text-ink/50">
-              Acompte à régler
-            </p>
+            Toutes les formations
+          </Link>
 
-            <p className="font-serif text-4xl leading-none">
-              {formatPrice(deposit)}
-            </p>
-          </div>
+          <div className="mt-10 grid gap-12 lg:mt-14 lg:grid-cols-12 lg:gap-16">
 
-          <div className="mt-6 flex items-center gap-3 border border-ink bg-ink px-5 py-4 text-ivory">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-ivory bg-ivory text-ink">
-              <Check
-                size={13}
-                strokeWidth={2.2}
+            {/* =================================================
+                IMAGE
+            ================================================= */}
+
+            <div className="lg:col-span-6">
+              <ImageReveal
+                src={imageSrc}
+                alt={formation.title}
+                className="aspect-[4/5] w-full"
+                priority
               />
-            </span>
+            </div>
 
-            <span className="font-serif text-lg">
-              Paiement par{" "}
-              <PayPalMark className="text-[19px] text-ivory" />
-            </span>
+            {/* =================================================
+                CONTENT
+            ================================================= */}
+
+            <div className="lg:col-span-5 lg:col-start-8">
+
+              {/* PROGRAMME */}
+              <p className="label text-ink/50">
+                {programme?.name ||
+                  formation.title}
+              </p>
+
+              {/* TITLE */}
+              <Headline
+                as="h1"
+                immediate
+                lines={[formation.title]}
+                className="mt-5 text-[clamp(2.75rem,9vw,5.5rem)]"
+              />
+
+              {/* CITY */}
+              <p className="mt-5 font-serif text-2xl leading-none text-ink/70 md:text-3xl">
+                {city}
+              </p>
+
+              {/* DATE */}
+              <p className="mt-3 text-base font-light text-ink/55">
+                {dates}
+              </p>
+
+              {/* DESCRIPTION */}
+              <Reveal delay={0.2}>
+                <div
+                  className="prose prose-sm mt-8 max-w-none text-ink/70"
+                  dangerouslySetInnerHTML={{
+                    __html: description,
+                  }}
+                />
+              </Reveal>
+
+              {/* =================================================
+                  INFORMATION TABLE
+              ================================================= */}
+
+              <Reveal delay={0.3}>
+                <dl className="mt-10 divide-y divide-ink/10 border-y border-ink/10">
+
+                  <Row
+                    label="Durée"
+                    value={duration}
+                  />
+
+                  <Row
+                    label="Ville"
+                    value={city}
+                  />
+
+                  <Row
+                    label="Dates"
+                    value={dates}
+                  />
+
+                  <Row
+                    label="Places restantes"
+                    value={
+                      selectedDay
+                        ? selectedDay.remaining_places
+                        : "À définir"
+                    }
+                  />
+
+                  <Row
+                    label="Financement personnel"
+                    value={formatPrice(
+                      personalPrice
+                    )}
+                  />
+
+                  {selectedDay?.cpf_eligible &&
+                    cpfPrice !== null && (
+                      <Row
+                        label="Financement CPF"
+                        value={formatPrice(
+                          cpfPrice
+                        )}
+                      />
+                    )}
+
+                  {deposit !== null &&
+                    deposit !== undefined && (
+                      <Row
+                        label="Acompte"
+                        value={formatPrice(
+                          deposit
+                        )}
+                      />
+                    )}
+
+                </dl>
+              </Reveal>
+
+              {/* =================================================
+                  PROGRAMME STEPS
+              ================================================= */}
+
+              {steps.length > 0 && (
+                <Reveal delay={0.35}>
+                  <p className="label mt-10 text-ink/50">
+                    Programme
+                  </p>
+
+                  <ol className="mt-4 grid gap-4">
+                    {steps.map(
+                      (step, index) => (
+                        <li
+                          key={`${step.title}-${index}`}
+                          className="flex gap-4"
+                        >
+                          <span className="label shrink-0 text-[10px] text-ink/35">
+                            {String(
+                              index + 1
+                            ).padStart(2, "0")}
+                          </span>
+
+                          <div>
+                            <p className="font-serif text-lg leading-snug">
+                              {step.title}
+                            </p>
+
+                            {step.description && (
+                              <p className="mt-1 text-sm font-light leading-relaxed text-ink/55">
+                                {
+                                  step.description
+                                }
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      )
+                    )}
+                  </ol>
+                </Reveal>
+              )}
+
+              {/* =================================================
+                  CTA
+              ================================================= */}
+
+              <div className="mt-10">
+                <Button
+                  variant="dark"
+                  size="lg"
+                  icon="arrow"
+                  className="w-full sm:w-auto"
+                  onClick={() =>
+                    scrollToId("reservation")
+                  }
+                >
+                  {hasAvailablePlace
+                    ? "Réserver ma place"
+                    : "Demander une date"}
+                </Button>
+              </div>
+
+            </div>
           </div>
-
-          <p className="mt-4 border border-ink/15 bg-white px-5 py-4 text-sm font-light leading-relaxed text-ink/60">
-            En validant, vous serez redirigée vers
-            PayPal pour régler l'acompte de{" "}
-            {formatPrice(deposit)}, puis ramenée sur AS
-            Academy pour la confirmation. Le solde est
-            réglé auprès de l'académie.
-          </p>
         </div>
+      </section>
+
+      {/* =====================================================
+          OTHER DATES
+      ===================================================== */}
+
+      {days.length > 0 && (
+        <section className="border-t border-ink/10 bg-white py-20 lg:py-28">
+          <div className="wrap">
+
+            <Reveal>
+              <p className="label text-ink/50">
+                Sessions disponibles
+              </p>
+
+              <Headline
+                lines={[
+                  "Choisissez",
+                  "votre session",
+                ]}
+                className="mt-5 max-w-xl text-[clamp(2.5rem,7vw,4.5rem)]"
+              />
+            </Reveal>
+
+            <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+              {days.map((day) => {
+                const available =
+                  Number(
+                    day.remaining_places
+                  ) > 0 &&
+                  day.status !== "full" &&
+                  day.status !== "completed";
+
+                return (
+                  <div
+                    key={day.id}
+                    className="border border-ink/10 bg-ivory p-6"
+                  >
+
+                    <p className="label text-[10px] text-ink/45">
+                      {day.city}
+                    </p>
+
+                    <p className="mt-4 font-serif text-2xl">
+                      {formatDateRange(day)}
+                    </p>
+
+                    <div className="mt-6 space-y-2 text-sm font-light text-ink/60">
+
+                      <p>
+                        {day.remaining_places}{" "}
+                        place
+                        {day.remaining_places !==
+                        1
+                          ? "s"
+                          : ""}{" "}
+                        restante
+                        {day.remaining_places !==
+                        1
+                          ? "s"
+                          : ""}
+                      </p>
+
+                      <p>
+                        {formatPrice(
+                          day.personal_price
+                        )}
+                      </p>
+
+                    </div>
+
+                    <div className="mt-6">
+                      <span
+                        className={
+                          available
+                            ? "text-xs uppercase tracking-[0.15em] text-ink"
+                            : "text-xs uppercase tracking-[0.15em] text-ink/35"
+                        }
+                      >
+                        {available
+                          ? "Disponible"
+                          : "Complet"}
+                      </span>
+                    </div>
+
+                  </div>
+                );
+              })}
+
+            </div>
+          </div>
+        </section>
       )}
 
-      <div className="mt-10 flex flex-col gap-4 border-t border-ink/15 pt-8 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          type="submit"
-          variant="dark"
-          size="lg"
-          className="w-full sm:w-auto"
-          disabled={status !== "idle"}
-        >
-          {status === "processing" ? (
-            "Traitement en cours…"
-          ) : !payable ? (
-            "Envoyer ma demande"
-          ) : (
-            <>
-              Payer {formatPrice(deposit)} avec{" "}
-              <PayPalMark className="text-ivory" />
-            </>
-          )}
-        </Button>
+      {/* =====================================================
+          RESERVATION
+      ===================================================== */}
 
-        <p className="text-[10px] uppercase tracking-[0.22em] text-ink/40">
-          {payable
-            ? "Paiement PayPal · Démonstration"
-            : "Sans engagement"}
-        </p>
-      </div>
-    </form>
+      <section
+        id="reservation"
+        className="scroll-mt-20 border-t border-ink/10 bg-white py-20 lg:py-28"
+      >
+        <div className="wrap grid gap-12 lg:grid-cols-12 lg:gap-16">
+
+          {/* =================================================
+              LEFT
+          ================================================= */}
+
+          <div className="lg:col-span-4">
+
+            <Reveal>
+              <p className="label flex items-center gap-4 text-ink/50">
+                <span className="h-px w-10 bg-current" />
+                Réservation
+              </p>
+            </Reveal>
+
+            <Headline
+              lines={
+                hasAvailablePlace
+                  ? [
+                      "Réserver",
+                      "ma place",
+                    ]
+                  : [
+                      "Demander",
+                      "une date",
+                    ]
+              }
+              className="mt-6 text-[clamp(2.5rem,7vw,4.5rem)]"
+            />
+
+            <Reveal delay={0.2}>
+              <p className="mt-6 max-w-sm text-base font-light leading-relaxed text-ink/60">
+
+                {hasAvailablePlace ? (
+                  <>
+                    Remplissez vos
+                    coordonnées pour
+                    réserver votre place
+                    à{" "}
+                    <span className="font-medium text-ink">
+                      {city}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Cette session n'est
+                    plus disponible.
+                    Laissez vos
+                    coordonnées pour
+                    demander une nouvelle
+                    date.
+                  </>
+                )}
+
+              </p>
+
+              <dl className="mt-8 divide-y divide-ink/10 border-t border-ink/10">
+
+                <Row
+                  label="Formation"
+                  value={formation.title}
+                />
+
+                <Row
+                  label="Ville"
+                  value={city}
+                />
+
+                <Row
+                  label="Dates"
+                  value={dates}
+                />
+
+                <Row
+                  label="Prix"
+                  value={formatPrice(
+                    personalPrice
+                  )}
+                />
+
+              </dl>
+            </Reveal>
+
+          </div>
+
+          {/* =================================================
+              FORM
+          ================================================= */}
+
+          <div className="lg:col-span-7 lg:col-start-6">
+
+            <Reveal delay={0.15}>
+              <ReservationForm
+                formation={formation}
+              />
+            </Reveal>
+
+          </div>
+
+        </div>
+      </section>
+
+    </article>
   );
 }
+
+export default FormationDetailPage;
