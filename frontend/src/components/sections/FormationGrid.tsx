@@ -1,5 +1,3 @@
-import { cn } from "@/utils/cn";
-
 import { useFormations } from "@/hooks/useFormations";
 import { useFormationInformation } from "@/hooks/useFormationInformation";
 
@@ -14,11 +12,25 @@ import {
 } from "./FormationCard";
 
 export function FormationGrid() {
+  // =========================================================
+  // FORMATIONS
+  // useFormations() returns:
+  // {
+  //   data: Formation[],
+  //   loading: boolean,
+  //   error: string | null
+  // }
+  // =========================================================
+
   const {
-    data: formationData,
+    data: formations,
     loading: formationsLoading,
     error,
   } = useFormations();
+
+  // =========================================================
+  // FORMATION INFORMATION
+  // =========================================================
 
   const {
     data: formationInformation,
@@ -27,6 +39,10 @@ export function FormationGrid() {
 
   const information =
     formationInformation?.information;
+
+  // =========================================================
+  // LOADING
+  // =========================================================
 
   if (informationLoading || formationsLoading) {
     return (
@@ -43,6 +59,10 @@ export function FormationGrid() {
     );
   }
 
+  // =========================================================
+  // ERROR
+  // =========================================================
+
   if (error) {
     return (
       <section
@@ -58,21 +78,60 @@ export function FormationGrid() {
     );
   }
 
-  // IMPORTANT
-  // useFormations() returns the array directly
-  const formations = Array.isArray(formationData)
-    ? formationData
+  // =========================================================
+  // SAFETY
+  //
+  // formations MUST always be an array.
+  // =========================================================
+
+  const safeFormations: Formation[] = Array.isArray(
+    formations
+  )
+    ? formations
     : [];
 
-  const cards = formations.flatMap(
-    (formation) =>
-      (formation.formationDays ?? []).map(
-        (day) => ({
+  // =========================================================
+  // CREATE ONE CARD FOR EACH FORMATION DAY
+  //
+  // Example:
+  //
+  // Formation Extension de Cils
+  //   Paris
+  //   Toulouse
+  //   Bruxelles
+  //   Bordeaux
+  //
+  // becomes:
+  //
+  // Card 1 = Paris
+  // Card 2 = Toulouse
+  // Card 3 = Bruxelles
+  // Card 4 = Bordeaux
+  // =========================================================
+
+  const cards: {
+    formation: Formation;
+    day: FormationDay;
+  }[] = safeFormations.flatMap(
+    (formation: Formation) => {
+      const days = Array.isArray(
+        formation.formationDays
+      )
+        ? formation.formationDays
+        : [];
+
+      return days.map(
+        (day: FormationDay) => ({
           formation,
           day,
         })
-      )
+      );
+    }
   );
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
     <section
@@ -81,7 +140,9 @@ export function FormationGrid() {
     >
       <div className="wrap">
 
-        {/* FORMATION INFORMATION */}
+        {/* =================================================
+            FORMATION INFORMATION
+        ================================================= */}
 
         <SectionHeader
           label={
@@ -99,12 +160,17 @@ export function FormationGrid() {
           }
         />
 
-        {/* FORMATIONS */}
+        {/* =================================================
+            FORMATIONS GRID
+        ================================================= */}
 
         <div className="mt-24 lg:mt-36">
 
+          {/* HEADER */}
+
           <Reveal>
             <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+
               <p className="label text-ink/50">
                 Prochaines formations —
                 réservation en ligne
@@ -117,8 +183,13 @@ export function FormationGrid() {
               >
                 Toutes les formations
               </Button>
+
             </div>
           </Reveal>
+
+          {/* =================================================
+              EMPTY
+          ================================================= */}
 
           {cards.length === 0 ? (
             <div className="mt-14 border border-ink/10 p-8">
@@ -128,9 +199,22 @@ export function FormationGrid() {
               </p>
             </div>
           ) : (
+
+            /* =================================================
+               GRID
+            ================================================= */
+
             <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
+
               {cards.map(
-                ({ formation, day }, index) => (
+                (
+                  {
+                    formation,
+                    day,
+                  },
+                  index
+                ) => (
+
                   <FormationCard
                     key={`${formation.id}-${day.id}`}
                     formation={formation}
@@ -148,13 +232,17 @@ export function FormationGrid() {
                     }
                     delay={index * 0.08}
                   />
+
                 )
               )}
+
             </div>
           )}
+
         </div>
       </div>
     </section>
   );
 }
+
 export default FormationGrid;
