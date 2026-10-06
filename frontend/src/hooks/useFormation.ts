@@ -18,7 +18,7 @@ export function useFormation(
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function loadFormation() {
       if (!slug) {
         setData(null);
         setError(
@@ -55,7 +55,7 @@ export function useFormation(
       }
     }
 
-    load();
+    loadFormation();
 
     return () => {
       cancelled = true;

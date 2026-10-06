@@ -10,9 +10,9 @@ export const RESERVE_STATE = {
   scrollTo: "reservation",
 } as const;
 
-/* =========================================================
-   META
-========================================================= */
+// =========================================================
+// META
+// =========================================================
 
 export function Meta({
   label,
@@ -31,14 +31,18 @@ export function Meta({
     <div
       className={cn(
         "border-b py-4 pr-4",
-        dark ? "border-ivory/10" : "border-ink/10",
+        dark
+          ? "border-ivory/10"
+          : "border-ink/10",
         className
       )}
     >
       <dt
         className={cn(
           "label text-[10px]",
-          dark ? "text-ivory/40" : "text-ink/40"
+          dark
+            ? "text-ivory/40"
+            : "text-ink/40"
         )}
       >
         {label}
@@ -52,7 +56,9 @@ export function Meta({
         <dd
           className={cn(
             "mt-1 text-xs font-light",
-            dark ? "text-ivory/45" : "text-ink/45"
+            dark
+              ? "text-ivory/45"
+              : "text-ink/45"
           )}
         >
           {sub}
@@ -62,9 +68,9 @@ export function Meta({
   );
 }
 
-/* =========================================================
-   TYPES
-========================================================= */
+// =========================================================
+// TYPES
+// =========================================================
 
 export interface FormationDay {
   id: number;
@@ -92,7 +98,6 @@ export interface FormationProgramme {
 export interface Formation {
   id: number;
   programme_id: number | null;
-
   programme: FormationProgramme | null;
 
   title: string;
@@ -107,11 +112,22 @@ export interface Formation {
   image: string | null;
   pdf_program: string | null;
 
-  deposit_amount: number | string | null;
-  personal_price: number | string | null;
+  deposit_amount:
+    | number
+    | string
+    | null;
+
+  personal_price:
+    | number
+    | string
+    | null;
 
   has_sale: boolean;
-  sale_price: number | string | null;
+
+  sale_price:
+    | number
+    | string
+    | null;
 
   installment_enabled: boolean;
   installment_count: number | null;
@@ -121,9 +137,9 @@ export interface Formation {
   formationDays: FormationDay[];
 }
 
-/* =========================================================
-   PROPS
-========================================================= */
+// =========================================================
+// PROPS
+// =========================================================
 
 interface FormationCardProps {
   formation: Formation;
@@ -134,53 +150,58 @@ interface FormationCardProps {
   delay?: number;
 }
 
-/* =========================================================
-   DATE
-========================================================= */
+// =========================================================
+// DATE
+// =========================================================
 
 function formatDateRange(
   start: string,
   end: string
 ) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+  const startDate =
+    new Date(start);
 
-  const startDay = startDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "2-digit",
-    }
-  );
+  const endDate =
+    new Date(end);
 
-  const endDay = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "2-digit",
-    }
-  );
+  const startDay =
+    startDate.toLocaleDateString(
+      "fr-FR",
+      {
+        day: "2-digit",
+      }
+    );
 
-  const startMonth = startDate.toLocaleDateString(
-    "fr-FR",
-    {
-      month: "long",
-    }
-  );
+  const endDay =
+    endDate.toLocaleDateString(
+      "fr-FR",
+      {
+        day: "2-digit",
+      }
+    );
 
-  const endMonth = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      month: "long",
-    }
-  );
+  const startMonth =
+    startDate.toLocaleDateString(
+      "fr-FR",
+      {
+        month: "long",
+      }
+    );
 
-  const startYear = startDate.getFullYear();
-  const endYear = endDate.getFullYear();
+  const endMonth =
+    endDate.toLocaleDateString(
+      "fr-FR",
+      {
+        month: "long",
+      }
+    );
 
-  /*
-   * Same month
-   *
-   * 10 — 12 septembre
-   */
+  const startYear =
+    startDate.getFullYear();
+
+  const endYear =
+    endDate.getFullYear();
+
   if (
     startMonth === endMonth &&
     startYear === endYear
@@ -188,17 +209,12 @@ function formatDateRange(
     return `${startDay} — ${endDay} ${endMonth}`;
   }
 
-  /*
-   * Different months
-   *
-   * 30 septembre — 02 octobre
-   */
   return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
 }
 
-/* =========================================================
-   PRICE
-========================================================= */
+// =========================================================
+// PRICE
+// =========================================================
 
 function formatPrice(
   price: number | string | null
@@ -216,9 +232,9 @@ function formatPrice(
   )} €`;
 }
 
-/* =========================================================
-   FORMATION CARD
-========================================================= */
+// =========================================================
+// CARD
+// =========================================================
 
 export function FormationCard({
   formation: f,
@@ -231,20 +247,13 @@ export function FormationCard({
   const programme = f.programme;
 
   const duration =
-    programme?.duration ?? "3 jours";
+    programme?.duration ??
+    "3 jours";
 
   const image = f.image;
 
-  /*
-   * IMPORTANT
-   *
-   * We put the selected FormationDay ID
-   * inside the URL.
-   *
-   * Example:
-   *
-   * /formations/formation-extension-de-cils?day=1
-   */
+  // IMPORTANT:
+  // The selected session ID is preserved.
   const detailUrl =
     `/formations/${f.slug}?day=${day.id}`;
 
@@ -259,9 +268,7 @@ export function FormationCard({
         className
       )}
     >
-      {/* =================================================
-          IMAGE
-      ================================================= */}
+      {/* IMAGE */}
 
       <Link
         to={detailUrl}
@@ -291,9 +298,7 @@ export function FormationCard({
       <Reveal
         delay={delay + 0.15}
       >
-        {/* =================================================
-            LABEL
-        ================================================= */}
+        {/* LABEL */}
 
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
           <span className="font-serif text-lg tracking-normal text-ink/60">
@@ -309,13 +314,10 @@ export function FormationCard({
             f.title}
 
           {" · "}
-
           {duration}
         </p>
 
-        {/* =================================================
-            CITY
-        ================================================= */}
+        {/* CITY */}
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">
           <Link
@@ -326,9 +328,7 @@ export function FormationCard({
           </Link>
         </h3>
 
-        {/* =================================================
-            DATE
-        ================================================= */}
+        {/* DATE */}
 
         <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
           {formatDateRange(
@@ -337,9 +337,7 @@ export function FormationCard({
           )}
         </p>
 
-        {/* =================================================
-            DESCRIPTION
-        ================================================= */}
+        {/* DESCRIPTION */}
 
         {f.description && (
           <div
@@ -350,9 +348,7 @@ export function FormationCard({
           />
         )}
 
-        {/* =================================================
-            INFORMATION
-        ================================================= */}
+        {/* INFORMATION */}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
           <Meta
@@ -385,13 +381,9 @@ export function FormationCard({
           />
         </dl>
 
-        {/* =================================================
-            BUTTONS
-        ================================================= */}
+        {/* BUTTONS */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
-
-          {/* RESERVE */}
 
           <Button
             to={detailUrl}
@@ -410,8 +402,6 @@ export function FormationCard({
               ? "Réserver"
               : "Demander une date"}
           </Button>
-
-          {/* DETAILS */}
 
           <Button
             to={detailUrl}

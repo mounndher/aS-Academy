@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { getFormations } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
@@ -18,7 +19,11 @@ export function useFormations() {
         const result = await getFormations();
 
         if (!cancelled) {
-          setData(Array.isArray(result) ? result : []);
+          setData(
+            Array.isArray(result)
+              ? result
+              : []
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -48,3 +53,5 @@ export function useFormations() {
     error,
   };
 }
+
+export default useFormations;
