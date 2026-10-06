@@ -494,7 +494,7 @@ export function FormationDetailPage() {
         id="reservation"
         className="scroll-mt-24 border-t border-ink/10"
       >
-        <Reservation
+        <ReservationForm 
           formation={formation}
           formationDay={selectedDay}
         />
