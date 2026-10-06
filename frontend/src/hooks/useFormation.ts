@@ -4,11 +4,9 @@ import type { Formation } from "@/types/formation";
 const API_URL =
   import.meta.env.VITE_API_URL || "";
 
-export function useFormation(
-  slug?: string
-) {
+export function useFormation(slug?: string) {
   const [data, setData] =
-    useState<Formation | undefined>(undefined);
+    useState<Formation | undefined>();
 
   const [loading, setLoading] =
     useState(true);
@@ -19,7 +17,7 @@ export function useFormation(
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchFormation() {
+    async function loadFormation() {
       if (!slug) {
         setData(undefined);
         setError("Slug manquant");
@@ -31,22 +29,14 @@ export function useFormation(
         setLoading(true);
         setError(null);
 
-        /*
-         * IMPORTANT:
-         *
-         * Your Laravel API returns:
-         *
-         * {
-         *   success: true,
-         *   data: [...]
-         * }
-         *
-         * So we load ALL formations and
-         * find the requested slug.
-         */
+        const requestedSlug =
+          decodeURIComponent(slug)
+            .replace(/\/+$/, "")
+            .trim()
+            .toLowerCase();
 
         const response = await fetch(
-          `${API_URL}/api/contenu/formations`,
+          `${API_URL}/contenu/formations`,
           {
             headers: {
               Accept: "application/json",
@@ -67,20 +57,6 @@ export function useFormation(
             ? json.data
             : [];
 
-        /*
-         * React Router gives us:
-         *
-         * formation-extension-de-cils
-         *
-         * Decode it and remove accidental slash.
-         */
-
-        const requestedSlug =
-          decodeURIComponent(slug)
-            .replace(/\/+$/, "")
-            .trim()
-            .toLowerCase();
-
         const formation =
           formations.find(
             (item) =>
@@ -92,19 +68,8 @@ export function useFormation(
           );
 
         if (!formation) {
-          console.error(
-            "Formation introuvable.",
-            {
-              requestedSlug,
-              availableSlugs:
-                formations.map(
-                  (item) => item.slug
-                ),
-            }
-          );
-
           throw new Error(
-            `Formation introuvable: ${slug}`
+            `Formation introuvable: ${requestedSlug}`
           );
         }
 
@@ -118,7 +83,7 @@ export function useFormation(
           setError(
             err instanceof Error
               ? err.message
-              : "Erreur lors du chargement de la formation"
+              : "Erreur lors du chargement"
           );
         }
       } finally {
@@ -128,7 +93,7 @@ export function useFormation(
       }
     }
 
-    fetchFormation();
+    loadFormation();
 
     return () => {
       cancelled = true;
