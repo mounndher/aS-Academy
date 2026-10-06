@@ -2,10 +2,10 @@ export interface FormationDay {
   id: number;
   formation_id: number;
 
-  city: string;
+  city: string | null;
 
-  start_date: string;
-  end_date: string;
+  start_date: string | null;
+  end_date: string | null;
 
   image?: string | null;
 
@@ -17,7 +17,7 @@ export interface FormationDay {
   max_places: number;
   remaining_places: number;
 
-  status: string;
+  status: string | null;
 }
 
 export interface FormationProgramme {
@@ -26,7 +26,6 @@ export interface FormationProgramme {
   slug: string;
 
   description: string | null;
-
   duration: string | null;
 
   is_active: boolean;
@@ -34,7 +33,7 @@ export interface FormationProgramme {
 
 export interface FormationStep {
   title: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface Formation {
@@ -70,4 +69,9 @@ export interface Formation {
   is_active: boolean;
 
   formationDays: FormationDay[];
+}
+
+export interface FormationApiResponse {
+  data?: Formation;
+  formation?: Formation;
 }
