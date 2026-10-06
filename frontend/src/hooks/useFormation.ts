@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
+
 import { getFormation } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
-export function useFormation(slug: string | undefined) {
-  const [data, setData] = useState<Formation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useFormation(
+  slug?: string
+) {
+  const [data, setData] =
+    useState<Formation | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadFormation() {
+    async function load() {
       if (!slug) {
         setData(null);
-        setError("Formation introuvable.");
+        setError(
+          "Formation introuvable."
+        );
         setLoading(false);
         return;
       }
@@ -22,9 +32,8 @@ export function useFormation(slug: string | undefined) {
         setLoading(true);
         setError(null);
 
-        const result = await getFormation(slug);
-
-        console.log("FORMATION DETAIL:", result);
+        const result =
+          await getFormation(slug);
 
         if (!cancelled) {
           setData(result);
@@ -46,7 +55,7 @@ export function useFormation(slug: string | undefined) {
       }
     }
 
-    loadFormation();
+    load();
 
     return () => {
       cancelled = true;

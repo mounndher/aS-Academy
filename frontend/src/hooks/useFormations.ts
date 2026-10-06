@@ -1,5 +1,3 @@
-// src/hooks/useFormations.ts
-
 import { useEffect, useState } from "react";
 import { getFormations } from "@/services/api";
 import type { Formation } from "@/types/formation";
@@ -19,16 +17,8 @@ export function useFormations() {
 
         const result = await getFormations();
 
-        const formations: Formation[] = Array.isArray(result)
-          ? result
-          : Array.isArray(
-              (result as { data?: Formation[] })?.data
-            )
-            ? (result as { data: Formation[] }).data
-            : [];
-
         if (!cancelled) {
-          setData(formations);
+          setData(Array.isArray(result) ? result : []);
         }
       } catch (err) {
         if (!cancelled) {
