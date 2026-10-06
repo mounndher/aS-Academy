@@ -342,12 +342,7 @@ export function FormationCard({
             DATE
         ================================================= */}
 
-        <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
-          {formatDateRange(
-            formationDay.start_date,
-            formationDay.end_date
-          )}
-        </p>
+        
 
         {/* =================================================
             DESCRIPTION
