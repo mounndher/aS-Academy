@@ -1,657 +1,559 @@
-import { useState, type FormEvent } from "react";
+import {
+  FormEvent,
+  useState,
+} from "react";
 
-import type {
-  Formation,
-  FormationDay,
-} from "@/types/formation";
+import type { Formation } from "@/types/formation";
 
-import { Button } from "@/components/ui/Button";
+/* =========================================================
+   TYPES
+========================================================= */
 
-// =========================================================
-// PROPS
-// =========================================================
+type FormationDay =
+  Formation["formationDays"][number];
 
 interface ReservationFormProps {
   formation: Formation;
-  formationDay?: FormationDay | null;
+  formationDay: FormationDay;
 }
 
-// =========================================================
-// COMPONENT
-// =========================================================
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function formatDateRange(
+  start: string,
+  end: string
+) {
+  if (!start) return "";
+
+  const startParts = start.split("-");
+  const endParts = end?.split("-");
+
+  if (
+    startParts.length !== 3 ||
+    !endParts ||
+    endParts.length !== 3
+  ) {
+    return `${start} — ${end}`;
+  }
+
+  const startYear = Number(startParts[0]);
+  const startMonth = Number(startParts[1]);
+  const startDay = Number(startParts[2]);
+
+  const endYear = Number(endParts[0]);
+  const endMonth = Number(endParts[1]);
+  const endDay = Number(endParts[2]);
+
+  const startDate = new Date(
+    startYear,
+    startMonth - 1,
+    startDay
+  );
+
+  const endDate = new Date(
+    endYear,
+    endMonth - 1,
+    endDay
+  );
+
+  const startMonthName =
+    new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+    }).format(startDate);
+
+  const endMonthName =
+    new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+    }).format(endDate);
+
+  if (
+    startMonth === endMonth &&
+    startYear === endYear
+  ) {
+    return `${startDay} — ${endDay} ${endMonthName}`;
+  }
+
+  if (startYear === endYear) {
+    return `${startDay} ${startMonthName} — ${endDay} ${endMonthName}`;
+  }
+
+  return `${startDay} ${startMonthName} ${startYear} — ${endDay} ${endMonthName} ${endYear}`;
+}
+
+function formatPrice(
+  price: number | string | null | undefined
+) {
+  if (
+    price === null ||
+    price === undefined ||
+    price === ""
+  ) {
+    return "À venir";
+  }
+
+  const number = Number(price);
+
+  if (Number.isNaN(number)) {
+    return `${price} €`;
+  }
+
+  return `${number.toLocaleString("fr-FR")} €`;
+}
+
+/* =========================================================
+   COMPONENT
+========================================================= */
 
 export function ReservationForm({
   formation,
-  formationDay = null,
+  formationDay,
 }: ReservationFormProps) {
-  // =======================================================
-  // STATE
-  // =======================================================
+  const [submitted, setSubmitted] =
+    useState(false);
 
-  const [selectedDayId, setSelectedDayId] = useState<number | "">(
-    formationDay?.id ?? ""
-  );
+  const [loading, setLoading] =
+    useState(false);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [city, setCity] = useState("");
-  const [message, setMessage] = useState("");
+  /* =======================================================
+     FORM SUBMIT
+  ======================================================= */
 
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // =======================================================
-  // FORMATION DAYS
-  // =======================================================
-
-  const days = Array.isArray(formation.formationDays)
-    ? formation.formationDays
-    : [];
-
-  // =======================================================
-  // SELECTED DAY
-  // =======================================================
-
-  const selectedDay =
-    days.find((day) => day.id === Number(selectedDayId)) ??
-    formationDay ??
-    null;
-
-  // =======================================================
-  // DATE FORMAT
-  // =======================================================
-
-  function formatDate(date: string | null | undefined) {
-    if (!date) {
-      return "";
-    }
-
-    const parsed = new Date(date);
-
-    if (Number.isNaN(parsed.getTime())) {
-      return "";
-    }
-
-    return new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(parsed);
-  }
-
-  // =======================================================
-  // PRICE
-  // =======================================================
-
-  function formatPrice(
-    value: number | string | null | undefined
+  function handleSubmit(
+    event: FormEvent<HTMLFormElement>
   ) {
-    if (value === null || value === undefined || value === "") {
-      return "Sur demande";
-    }
-
-    const number = Number(value);
-
-    if (Number.isNaN(number)) {
-      return "Sur demande";
-    }
-
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    }).format(number);
-  }
-
-  // =======================================================
-  // SUBMIT
-  // =======================================================
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setLoading(true);
-    setError(null);
-    setSuccess(false);
 
-    try {
-      if (!selectedDay) {
-        throw new Error(
-          "Veuillez sélectionner une date de formation."
-        );
-      }
+    /*
+     * Front-end reservation for now.
+     *
+     * You can connect this to your Laravel
+     * reservation API later.
+     */
 
-      if (!firstName.trim()) {
-        throw new Error("Veuillez renseigner votre prénom.");
-      }
-
-      if (!lastName.trim()) {
-        throw new Error("Veuillez renseigner votre nom.");
-      }
-
-      if (!email.trim()) {
-        throw new Error("Veuillez renseigner votre adresse email.");
-      }
-
-      if (!phone.trim()) {
-        throw new Error("Veuillez renseigner votre numéro de téléphone.");
-      }
-
-      const API_URL = import.meta.env.VITE_API_URL;
-
-      if (!API_URL) {
-        throw new Error(
-          "L'URL de l'API n'est pas configurée."
-        );
-      }
-
-      // ===================================================
-      // PAYLOAD
-      // ===================================================
-
-      const payload = {
-        formation_id: formation.id,
-        formation_day_id: selectedDay.id,
-
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-
-        postal_code: postalCode.trim(),
-        city: city.trim(),
-
-        message: message.trim(),
-      };
-
-      // ===================================================
-      // API REQUEST
-      // ===================================================
-
-      const response = await fetch(
-        `${API_URL}/reservations`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        if (data?.errors) {
-          const firstError = Object.values(
-            data.errors
-          )
-            .flat()
-            .find(
-              (value): value is string =>
-                typeof value === "string"
-            );
-
-          throw new Error(
-            firstError ??
-              data.message ??
-              "Impossible d'envoyer votre réservation."
-          );
-        }
-
-        throw new Error(
-          data?.message ??
-            "Impossible d'envoyer votre réservation."
-        );
-      }
-
-      setSuccess(true);
-
-      // Reset form
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setPhone("");
-      setPostalCode("");
-      setCity("");
-      setMessage("");
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur est survenue."
-      );
-    } finally {
+    window.setTimeout(() => {
       setLoading(false);
-    }
+      setSubmitted(true);
+    }, 500);
   }
 
-  // =======================================================
-  // SUCCESS
-  // =======================================================
+  /* =======================================================
+     SUCCESS
+  ======================================================= */
 
-  if (success) {
+  if (submitted) {
     return (
-      <div className="border border-ink/10 bg-ivory p-8 md:p-10">
-        <p className="label text-ink/50">
-          Réservation envoyée
-        </p>
+      <main className="min-h-screen bg-[#f8f7f4] px-6 py-20 md:px-10 lg:px-20">
+        <div className="mx-auto max-w-7xl">
 
-        <h2 className="mt-4 font-serif text-3xl leading-tight">
-          Merci pour votre demande.
-        </h2>
+          <div className="max-w-2xl border border-ink/10 p-10">
 
-        <p className="mt-5 max-w-xl text-sm font-light leading-relaxed text-ink/60">
-          Votre demande de réservation a bien été
-          enregistrée. L'académie vous contactera
-          prochainement pour confirmer votre place.
-        </p>
+            <p className="label text-ink/45">
+              Réservation
+            </p>
 
-        <div className="mt-8 border-t border-ink/10 pt-6">
-          <p className="text-sm text-ink/60">
-            Formation
-          </p>
+            <h1 className="display mt-6 text-5xl">
+              Merci pour votre demande.
+            </h1>
 
-          <p className="mt-1 font-serif text-xl">
-            {formation.title}
-          </p>
+            <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink/60">
+              Votre demande de réservation a
+              bien été envoyée. L'académie vous
+              contactera pour confirmer votre
+              inscription.
+            </p>
 
-          {selectedDay && (
-            <>
-              <p className="mt-5 text-sm text-ink/60">
-                Ville
+            <div className="mt-8 border-t border-ink/10 pt-6">
+
+              <p className="font-serif text-xl">
+                {formation.title}
               </p>
 
-              <p className="mt-1 font-serif text-xl">
-                {selectedDay.city}
+              <p className="mt-2 text-sm text-ink/55">
+                {formationDay.city}
               </p>
-            </>
-          )}
-        </div>
 
-        <div className="mt-8">
-          <Button
-            type="button"
-            variant="dark"
-            onClick={() => {
-              setSuccess(false);
-            }}
-          >
-            Nouvelle réservation
-          </Button>
+              <p className="mt-1 text-sm text-ink/55">
+                {formatDateRange(
+                  formationDay.start_date,
+                  formationDay.end_date
+                )}
+              </p>
+
+            </div>
+
+          </div>
+
         </div>
-      </div>
+      </main>
     );
   }
 
-  // =======================================================
-  // FORM
-  // =======================================================
+  /* =======================================================
+     FORM
+  ======================================================= */
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border border-ink/10 bg-ivory p-6 md:p-10"
-    >
-      {/* ===================================================
-          FORMATION
-      =================================================== */}
+    <main className="bg-[#f8f7f4] px-6 py-16 md:px-10 lg:px-20 lg:py-20">
 
-      <div className="border-b border-ink/10 pb-8">
-        <p className="label text-ink/50">
-          Votre réservation
-        </p>
+      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
 
-        <h2 className="mt-3 font-serif text-3xl leading-tight">
-          {formation.title}
-        </h2>
+        {/* =================================================
+            LEFT
+        ================================================= */}
 
-        {formation.programme && (
-          <p className="mt-2 text-sm font-light text-ink/50">
-            {formation.programme.name}
+        <div>
+
+          <p className="label text-ink/45">
+            Réservation
           </p>
-        )}
-      </div>
 
-      {/* ===================================================
-          FORMATION DAY
-      =================================================== */}
+          <h1 className="display mt-5 text-[clamp(3rem,6vw,5.5rem)] leading-[0.9]">
+            Réserver
+            <br />
+            ma place
+          </h1>
 
-      <div className="mt-8">
-        <label
-          htmlFor="formation-day"
-          className="label text-[10px] text-ink/50"
-        >
-          Choisir une session
-        </label>
+          <p className="mt-7 max-w-md text-sm font-light leading-relaxed text-ink/60">
+            Remplissez vos coordonnées pour
+            envoyer votre demande de réservation
+            auprès de l'académie.
+          </p>
 
-        <select
-          id="formation-day"
-          value={selectedDayId}
-          onChange={(event) => {
-            setSelectedDayId(
-              event.target.value
-                ? Number(event.target.value)
-                : ""
-            );
-          }}
-          className="mt-3 w-full border border-ink/15 bg-white px-4 py-4 text-sm outline-none transition focus:border-ink"
-          required
-        >
-          <option value="">
-            Sélectionnez une session
-          </option>
+          {/* =================================================
+              SUMMARY
+          ================================================= */}
 
-          {days.map((day) => {
-            const isAvailable =
-              day.remaining_places > 0 &&
-              day.status !== "full" &&
-              day.status !== "completed";
+          <div className="mt-10">
 
-            return (
-              <option
-                key={day.id}
-                value={day.id}
-                disabled={!isAvailable}
-              >
-                {day.city} —{" "}
-                {formatDate(day.start_date)}
-                {day.end_date &&
-                day.end_date !== day.start_date
-                  ? ` → ${formatDate(day.end_date)}`
-                  : ""}{" "}
-                —{" "}
-                {isAvailable
-                  ? `${day.remaining_places} place${
-                      day.remaining_places > 1
-                        ? "s"
-                        : ""
-                    }`
-                  : "Complet"}
-              </option>
-            );
-          })}
-        </select>
-      </div>
+            {/* FORMATION */}
 
-      {/* ===================================================
-          SELECTED SESSION SUMMARY
-      =================================================== */}
+            <div className="flex items-center justify-between border-t border-ink/10 py-4">
+              <span className="label text-[10px] text-ink/45">
+                Formation
+              </span>
 
-      {selectedDay && (
-        <div className="mt-6 border border-ink/10 bg-white p-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <p className="label text-[10px] text-ink/40">
+              <span className="font-serif text-base">
+                {formation.title}
+              </span>
+            </div>
+
+            {/* CITY */}
+
+            <div className="flex items-center justify-between border-t border-ink/10 py-4">
+              <span className="label text-[10px] text-ink/45">
                 Ville
-              </p>
+              </span>
 
-              <p className="mt-1 font-serif text-xl">
-                {selectedDay.city}
-              </p>
+              <span className="font-serif text-base">
+                {formationDay.city}
+              </span>
             </div>
 
-            <div>
-              <p className="label text-[10px] text-ink/40">
+            {/* DATES */}
+
+            <div className="flex items-center justify-between border-t border-ink/10 py-4">
+              <span className="label text-[10px] text-ink/45">
                 Dates
-              </p>
+              </span>
 
-              <p className="mt-1 font-serif text-xl">
-                {formatDate(selectedDay.start_date)}
-
-                {selectedDay.end_date &&
-                selectedDay.end_date !==
-                  selectedDay.start_date
-                  ? ` → ${formatDate(
-                      selectedDay.end_date
-                    )}`
-                  : ""}
-              </p>
+              <span className="font-serif text-base text-right">
+                {formatDateRange(
+                  formationDay.start_date,
+                  formationDay.end_date
+                )}
+              </span>
             </div>
 
-            <div>
-              <p className="label text-[10px] text-ink/40">
-                Tarif
-              </p>
+            {/* PERSONAL PRICE */}
 
-              <p className="mt-1 font-serif text-xl">
+            <div className="flex items-center justify-between border-t border-ink/10 py-4">
+              <span className="label text-[10px] text-ink/45">
+                Financement personnel
+              </span>
+
+              <span className="font-serif text-base">
                 {formatPrice(
-                  selectedDay.personal_price ??
+                  formationDay.personal_price ??
                     formation.personal_price
                 )}
-              </p>
+              </span>
+            </div>
+
+            {/* CPF */}
+
+            {formationDay.cpf_eligible && (
+              <div className="flex items-center justify-between border-t border-ink/10 py-4">
+                <span className="label text-[10px] text-ink/45">
+                  Financement CPF
+                </span>
+
+                <span className="font-serif text-base">
+                  {formatPrice(
+                    formationDay.cpf_price
+                  )}
+                </span>
+              </div>
+            )}
+
+            {/* DEPOSIT */}
+
+            <div className="flex items-center justify-between border-b border-t border-ink/10 py-4">
+              <span className="label text-[10px] text-ink/45">
+                Acompte
+              </span>
+
+              <span className="font-serif text-xl">
+                {formatPrice(
+                  formation.deposit_amount
+                )}
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* =================================================
+            RIGHT FORM
+        ================================================= */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="border border-ink/15 bg-[#faf9f6] p-7 md:p-10"
+        >
+
+          <p className="label text-ink/45">
+            Vos coordonnées
+          </p>
+
+          {/* =================================================
+              NAME
+          ================================================= */}
+
+          <div className="mt-8 grid gap-7 md:grid-cols-2">
+
+            <div>
+              <label
+                htmlFor="first_name"
+                className="label text-[10px] text-ink/45"
+              >
+                Prénom
+              </label>
+
+              <input
+                id="first_name"
+                name="first_name"
+                type="text"
+                required
+                placeholder="Votre prénom"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              />
             </div>
 
             <div>
-              <p className="label text-[10px] text-ink/40">
-                Places disponibles
-              </p>
+              <label
+                htmlFor="last_name"
+                className="label text-[10px] text-ink/45"
+              >
+                Nom
+              </label>
 
-              <p className="mt-1 font-serif text-xl">
-                {selectedDay.remaining_places}
-              </p>
+              <input
+                id="last_name"
+                name="last_name"
+                type="text"
+                required
+                placeholder="Votre nom"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              />
             </div>
+
           </div>
-        </div>
-      )}
 
-      {/* ===================================================
-          PERSONAL INFORMATION
-      =================================================== */}
+          {/* =================================================
+              EMAIL / PHONE
+          ================================================= */}
 
-      <div className="mt-10">
-        <p className="label text-ink/50">
-          Vos informations
-        </p>
+          <div className="mt-7 grid gap-7 md:grid-cols-2">
 
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          {/* First name */}
+            <div>
+              <label
+                htmlFor="email"
+                className="label text-[10px] text-ink/45"
+              >
+                Email
+              </label>
 
-          <div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                placeholder="vous@exemple.com"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="phone"
+                className="label text-[10px] text-ink/45"
+              >
+                Téléphone
+              </label>
+
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                placeholder="06 00 00 00 00"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              />
+            </div>
+
+          </div>
+
+          {/* =================================================
+              ADDRESS
+          ================================================= */}
+
+          <div className="mt-7">
+
             <label
-              htmlFor="first-name"
-              className="label text-[10px] text-ink/50"
+              htmlFor="address"
+              className="label text-[10px] text-ink/45"
             >
-              Prénom *
+              Adresse
             </label>
 
             <input
-              id="first-name"
+              id="address"
+              name="address"
               type="text"
-              value={firstName}
-              onChange={(event) =>
-                setFirstName(event.target.value)
-              }
-              autoComplete="given-name"
               required
-              className="mt-2 w-full border-b border-ink/15 bg-transparent px-0 py-3 text-sm outline-none focus:border-ink"
+              placeholder="Numéro et rue"
+              className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
             />
+
           </div>
 
-          {/* Last name */}
+          {/* =================================================
+              POSTAL / CITY
+          ================================================= */}
 
-          <div>
+          <div className="mt-7 grid gap-7 md:grid-cols-2">
+
+            <div>
+              <label
+                htmlFor="postal_code"
+                className="label text-[10px] text-ink/45"
+              >
+                Code postal
+              </label>
+
+              <input
+                id="postal_code"
+                name="postal_code"
+                type="text"
+                required
+                placeholder="75000"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="customer_city"
+                className="label text-[10px] text-ink/45"
+              >
+                Ville
+              </label>
+
+              <input
+                id="customer_city"
+                name="customer_city"
+                type="text"
+                required
+                placeholder="Votre ville"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              />
+            </div>
+
+          </div>
+
+          {/* =================================================
+              MESSAGE
+          ================================================= */}
+
+          <div className="mt-7">
+
             <label
-              htmlFor="last-name"
-              className="label text-[10px] text-ink/50"
+              htmlFor="message"
+              className="label text-[10px] text-ink/45"
             >
-              Nom *
+              Message
             </label>
 
-            <input
-              id="last-name"
-              type="text"
-              value={lastName}
-              onChange={(event) =>
-                setLastName(event.target.value)
-              }
-              autoComplete="family-name"
-              required
-              className="mt-2 w-full border-b border-ink/15 bg-transparent px-0 py-3 text-sm outline-none focus:border-ink"
+            <textarea
+              id="message"
+              name="message"
+              rows={5}
+              placeholder="Une question ou une information complémentaire..."
+              className="mt-3 w-full resize-none border border-ink/15 bg-transparent p-4 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
             />
+
           </div>
 
-          {/* Email */}
+          {/* =================================================
+              SUMMARY
+          ================================================= */}
 
-          <div>
-            <label
-              htmlFor="email"
-              className="label text-[10px] text-ink/50"
+          <div className="mt-8 border-t border-ink/10 pt-6">
+
+            <div className="flex items-center justify-between">
+
+              <span className="label text-[10px] text-ink/45">
+                Acompte
+              </span>
+
+              <span className="font-serif text-2xl">
+                {formatPrice(
+                  formation.deposit_amount
+                )}
+              </span>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              SEND
+          ================================================= */}
+
+          <div className="mt-8 border-t border-ink/10 pt-6">
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex min-h-[52px] items-center justify-center bg-[#111111] px-8 text-xs font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Email *
-            </label>
+              {loading
+                ? "Envoi..."
+                : "Envoyer"}
+            </button>
 
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
-              autoComplete="email"
-              required
-              className="mt-2 w-full border-b border-ink/15 bg-transparent px-0 py-3 text-sm outline-none focus:border-ink"
-            />
           </div>
 
-          {/* Phone */}
+        </form>
 
-          <div>
-            <label
-              htmlFor="phone"
-              className="label text-[10px] text-ink/50"
-            >
-              Téléphone *
-            </label>
-
-            <input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(event) =>
-                setPhone(event.target.value)
-              }
-              autoComplete="tel"
-              required
-              className="mt-2 w-full border-b border-ink/15 bg-transparent px-0 py-3 text-sm outline-none focus:border-ink"
-            />
-          </div>
-
-          {/* Postal code */}
-
-          <div>
-            <label
-              htmlFor="postal-code"
-              className="label text-[10px] text-ink/50"
-            >
-              Code postal
-            </label>
-
-            <input
-              id="postal-code"
-              type="text"
-              value={postalCode}
-              onChange={(event) =>
-                setPostalCode(event.target.value)
-              }
-              autoComplete="postal-code"
-              className="mt-2 w-full border-b border-ink/15 bg-transparent px-0 py-3 text-sm outline-none focus:border-ink"
-            />
-          </div>
-
-          {/* City */}
-
-          <div>
-            <label
-              htmlFor="city"
-              className="label text-[10px] text-ink/50"
-            >
-              Ville
-            </label>
-
-            <input
-              id="city"
-              type="text"
-              value={city}
-              onChange={(event) =>
-                setCity(event.target.value)
-              }
-              autoComplete="address-level2"
-              className="mt-2 w-full border-b border-ink/15 bg-transparent px-0 py-3 text-sm outline-none focus:border-ink"
-            />
-          </div>
-        </div>
       </div>
 
-      {/* ===================================================
-          MESSAGE
-      =================================================== */}
-
-      <div className="mt-8">
-        <label
-          htmlFor="message"
-          className="label text-[10px] text-ink/50"
-        >
-          Message
-        </label>
-
-        <textarea
-          id="message"
-          value={message}
-          onChange={(event) =>
-            setMessage(event.target.value)
-          }
-          rows={5}
-          placeholder="Une question ou une information complémentaire..."
-          className="mt-3 w-full resize-none border border-ink/15 bg-white px-4 py-4 text-sm outline-none transition focus:border-ink"
-        />
-      </div>
-
-      {/* ===================================================
-          ERROR
-      =================================================== */}
-
-      {error && (
-        <div className="mt-6 border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-600">
-            {error}
-          </p>
-        </div>
-      )}
-
-      {/* ===================================================
-          SUBMIT
-      =================================================== */}
-
-      <div className="mt-8 border-t border-ink/10 pt-8">
-        <Button
-          type="submit"
-          variant="dark"
-          size="lg"
-          icon="arrow"
-          disabled={loading || !selectedDay}
-          className="w-full"
-        >
-          {loading
-            ? "Envoi en cours..."
-            : "Envoyer ma réservation"}
-        </Button>
-
-        <p className="mt-4 text-center text-xs font-light leading-relaxed text-ink/45">
-          Aucun paiement en ligne n'est demandé ici.
-          <br />
-          Votre réservation sera confirmée par
-          l'académie.
-        </p>
-      </div>
-    </form>
+    </main>
   );
 }
 

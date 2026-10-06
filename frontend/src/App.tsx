@@ -23,7 +23,15 @@ function Layout() {
           <Routes location={location}>
             <Route path="/" element={<HomePage />} />
             <Route path="/formations" element={<FormationsListPage />} />
-            <Route path="/formations/:slug" element={<FormationDetailPage />} />
+              <Route
+    path="/formations/:slug"
+    element={<FormationDetailPage />}
+  />
+
+  <Route
+    path="/formations/:slug/reservation"
+    element={<FormationDetailPage />}
+  />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </motion.main>
