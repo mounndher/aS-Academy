@@ -1,41 +1,42 @@
-// src/hooks/useFormations.ts
-
 import { useEffect, useState } from "react";
-import { getFormations } from "@/services/api";
+import { getFormation } from "@/services/api";
 import type { Formation } from "@/types/formation";
 
-export function useFormations() {
-  const [data, setData] = useState<Formation[]>([]);
+export function useFormation(slug: string | undefined) {
+  const [data, setData] = useState<Formation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadFormations() {
+    async function loadFormation() {
+      if (!slug) {
+        setData(null);
+        setError("Formation introuvable.");
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        const result = await getFormations();
+        const result = await getFormation(slug);
 
-        const formations: Formation[] = Array.isArray(result)
-          ? result
-          : Array.isArray(
-              (result as { data?: Formation[] })?.data
-            )
-            ? (result as { data: Formation[] }).data
-            : [];
+        console.log("FORMATION DETAIL:", result);
 
         if (!cancelled) {
-          setData(formations);
+          setData(result);
         }
       } catch (err) {
         if (!cancelled) {
+          setData(null);
+
           setError(
             err instanceof Error
               ? err.message
-              : "Impossible de charger les formations."
+              : "Impossible de charger la formation."
           );
         }
       } finally {
@@ -45,12 +46,12 @@ export function useFormations() {
       }
     }
 
-    loadFormations();
+    loadFormation();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [slug]);
 
   return {
     data,
@@ -58,3 +59,5 @@ export function useFormations() {
     error,
   };
 }
+
+export default useFormation;

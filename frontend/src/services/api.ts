@@ -9,93 +9,118 @@ import type { PortfolioApiResponse } from "../types/portfolio";
 import type { FormationInformationApiResponse } from "../types/formationInformation";
 import type { Formation } from "@/types/formation";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ;
+/* =========================================================
+   API URL
+========================================================= */
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+if (!API_URL) {
+  console.warn("VITE_API_URL is not defined.");
+}
+
+/* =========================================================
+   GENERIC API RESPONSE
+========================================================= */
 
 interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
 
-// =========================================================
-// ACADEMY
-// =========================================================
+/* =========================================================
+   ACADEMY
+========================================================= */
 
 export async function getAcademySection(): Promise<AcademyApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/academy`);
+  const response = await fetch(
+    `${API_URL}/contenu/academy`
+  );
 
   if (!response.ok) {
-    throw new Error("Erreur lors du chargement de la section Academy");
+    throw new Error(
+      "Erreur lors du chargement de la section Academy."
+    );
   }
 
   return response.json();
 }
 
-// =========================================================
-// HERO
-// =========================================================
+/* =========================================================
+   HERO
+========================================================= */
 
 export async function getHeroSection(): Promise<HeroApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/hero`);
+  const response = await fetch(
+    `${API_URL}/contenu/hero`
+  );
 
   if (!response.ok) {
-    throw new Error("Erreur lors du chargement de la section Hero");
+    throw new Error(
+      "Erreur lors du chargement de la section Hero."
+    );
   }
 
   return response.json();
 }
 
-// =========================================================
-// INTRODUCTION
-// =========================================================
+/* =========================================================
+   INTRODUCTION
+========================================================= */
 
 export async function getIntroductionSection(): Promise<IntroductionApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/introduction`);
+  const response = await fetch(
+    `${API_URL}/contenu/introduction`
+  );
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement de la section Introduction"
+      "Erreur lors du chargement de la section Introduction."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// GALLERY
-// =========================================================
+/* =========================================================
+   GALLERY
+========================================================= */
 
 export async function getGallerySection(): Promise<GalleryApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/gallery`);
+  const response = await fetch(
+    `${API_URL}/contenu/gallery`
+  );
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement de la section Gallery"
+      "Erreur lors du chargement de la galerie."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// CONTACT
-// =========================================================
+/* =========================================================
+   CONTACT
+========================================================= */
 
 export async function getContactSection(): Promise<ContactApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/contact`);
+  const response = await fetch(
+    `${API_URL}/contenu/contact`
+  );
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement de la section Contact"
+      "Erreur lors du chargement de la section Contact."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// CONTACT MESSAGE
-// =========================================================
+/* =========================================================
+   CONTACT MESSAGE
+========================================================= */
 
 export interface ContactMessagePayload {
   first_name: string;
@@ -117,14 +142,17 @@ export interface ContactMessageResponse {
 export async function sendContactMessage(
   payload: ContactMessagePayload
 ): Promise<ContactMessageResponse> {
-  const response = await fetch(`${API_URL}/contact/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const response = await fetch(
+    `${API_URL}/contact/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
 
   const data = await response.json();
 
@@ -132,7 +160,8 @@ export async function sendContactMessage(
     return {
       success: false,
       message:
-        data.message || "Impossible d'envoyer votre message.",
+        data.message ||
+        "Impossible d'envoyer votre message.",
       errors: data.errors,
     };
   }
@@ -140,9 +169,9 @@ export async function sendContactMessage(
   return data;
 }
 
-// =========================================================
-// TRAINING EXPERIENCE
-// =========================================================
+/* =========================================================
+   TRAINING EXPERIENCE
+========================================================= */
 
 export async function getTrainingExperience(): Promise<TrainingExperienceApiResponse> {
   const response = await fetch(
@@ -151,32 +180,34 @@ export async function getTrainingExperience(): Promise<TrainingExperienceApiResp
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement de l'expérience de formation"
+      "Erreur lors du chargement de l'expérience de formation."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// SITE SETTINGS
-// =========================================================
+/* =========================================================
+   SITE SETTINGS
+========================================================= */
 
 export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
-  const response = await fetch(`${API_URL}/contenu/settings`);
+  const response = await fetch(
+    `${API_URL}/contenu/settings`
+  );
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement des paramètres du site"
+      "Erreur lors du chargement des paramètres du site."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// PORTFOLIO
-// =========================================================
+/* =========================================================
+   PORTFOLIO
+========================================================= */
 
 export async function getPortfolio(): Promise<PortfolioApiResponse> {
   const response = await fetch(
@@ -185,32 +216,40 @@ export async function getPortfolio(): Promise<PortfolioApiResponse> {
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement du portfolio"
+      "Erreur lors du chargement du portfolio."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// STORAGE
-// =========================================================
+/* =========================================================
+   STORAGE URL
+========================================================= */
 
-export function getStorageUrl(path: string | null): string {
+export function getStorageUrl(
+  path: string | null
+): string {
   if (!path) {
     return "";
   }
 
-  if (path.startsWith("http")) {
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
     return path;
   }
 
-  return `${API_URL.replace("/api", "")}/storage/${path}`;
+  return `${API_URL.replace(
+    /\/api\/?$/,
+    ""
+  )}/storage/${path}`;
 }
 
-// =========================================================
-// FORMATION INFORMATION
-// =========================================================
+/* =========================================================
+   FORMATION INFORMATION
+========================================================= */
 
 export async function getFormationInformation(): Promise<FormationInformationApiResponse> {
   const response = await fetch(
@@ -219,16 +258,33 @@ export async function getFormationInformation(): Promise<FormationInformationApi
 
   if (!response.ok) {
     throw new Error(
-      "Erreur lors du chargement des informations des formations"
+      "Erreur lors du chargement des informations des formations."
     );
   }
 
   return response.json();
 }
 
-// =========================================================
-// FORMATIONS
-// =========================================================
+/* =========================================================
+   ALL FORMATIONS
+========================================================= */
+
+/*
+ * Returns:
+ *
+ * {
+ *   success: true,
+ *   data: [
+ *     {
+ *       id: 1,
+ *       title: "...",
+ *       formationDays: [...]
+ *     }
+ *   ]
+ * }
+ *
+ * This function returns ONLY the data array.
+ */
 
 export async function getFormations(): Promise<Formation[]> {
   const response = await fetch(
@@ -241,25 +297,55 @@ export async function getFormations(): Promise<Formation[]> {
     );
   }
 
-  const json: ApiResponse<Formation[]> = await response.json();
+  const json: ApiResponse<Formation[]> =
+    await response.json();
 
-  return Array.isArray(json.data) ? json.data : [];
+  if (!json.success) {
+    throw new Error(
+      "Impossible de charger les formations."
+    );
+  }
+
+  return Array.isArray(json.data)
+    ? json.data
+    : [];
 }
 
-// =========================================================
-// SINGLE FORMATION
-// =========================================================
+/* =========================================================
+   SINGLE FORMATION
+========================================================= */
+
+/*
+ * Example:
+ *
+ * /contenu/formations/formation-extension-de-cils
+ *
+ * Returns:
+ *
+ * {
+ *   success: true,
+ *   data: {
+ *     id: 1,
+ *     title: "...",
+ *     formationDays: [...]
+ *   }
+ * }
+ */
 
 export async function getFormation(
   slug: string
 ): Promise<Formation> {
   const response = await fetch(
-    `${API_URL}/contenu/formations/${encodeURIComponent(slug)}`
+    `${API_URL}/contenu/formations/${encodeURIComponent(
+      slug
+    )}`
   );
 
   if (!response.ok) {
     if (response.status === 404) {
-      throw new Error("Formation introuvable.");
+      throw new Error(
+        "Formation introuvable."
+      );
     }
 
     throw new Error(
@@ -267,7 +353,14 @@ export async function getFormation(
     );
   }
 
-  const json: ApiResponse<Formation> = await response.json();
+  const json: ApiResponse<Formation> =
+    await response.json();
+
+  if (!json.success || !json.data) {
+    throw new Error(
+      "Formation introuvable."
+    );
+  }
 
   return json.data;
 }
