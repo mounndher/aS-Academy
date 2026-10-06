@@ -189,24 +189,25 @@ export function FormationDetailPage() {
   ======================================================= */
 
   const cityDays =
-    useMemo(() => {
-      if (!selectedCity) {
-        return allDays;
-      }
+  useMemo(() => {
+    if (!selectedCity) {
+      return allDays;
+    }
 
-      return allDays.filter(
-        (day) =>
-          day.city
-            ?.trim()
-            .toLowerCase() ===
-          selectedCity
-            .trim()
-            .toLowerCase()
-      );
-    }, [
-      allDays,
-      selectedCity,
-    ]);
+    return allDays.filter(
+      (day) =>
+        day.city
+          ?.trim()
+          .toLowerCase() ===
+        selectedCity
+          .trim()
+          .toLowerCase()
+    );
+  }, [
+    allDays,
+    selectedCity,
+  ]);
+    
 
   /* =======================================================
      IMAGE
