@@ -1,13 +1,9 @@
 export interface FormationDay {
   id: number;
   formation_id: number;
-
   city: string;
-
   start_date: string;
   end_date: string;
-
-  image?: string | null;
 
   personal_price: number | string | null;
 
@@ -18,29 +14,27 @@ export interface FormationDay {
   remaining_places: number;
 
   status: string;
+
+  image?: string | null;
 }
 
 export interface FormationProgramme {
   id: number;
   name: string;
   slug: string;
-
   description: string | null;
   duration: string | null;
-
   is_active: boolean;
 }
 
 export interface Formation {
   id: number;
-
   programme_id: number | null;
 
   programme: FormationProgramme | null;
 
   title: string;
   slug: string;
-
   description: string | null;
 
   steps: {
@@ -49,19 +43,15 @@ export interface Formation {
   }[];
 
   image: string | null;
-
   pdf_program: string | null;
 
   deposit_amount: number | string | null;
-
   personal_price: number | string | null;
 
   has_sale: boolean;
-
   sale_price: number | string | null;
 
   installment_enabled: boolean;
-
   installment_count: number | null;
 
   is_active: boolean;

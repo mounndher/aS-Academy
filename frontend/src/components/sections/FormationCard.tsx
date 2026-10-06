@@ -6,9 +6,88 @@ import { Button } from "@/components/ui/Button";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
 
-export const RESERVE_STATE = {
-  scrollTo: "reservation",
-} as const;
+/* =========================================================
+   TYPES
+========================================================= */
+
+export interface FormationDay {
+  id: number;
+  formation_id: number;
+  city: string;
+  start_date: string;
+  end_date: string;
+
+  personal_price: number | string | null;
+
+  cpf_eligible: boolean;
+  cpf_price: number | string | null;
+
+  max_places: number;
+  remaining_places: number;
+
+  status: string;
+
+  /*
+   * Optional:
+   * if a session has its own image,
+   * use it before formation.image.
+   */
+  image?: string | null;
+}
+
+export interface FormationProgramme {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  duration: string | null;
+  is_active: boolean;
+}
+
+export interface Formation {
+  id: number;
+  programme_id: number | null;
+
+  programme: FormationProgramme | null;
+
+  title: string;
+  slug: string;
+  description: string | null;
+
+  steps: {
+    title: string;
+    description?: string;
+  }[];
+
+  image: string | null;
+  pdf_program: string | null;
+
+  deposit_amount: number | string | null;
+  personal_price: number | string | null;
+
+  has_sale: boolean;
+  sale_price: number | string | null;
+
+  installment_enabled: boolean;
+  installment_count: number | null;
+
+  is_active: boolean;
+
+  formationDays: FormationDay[];
+}
+
+/* =========================================================
+   PROPS
+========================================================= */
+
+interface FormationCardProps {
+  formation: Formation;
+  formationDay: FormationDay;
+  index: number;
+  className?: string;
+  imageAspect?: string;
+  delay?: number;
+}
 
 /* =========================================================
    META
@@ -31,18 +110,14 @@ export function Meta({
     <div
       className={cn(
         "border-b py-4 pr-4",
-        dark
-          ? "border-ivory/10"
-          : "border-ink/10",
+        dark ? "border-ivory/10" : "border-ink/10",
         className
       )}
     >
       <dt
         className={cn(
           "label text-[10px]",
-          dark
-            ? "text-ivory/40"
-            : "text-ink/40"
+          dark ? "text-ivory/40" : "text-ink/40"
         )}
       >
         {label}
@@ -56,9 +131,7 @@ export function Meta({
         <dd
           className={cn(
             "mt-1 text-xs font-light",
-            dark
-              ? "text-ivory/45"
-              : "text-ink/45"
+            dark ? "text-ivory/45" : "text-ink/45"
           )}
         >
           {sub}
@@ -69,138 +142,54 @@ export function Meta({
 }
 
 /* =========================================================
-   TYPES
-========================================================= */
-
-export interface FormationDay {
-  id: number;
-  formation_id: number;
-
-  city: string;
-
-  start_date: string;
-  end_date: string;
-
-  image?: string | null;
-
-  personal_price: number | string | null;
-
-  cpf_eligible: boolean;
-  cpf_price: number | string | null;
-
-  max_places: number;
-  remaining_places: number;
-
-  status: string;
-}
-
-export interface FormationProgramme {
-  id: number;
-  name: string;
-  slug: string;
-
-  description: string | null;
-  duration: string | null;
-
-  is_active: boolean;
-}
-
-export interface Formation {
-  id: number;
-
-  programme_id: number | null;
-
-  programme: FormationProgramme | null;
-
-  title: string;
-  slug: string;
-
-  description: string | null;
-
-  steps: {
-    title: string;
-    description?: string;
-  }[];
-
-  image: string | null;
-
-  pdf_program: string | null;
-
-  deposit_amount: number | string | null;
-
-  personal_price: number | string | null;
-
-  has_sale: boolean;
-
-  sale_price: number | string | null;
-
-  installment_enabled: boolean;
-
-  installment_count: number | null;
-
-  is_active: boolean;
-
-  formationDays: FormationDay[];
-}
-
-/* =========================================================
-   PROPS
-========================================================= */
-
-interface FormationCardProps {
-  formation: Formation;
-
-  formationDay: FormationDay;
-
-  index: number;
-
-  className?: string;
-
-  imageAspect?: string;
-
-  delay?: number;
-}
-
-/* =========================================================
    DATE
 ========================================================= */
 
-function formatDateRange(
+export function formatDateRange(
   start: string,
   end: string
-) {
+): string {
   const startDate = new Date(start);
   const endDate = new Date(end);
 
-  const startDay =
-    startDate.toLocaleDateString(
-      "fr-FR",
-      { day: "2-digit" }
-    );
+  const startDay = startDate.toLocaleDateString(
+    "fr-FR",
+    {
+      day: "numeric",
+    }
+  );
 
-  const endDay =
-    endDate.toLocaleDateString(
-      "fr-FR",
-      { day: "2-digit" }
-    );
+  const endDay = endDate.toLocaleDateString(
+    "fr-FR",
+    {
+      day: "numeric",
+    }
+  );
 
-  const startMonth =
-    startDate.toLocaleDateString(
-      "fr-FR",
-      { month: "long" }
-    );
+  const startMonth = startDate.toLocaleDateString(
+    "fr-FR",
+    {
+      month: "long",
+    }
+  );
 
-  const endMonth =
-    endDate.toLocaleDateString(
-      "fr-FR",
-      { month: "long" }
-    );
+  const endMonth = endDate.toLocaleDateString(
+    "fr-FR",
+    {
+      month: "long",
+    }
+  );
 
-  const startYear =
-    startDate.getFullYear();
+  const startYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
 
-  const endYear =
-    endDate.getFullYear();
+  if (
+    startDay === endDay &&
+    startMonth === endMonth &&
+    startYear === endYear
+  ) {
+    return `${startDay} ${startMonth}`;
+  }
 
   if (
     startMonth === endMonth &&
@@ -218,7 +207,7 @@ function formatDateRange(
 
 function formatPrice(
   price: number | string | null
-) {
+): string {
   if (
     price === null ||
     price === undefined ||
@@ -227,32 +216,17 @@ function formatPrice(
     return "À venir";
   }
 
-  return `${Number(price).toLocaleString(
-    "fr-FR"
-  )} €`;
+  const value = Number(price);
+
+  if (Number.isNaN(value)) {
+    return "À venir";
+  }
+
+  return `${value.toLocaleString("fr-FR")} €`;
 }
 
 /* =========================================================
-   IMAGE
-========================================================= */
-
-function getFormationImage(
-  formation: Formation,
-  day: FormationDay
-) {
-  if (day.image) {
-    return day.image;
-  }
-
-  if (formation.image) {
-    return formation.image;
-  }
-
-  return null;
-}
-
-/* =========================================================
-   CARD
+   FORMATION CARD
 ========================================================= */
 
 export function FormationCard({
@@ -263,44 +237,44 @@ export function FormationCard({
   imageAspect = "aspect-[4/3]",
   delay = 0,
 }: FormationCardProps) {
-  const programme =
-    formation.programme;
+  const programme = formation.programme;
 
   const duration =
-    programme?.duration ??
-    "3 jours";
+    programme?.duration ?? "3 jours";
 
   /*
    * IMPORTANT:
    *
-   * city identifies the selected session.
+   * city = selected city
+   * day   = selected session
+   *
+   * Example:
+   *
+   * /formations/formation-extension-de-cils
+   * ?city=Paris
+   * &day=1
    */
 
   const detailUrl =
-    `/formations/${formation.slug}?city=${encodeURIComponent(
+    `/formations/${formation.slug}` +
+    `?city=${encodeURIComponent(
       formationDay.city
-    )}`;
-
-  /*
-   * Reservation keeps both city
-   * and exact FormationDay ID.
-   */
-
-  const reservationUrl =
-    `/formations/${formation.slug}?city=${encodeURIComponent(
-      formationDay.city
-    )}&day=${formationDay.id}`;
-
-  const image =
-    getFormationImage(
-      formation,
-      formationDay
-    );
+    )}` +
+    `&day=${formationDay.id}`;
 
   const isAvailable =
-    formationDay.status ===
-      "available" &&
+    formationDay.status === "available" &&
     formationDay.remaining_places > 0;
+
+  /*
+   * Session image first.
+   * If there is no session image,
+   * use formation image.
+   */
+
+  const image =
+    formationDay.image ||
+    formation.image;
 
   return (
     <article
@@ -309,7 +283,9 @@ export function FormationCard({
         className
       )}
     >
-      {/* IMAGE */}
+      {/* =================================================
+          IMAGE
+      ================================================= */}
 
       <Link
         to={detailUrl}
@@ -339,7 +315,9 @@ export function FormationCard({
       <Reveal
         delay={delay + 0.15}
       >
-        {/* LABEL */}
+        {/* =================================================
+            LABEL
+        ================================================= */}
 
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
           <span className="font-serif text-lg tracking-normal text-ink/60">
@@ -359,7 +337,9 @@ export function FormationCard({
           {duration}
         </p>
 
-        {/* CITY */}
+        {/* =================================================
+            CITY
+        ================================================= */}
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">
           <Link
@@ -370,7 +350,9 @@ export function FormationCard({
           </Link>
         </h3>
 
-        {/* DATE */}
+        {/* =================================================
+            DATE
+        ================================================= */}
 
         <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
           {formatDateRange(
@@ -379,19 +361,22 @@ export function FormationCard({
           )}
         </p>
 
-        {/* DESCRIPTION */}
+        {/* =================================================
+            DESCRIPTION
+        ================================================= */}
 
         {formation.description && (
           <div
             className="mt-5 max-w-md text-base font-light leading-relaxed text-ink/60"
             dangerouslySetInnerHTML={{
-              __html:
-                formation.description,
+              __html: formation.description,
             }}
           />
         )}
 
-        {/* INFORMATION */}
+        {/* =================================================
+            INFORMATION
+        ================================================= */}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
           <Meta
@@ -419,21 +404,18 @@ export function FormationCard({
             value={formatPrice(
               formation.deposit_amount
             )}
-            sub="PayPal"
+            sub="À régler après confirmation"
             className="col-span-2 sm:col-span-1"
           />
         </dl>
 
-        {/* BUTTONS */}
+        {/* =================================================
+            BUTTONS
+        ================================================= */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button
-            to={reservationUrl}
-            state={{
-              ...RESERVE_STATE,
-              formationDayId:
-                formationDay.id,
-            }}
+            to={`${detailUrl}#reservation`}
             variant={
               isAvailable
                 ? "dark"
@@ -448,8 +430,7 @@ export function FormationCard({
 
           <Button
             to={detailUrl}
-            variant="link-dark"
-            icon="arrow"
+            variant="outline-dark"
           >
             Voir la formation
           </Button>
