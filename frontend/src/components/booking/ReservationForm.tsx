@@ -18,73 +18,124 @@ interface ReservationFormProps {
 }
 
 /* =========================================================
-   HELPERS
+   DATE FORMATTER
+   Safe against null / invalid dates.
 ========================================================= */
 
 function formatDateRange(
-  start: string,
-  end: string
-) {
-  if (!start) return "";
-
-  const startParts = start.split("-");
-  const endParts = end?.split("-");
-
-  if (
-    startParts.length !== 3 ||
-    !endParts ||
-    endParts.length !== 3
-  ) {
-    return `${start} — ${end}`;
+  start: string | null | undefined,
+  end: string | null | undefined
+): string {
+  if (!start || !end) {
+    return "Dates à confirmer";
   }
 
-  const startYear = Number(startParts[0]);
-  const startMonth = Number(startParts[1]);
-  const startDay = Number(startParts[2]);
+  const parseDate = (
+    value: string
+  ): Date | null => {
+    const clean = value.trim();
 
-  const endYear = Number(endParts[0]);
-  const endMonth = Number(endParts[1]);
-  const endDay = Number(endParts[2]);
+    if (!clean) {
+      return null;
+    }
 
-  const startDate = new Date(
-    startYear,
-    startMonth - 1,
-    startDay
-  );
+    const match = clean.match(
+      /^(\d{4})-(\d{2})-(\d{2})/
+    );
 
-  const endDate = new Date(
-    endYear,
-    endMonth - 1,
-    endDay
-  );
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
 
-  const startMonthName =
-    new Intl.DateTimeFormat("fr-FR", {
-      month: "long",
-    }).format(startDate);
+      const date = new Date(
+        year,
+        month - 1,
+        day
+      );
 
-  const endMonthName =
-    new Intl.DateTimeFormat("fr-FR", {
-      month: "long",
-    }).format(endDate);
+      if (
+        Number.isNaN(date.getTime())
+      ) {
+        return null;
+      }
+
+      return date;
+    }
+
+    const date = new Date(clean);
+
+    if (
+      Number.isNaN(date.getTime())
+    ) {
+      return null;
+    }
+
+    return date;
+  };
+
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
+
+  if (!startDate || !endDate) {
+    return "Dates à confirmer";
+  }
+
+  const startDay =
+    startDate.getDate();
+
+  const endDay =
+    endDate.getDate();
+
+  const startMonth =
+    new Intl.DateTimeFormat(
+      "fr-FR",
+      {
+        month: "long",
+      }
+    ).format(startDate);
+
+  const endMonth =
+    new Intl.DateTimeFormat(
+      "fr-FR",
+      {
+        month: "long",
+      }
+    ).format(endDate);
+
+  const startYear =
+    startDate.getFullYear();
+
+  const endYear =
+    endDate.getFullYear();
 
   if (
     startMonth === endMonth &&
     startYear === endYear
   ) {
-    return `${startDay} — ${endDay} ${endMonthName}`;
+    return `${startDay} — ${endDay} ${endMonth}`;
   }
 
-  if (startYear === endYear) {
-    return `${startDay} ${startMonthName} — ${endDay} ${endMonthName}`;
+  if (
+    startYear === endYear
+  ) {
+    return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
   }
 
-  return `${startDay} ${startMonthName} ${startYear} — ${endDay} ${endMonthName} ${endYear}`;
+  return `${startDay} ${startMonth} ${startYear} — ${endDay} ${endMonth} ${endYear}`;
 }
 
+/* =========================================================
+   PRICE
+========================================================= */
+
 function formatPrice(
-  price: number | string | null | undefined
-) {
+  price:
+    | number
+    | string
+    | null
+    | undefined
+): string {
   if (
     price === null ||
     price === undefined ||
@@ -99,7 +150,9 @@ function formatPrice(
     return `${price} €`;
   }
 
-  return `${number.toLocaleString("fr-FR")} €`;
+  return `${number.toLocaleString(
+    "fr-FR"
+  )} €`;
 }
 
 /* =========================================================
@@ -117,7 +170,7 @@ export function ReservationForm({
     useState(false);
 
   /* =======================================================
-     FORM SUBMIT
+     SUBMIT
   ======================================================= */
 
   function handleSubmit(
@@ -128,10 +181,13 @@ export function ReservationForm({
     setLoading(true);
 
     /*
-     * Front-end reservation for now.
+     * Front-end only for now.
      *
-     * You can connect this to your Laravel
-     * reservation API later.
+     * Later you can connect this to:
+     *
+     * POST /api/reservations
+     *
+     * Laravel.
      */
 
     window.setTimeout(() => {
@@ -146,49 +202,47 @@ export function ReservationForm({
 
   if (submitted) {
     return (
-      <main className="min-h-screen bg-[#f8f7f4] px-6 py-20 md:px-10 lg:px-20">
-        <div className="mx-auto max-w-7xl">
+      <div className="wrap">
 
-          <div className="max-w-2xl border border-ink/10 p-10">
+        <div className="max-w-3xl border border-ink/10 p-10 md:p-14">
 
-            <p className="label text-ink/45">
-              Réservation
+          <p className="label text-ink/45">
+            Réservation
+          </p>
+
+          <h2 className="display mt-6 text-4xl md:text-6xl">
+            Merci pour votre demande.
+          </h2>
+
+          <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink/60">
+            Votre demande de réservation a
+            bien été envoyée. L'académie vous
+            contactera pour confirmer votre
+            inscription.
+          </p>
+
+          <div className="mt-10 border-t border-ink/10 pt-7">
+
+            <p className="font-serif text-2xl">
+              {formation.title}
             </p>
 
-            <h1 className="display mt-6 text-5xl">
-              Merci pour votre demande.
-            </h1>
-
-            <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink/60">
-              Votre demande de réservation a
-              bien été envoyée. L'académie vous
-              contactera pour confirmer votre
-              inscription.
+            <p className="mt-3 text-sm text-ink/55">
+              {formationDay.city}
             </p>
 
-            <div className="mt-8 border-t border-ink/10 pt-6">
-
-              <p className="font-serif text-xl">
-                {formation.title}
-              </p>
-
-              <p className="mt-2 text-sm text-ink/55">
-                {formationDay.city}
-              </p>
-
-              <p className="mt-1 text-sm text-ink/55">
-                {formatDateRange(
-                  formationDay.start_date,
-                  formationDay.end_date
-                )}
-              </p>
-
-            </div>
+            <p className="mt-1 text-sm text-ink/55">
+              {formatDateRange(
+                formationDay.start_date,
+                formationDay.end_date
+              )}
+            </p>
 
           </div>
 
         </div>
-      </main>
+
+      </div>
     );
   }
 
@@ -197,53 +251,58 @@ export function ReservationForm({
   ======================================================= */
 
   return (
-    <main className="bg-[#f8f7f4] px-6 py-16 md:px-10 lg:px-20 lg:py-20">
+    <div className="wrap">
 
-      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
+      <div className="grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
 
         {/* =================================================
-            LEFT
+            LEFT SUMMARY
         ================================================= */}
 
         <div>
 
-          <p className="label text-ink/45">
-            Réservation
-          </p>
+          <div className="flex items-center gap-4">
+            <span className="h-px w-7 bg-ink/50" />
 
-          <h1 className="display mt-5 text-[clamp(3rem,6vw,5.5rem)] leading-[0.9]">
+            <p className="label text-ink/45">
+              Réservation
+            </p>
+          </div>
+
+          <h2 className="display mt-6 text-[clamp(3rem,6vw,5.5rem)] leading-[0.9]">
             Réserver
             <br />
             ma place
-          </h1>
+          </h2>
 
           <p className="mt-7 max-w-md text-sm font-light leading-relaxed text-ink/60">
-            Remplissez vos coordonnées pour
-            envoyer votre demande de réservation
+            Remplissez vos coordonnées et
+            envoyez votre demande de réservation
             auprès de l'académie.
           </p>
 
-          {/* =================================================
-              SUMMARY
-          ================================================= */}
+          {/* SUMMARY */}
 
           <div className="mt-10">
 
             {/* FORMATION */}
 
             <div className="flex items-center justify-between border-t border-ink/10 py-4">
+
               <span className="label text-[10px] text-ink/45">
                 Formation
               </span>
 
-              <span className="font-serif text-base">
+              <span className="max-w-[55%] text-right font-serif text-base">
                 {formation.title}
               </span>
+
             </div>
 
             {/* CITY */}
 
             <div className="flex items-center justify-between border-t border-ink/10 py-4">
+
               <span className="label text-[10px] text-ink/45">
                 Ville
               </span>
@@ -251,28 +310,32 @@ export function ReservationForm({
               <span className="font-serif text-base">
                 {formationDay.city}
               </span>
+
             </div>
 
             {/* DATES */}
 
             <div className="flex items-center justify-between border-t border-ink/10 py-4">
+
               <span className="label text-[10px] text-ink/45">
                 Dates
               </span>
 
-              <span className="font-serif text-base text-right">
+              <span className="max-w-[60%] text-right font-serif text-base">
                 {formatDateRange(
                   formationDay.start_date,
                   formationDay.end_date
                 )}
               </span>
+
             </div>
 
-            {/* PERSONAL PRICE */}
+            {/* PRICE */}
 
             <div className="flex items-center justify-between border-t border-ink/10 py-4">
+
               <span className="label text-[10px] text-ink/45">
-                Financement personnel
+                Tarif
               </span>
 
               <span className="font-serif text-base">
@@ -281,40 +344,51 @@ export function ReservationForm({
                     formation.personal_price
                 )}
               </span>
+
             </div>
 
             {/* CPF */}
 
-            {formationDay.cpf_eligible && (
-              <div className="flex items-center justify-between border-t border-ink/10 py-4">
-                <span className="label text-[10px] text-ink/45">
-                  Financement CPF
-                </span>
+            {formationDay.cpf_eligible &&
+              formationDay.cpf_price !==
+                null &&
+              formationDay.cpf_price !==
+                undefined &&
+              formationDay.cpf_price !==
+                "" && (
+                <div className="flex items-center justify-between border-t border-ink/10 py-4">
 
-                <span className="font-serif text-base">
-                  {formatPrice(
-                    formationDay.cpf_price
-                  )}
-                </span>
-              </div>
-            )}
+                  <span className="label text-[10px] text-ink/45">
+                    CPF
+                  </span>
+
+                  <span className="font-serif text-base">
+                    {formatPrice(
+                      formationDay.cpf_price
+                    )}
+                  </span>
+
+                </div>
+              )}
 
             {/* DEPOSIT */}
 
-            <div className="flex items-center justify-between border-b border-t border-ink/10 py-4">
+            <div className="flex items-center justify-between border-b border-t border-ink/10 py-5">
+
               <span className="label text-[10px] text-ink/45">
                 Acompte
               </span>
 
-              <span className="font-serif text-xl">
+              <span className="font-serif text-2xl">
                 {formatPrice(
-                  formation.deposit_amount
+                  formation.deposit_amount ??
+                    150
                 )}
               </span>
+
             </div>
 
           </div>
-
         </div>
 
         {/* =================================================
@@ -330,9 +404,7 @@ export function ReservationForm({
             Vos coordonnées
           </p>
 
-          {/* =================================================
-              NAME
-          ================================================= */}
+          {/* NAME */}
 
           <div className="mt-8 grid gap-7 md:grid-cols-2">
 
@@ -374,9 +446,7 @@ export function ReservationForm({
 
           </div>
 
-          {/* =================================================
-              EMAIL / PHONE
-          ================================================= */}
+          {/* EMAIL / PHONE */}
 
           <div className="mt-7 grid gap-7 md:grid-cols-2">
 
@@ -418,9 +488,7 @@ export function ReservationForm({
 
           </div>
 
-          {/* =================================================
-              ADDRESS
-          ================================================= */}
+          {/* ADDRESS */}
 
           <div className="mt-7">
 
@@ -442,13 +510,12 @@ export function ReservationForm({
 
           </div>
 
-          {/* =================================================
-              POSTAL / CITY
-          ================================================= */}
+          {/* POSTAL / CITY */}
 
           <div className="mt-7 grid gap-7 md:grid-cols-2">
 
             <div>
+
               <label
                 htmlFor="postal_code"
                 className="label text-[10px] text-ink/45"
@@ -464,9 +531,11 @@ export function ReservationForm({
                 placeholder="75000"
                 className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
               />
+
             </div>
 
             <div>
+
               <label
                 htmlFor="customer_city"
                 className="label text-[10px] text-ink/45"
@@ -482,13 +551,12 @@ export function ReservationForm({
                 placeholder="Votre ville"
                 className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
               />
+
             </div>
 
           </div>
 
-          {/* =================================================
-              MESSAGE
-          ================================================= */}
+          {/* MESSAGE */}
 
           <div className="mt-7">
 
@@ -509,21 +577,20 @@ export function ReservationForm({
 
           </div>
 
-          {/* =================================================
-              SUMMARY
-          ================================================= */}
+          {/* DEPOSIT */}
 
           <div className="mt-8 border-t border-ink/10 pt-6">
 
             <div className="flex items-center justify-between">
 
               <span className="label text-[10px] text-ink/45">
-                Acompte
+                Acompte à régler
               </span>
 
               <span className="font-serif text-2xl">
                 {formatPrice(
-                  formation.deposit_amount
+                  formation.deposit_amount ??
+                    150
                 )}
               </span>
 
@@ -531,9 +598,7 @@ export function ReservationForm({
 
           </div>
 
-          {/* =================================================
-              SEND
-          ================================================= */}
+          {/* SEND */}
 
           <div className="mt-8 border-t border-ink/10 pt-6">
 
@@ -552,8 +617,7 @@ export function ReservationForm({
         </form>
 
       </div>
-
-    </main>
+    </div>
   );
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Link,
   useParams,
@@ -6,88 +6,132 @@ import {
 } from "react-router-dom";
 
 import { useFormation } from "@/hooks/useFormation";
+import { Reveal } from "@/components/ui/Reveal";
 import { ReservationForm } from "@/components/booking/ReservationForm";
 
-import type {
-  Formation,
-  FormationDay,
-} from "@/types/formation";
-
 /* =========================================================
-   FALLBACK DATES
+   TYPES
 ========================================================= */
 
-const DEFAULT_START_DATE = "2026-09-10";
-const DEFAULT_END_DATE = "2026-09-12";
+interface FormationDay {
+  id: number;
+  formation_id: number;
 
-/* =========================================================
-   SAFE DATE
-========================================================= */
+  city: string;
 
-function safeDate(
-  value: string | null | undefined,
-  fallback: string
-): Date {
-  const raw =
-    typeof value === "string" &&
-    value.trim() !== ""
-      ? value.trim()
-      : fallback;
+  start_date: string | null;
+  end_date: string | null;
 
-  const date = new Date(
-    /^\d{4}-\d{2}-\d{2}$/.test(raw)
-      ? `${raw}T00:00:00`
-      : raw
-  );
+  image?: string | null;
 
-  if (Number.isNaN(date.getTime())) {
-    return new Date(`${fallback}T00:00:00`);
-  }
+  personal_price: number | string | null;
 
-  return date;
+  cpf_eligible: boolean;
+  cpf_price: number | string | null;
+
+  max_places: number;
+  remaining_places: number;
+
+  status: string;
 }
 
 /* =========================================================
-   DATE FORMAT
+   DATE HELPER
+   NEVER throws "Invalid time value"
 ========================================================= */
 
 function formatDateRange(
   start: string | null | undefined,
   end: string | null | undefined
 ): string {
-  const startDate = safeDate(
-    start,
-    DEFAULT_START_DATE
-  );
+  if (!start || !end) {
+    return "Dates à confirmer";
+  }
 
-  const endDate = safeDate(
-    end,
-    DEFAULT_END_DATE
-  );
+  /*
+   * Handles:
+   * 2026-09-10
+   * 2026-09-10T00:00:00
+   * 2026-09-10T00:00:00.000000Z
+   */
 
-  const startDay = String(
-    startDate.getDate()
-  ).padStart(2, "0");
+  const parseDate = (value: string): Date | null => {
+    const clean = value.trim();
 
-  const endDay = String(
-    endDate.getDate()
-  ).padStart(2, "0");
+    if (!clean) {
+      return null;
+    }
 
-  const startMonth =
-    startDate.toLocaleDateString("fr-FR", {
+    // YYYY-MM-DD
+    const match = clean.match(
+      /^(\d{4})-(\d{2})-(\d{2})/
+    );
+
+    if (match) {
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+
+      if (
+        !Number.isInteger(year) ||
+        !Number.isInteger(month) ||
+        !Number.isInteger(day) ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31
+      ) {
+        return null;
+      }
+
+      const date = new Date(
+        year,
+        month - 1,
+        day
+      );
+
+      if (Number.isNaN(date.getTime())) {
+        return null;
+      }
+
+      return date;
+    }
+
+    const date = new Date(clean);
+
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+
+    return date;
+  };
+
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
+
+  if (!startDate || !endDate) {
+    return "Dates à confirmer";
+  }
+
+  const startDay = startDate.getDate();
+  const endDay = endDate.getDate();
+
+  const startMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    {
       month: "long",
-    });
+    }
+  ).format(startDate);
 
-  const endMonth =
-    endDate.toLocaleDateString("fr-FR", {
+  const endMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    {
       month: "long",
-    });
+    }
+  ).format(endDate);
 
-  const startYear =
-    startDate.getFullYear();
-
-  const endYear =
-    endDate.getFullYear();
+  const startYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
 
   if (
     startMonth === endMonth &&
@@ -104,54 +148,27 @@ function formatDateRange(
 }
 
 /* =========================================================
-   PRICE
+   PRICE HELPER
 ========================================================= */
 
 function formatPrice(
-  value: number | string | null | undefined
+  price: number | string | null | undefined
 ): string {
   if (
-    value === null ||
-    value === undefined ||
-    value === ""
+    price === null ||
+    price === undefined ||
+    price === ""
   ) {
     return "À venir";
   }
 
-  const number = Number(value);
+  const numericPrice = Number(price);
 
-  if (Number.isNaN(number)) {
-    return "À venir";
+  if (Number.isNaN(numericPrice)) {
+    return `${price} €`;
   }
 
-  return `${number.toLocaleString("fr-FR")} €`;
-}
-
-/* =========================================================
-   IMAGE
-========================================================= */
-
-function getImage(
-  formation: Formation,
-  day: FormationDay | null
-): string | null {
-  if (
-    day?.image &&
-    typeof day.image === "string" &&
-    day.image.trim() !== ""
-  ) {
-    return day.image;
-  }
-
-  if (
-    formation.image &&
-    typeof formation.image === "string" &&
-    formation.image.trim() !== ""
-  ) {
-    return formation.image;
-  }
-
-  return null;
+  return `${numericPrice.toLocaleString("fr-FR")} €`;
 }
 
 /* =========================================================
@@ -159,12 +176,45 @@ function getImage(
 ========================================================= */
 
 export function FormationDetailPage() {
-  const { slug } = useParams<{
-    slug: string;
-  }>();
+  /* =======================================================
+     ROUTER
+  ======================================================= */
 
-  const [searchParams, setSearchParams] =
+  const { slug } =
+    useParams<{ slug: string }>();
+
+  const [searchParams] =
     useSearchParams();
+
+  /* =======================================================
+     URL CITY
+
+     Example:
+
+     #/formations/extension-de-cils?city=Paris
+
+     => only Paris sessions
+  ======================================================= */
+
+  const selectedCity =
+    searchParams.get("city")?.trim() || "";
+
+  /* =======================================================
+     URL DAY
+
+     Example:
+
+     ?city=Paris&day=1
+
+     => selected session = id 1
+  ======================================================= */
+
+  const selectedDayId =
+    searchParams.get("day");
+
+  /* =======================================================
+     API
+  ======================================================= */
 
   const {
     data: formation,
@@ -172,151 +222,90 @@ export function FormationDetailPage() {
     error,
   } = useFormation(slug);
 
-  const [showReservation, setShowReservation] =
-    useState(false);
-
-  const [selectedDay, setSelectedDay] =
-    useState<FormationDay | null>(null);
-
   /* =======================================================
-     CITY FROM URL
+     ALL SESSIONS
   ======================================================= */
 
-  const cityParam =
-    searchParams.get("city");
-
-  const dayParam =
-    searchParams.get("day");
-
-  const normalizedCity =
-    cityParam?.trim().toLowerCase() ?? "";
-
-  /* =======================================================
-     ALL DAYS
-  ======================================================= */
-
-  const allDays = useMemo(() => {
-    if (!formation) {
-      return [];
-    }
-
-    if (
-      !Array.isArray(
-        formation.formationDays
-      )
-    ) {
-      return [];
-    }
-
-    return formation.formationDays;
-  }, [formation]);
-
-  /* =======================================================
-     CITY DAYS
-     
-     Example:
-     ?city=Paris
-
-     Shows ONLY Paris sessions.
-  ======================================================= */
-
-  const cityDays = useMemo(() => {
-    if (!normalizedCity) {
-      return allDays;
-    }
-
-    return allDays.filter(
-      (day) =>
-        String(day.city ?? "")
-          .trim()
-          .toLowerCase() ===
-        normalizedCity
-    );
-  }, [allDays, normalizedCity]);
-
-  /* =======================================================
-     CURRENT DAY
-  ======================================================= */
-
-  const currentDay = useMemo(() => {
-    if (dayParam) {
-      const found = cityDays.find(
-        (day) =>
-          String(day.id) ===
-          String(dayParam)
-      );
-
-      if (found) {
-        return found;
+  const allSessions: FormationDay[] =
+    useMemo(() => {
+      if (
+        !formation ||
+        !Array.isArray(
+          formation.formationDays
+        )
+      ) {
+        return [];
       }
-    }
 
-    return cityDays[0] ?? null;
-  }, [cityDays, dayParam]);
-
-  /* =======================================================
-     INITIAL SELECTED DAY
-  ======================================================= */
-
-  useEffect(() => {
-    if (currentDay) {
-      setSelectedDay(currentDay);
-    }
-  }, [currentDay]);
+      return formation.formationDays as FormationDay[];
+    }, [formation]);
 
   /* =======================================================
-     IMAGE
+     FILTER BY CITY
   ======================================================= */
 
-  const heroImage = useMemo(() => {
-    if (!formation) {
-      return null;
-    }
+  const sessions: FormationDay[] =
+    useMemo(() => {
+      if (!selectedCity) {
+        return allSessions;
+      }
 
-    return getImage(
-      formation,
-      selectedDay
-    );
-  }, [formation, selectedDay]);
+      const normalizedCity =
+        selectedCity
+          .trim()
+          .toLowerCase();
 
-  /* =======================================================
-     RESERVE
-  ======================================================= */
-
-  function handleReserve(
-    day: FormationDay
-  ) {
-    setSelectedDay(day);
-    setShowReservation(true);
-
-    const params =
-      new URLSearchParams(
-        searchParams
+      return allSessions.filter(
+        (day) =>
+          day.city
+            ?.trim()
+            .toLowerCase() ===
+          normalizedCity
       );
+    }, [
+      allSessions,
+      selectedCity,
+    ]);
 
-    params.set(
-      "city",
-      day.city
-    );
+  /* =======================================================
+     SELECTED SESSION
 
-    params.set(
-      "day",
-      String(day.id)
-    );
+     IMPORTANT:
+     If ?day=1 exists, use that session.
+     Otherwise there is NO selected session.
 
-    setSearchParams(params, {
-      replace: true,
-    });
+     This means ReservationForm does NOT appear
+     until the user clicks RÉSERVER.
+  ======================================================= */
 
-    window.setTimeout(() => {
-      document
-        .getElementById("reservation")
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-    }, 100);
-  }
+  const selectedSession =
+    useMemo(() => {
+      if (!selectedDayId) {
+        return null;
+      }
+
+      return (
+        sessions.find(
+          (day) =>
+            String(day.id) ===
+            String(selectedDayId)
+        ) ?? null
+      );
+    }, [
+      sessions,
+      selectedDayId,
+    ]);
+
+  /* =======================================================
+     PROGRAMME
+  ======================================================= */
+
+  const programme =
+    formation?.programme;
+
+  const duration =
+    programme?.duration ??
+    "3 jours";
 
   /* =======================================================
      LOADING
@@ -324,14 +313,12 @@ export function FormationDetailPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto max-w-7xl px-6 py-32 md:px-10">
-        <p className="label text-ink/40">
-          CHARGEMENT
-        </p>
-
-        <h1 className="display mt-6 text-5xl">
-          Formation
-        </h1>
+      <main className="min-h-screen bg-ivory py-32">
+        <div className="wrap">
+          <p className="text-sm text-ink/50">
+            Chargement de la formation...
+          </p>
+        </div>
       </main>
     );
   }
@@ -342,370 +329,198 @@ export function FormationDetailPage() {
 
   if (error || !formation) {
     return (
-      <main className="mx-auto max-w-7xl px-6 py-32 md:px-10">
-        <p className="label text-ink/40">
-          FORMATION
-        </p>
+      <main className="min-h-screen bg-ivory py-32">
+        <div className="wrap">
+          <p className="label text-ink/40">
+            Formation
+          </p>
 
-        <h1 className="display mt-6 text-5xl">
-          Formation introuvable
-        </h1>
+          <h1 className="display mt-6 text-5xl lg:text-7xl">
+            Formation introuvable
+          </h1>
 
-        <Link
-          to="/formations"
-          className="label mt-10 inline-block text-ink/50 hover:opacity-60"
-        >
-          ← Toutes les formations
-        </Link>
+          <Link
+            to="/formations"
+            className="mt-10 inline-flex text-sm underline underline-offset-4"
+          >
+            ← Toutes les formations
+          </Link>
+        </div>
       </main>
     );
   }
-
-  /* =======================================================
-     VALUES
-  ======================================================= */
-
-  const programme =
-    formation.programme?.name ??
-    formation.title;
-
-  const duration =
-    formation.programme?.duration ??
-    "3 jours";
-
-  const deposit =
-    formation.deposit_amount ??
-    150;
 
   /* =======================================================
      RENDER
   ======================================================= */
 
   return (
-    <main className="bg-ivory text-ink">
+    <main className="bg-ivory">
 
-      {/* ===================================================
-          BACK
-      =================================================== */}
-
-      <section className="mx-auto max-w-7xl px-6 pb-8 pt-16 md:px-10">
-        <Link
-          to="/formations"
-          className="label text-ink/45 hover:opacity-60"
-        >
-          ← Toutes les formations
-        </Link>
-      </section>
-
-      {/* ===================================================
+      {/* =================================================
           HERO
-      =================================================== */}
+      ================================================= */}
 
-      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-10">
-        <div className="grid gap-12 md:grid-cols-2 md:gap-20">
+      <section className="py-20 lg:py-32">
+        <div className="wrap">
 
-          {/* IMAGE */}
+          <Link
+            to="/formations"
+            className="label text-ink/40 transition-opacity hover:opacity-60"
+          >
+            ← Toutes les formations
+          </Link>
 
-          <div className="overflow-hidden">
-            {heroImage ? (
-              <img
-                src={heroImage}
-                alt={formation.title}
-                className="aspect-[4/5] w-full object-cover"
-              />
-            ) : (
-              <div className="aspect-[4/5] w-full bg-ink/5" />
-            )}
-          </div>
+          <div className="mt-14 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
 
-          {/* CONTENT */}
+            {/* IMAGE */}
 
-          <div className="pt-2">
+            <Reveal>
+              {formation.image ? (
+                <img
+                  src={formation.image}
+                  alt={formation.title}
+                  className="aspect-[4/3] w-full object-cover"
+                />
+              ) : (
+                <div className="aspect-[4/3] w-full bg-ink/5" />
+              )}
+            </Reveal>
 
-            <p className="label text-ink/40">
-              {programme}
-              {" · "}
-              {duration}
-            </p>
+            {/* TITLE */}
 
-            <h1 className="display mt-5 text-[clamp(3.5rem,8vw,6.5rem)] leading-[0.9]">
-              {selectedDay?.city ??
-                cityParam ??
-                formation.title}
-            </h1>
+            <Reveal delay={0.1}>
+              <p className="label text-ink/40">
+                {programme?.name ??
+                  "Formation"}
+              </p>
 
-            <p className="mt-6 font-serif text-xl text-ink/60">
-              {selectedDay
-                ? formatDateRange(
-                    selectedDay.start_date,
-                    selectedDay.end_date
-                  )
-                : formatDateRange(
-                    null,
-                    null
-                  )}
-            </p>
+              <h1 className="display mt-5 text-[clamp(3rem,7vw,6rem)] leading-[0.95]">
+                {formation.title}
+              </h1>
 
-            {/* DESCRIPTION */}
-
-            {formation.description && (
-              <div
-                className="mt-7 max-w-xl text-base font-light leading-relaxed text-ink/60"
-                dangerouslySetInnerHTML={{
-                  __html:
-                    formation.description,
-                }}
-              />
-            )}
-
-            {/* =================================================
-                INFORMATION
-            ================================================= */}
-
-            <div className="mt-10 border-t border-ink/10">
-
-              <div className="flex justify-between border-b border-ink/10 py-5">
-                <span className="label text-ink/40">
-                  DURÉE
-                </span>
-
-                <span className="font-serif">
+              <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-ink/50">
+                <span>
                   {duration}
                 </span>
-              </div>
 
-              <div className="flex justify-between border-b border-ink/10 py-5">
-                <span className="label text-ink/40">
-                  VILLE
-                </span>
-
-                <span className="font-serif">
-                  {selectedDay?.city ??
-                    cityParam ??
-                    "—"}
-                </span>
-              </div>
-
-              <div className="flex justify-between border-b border-ink/10 py-5">
-                <span className="label text-ink/40">
-                  TARIF
-                </span>
-
-                <span className="font-serif">
-                  {formatPrice(
-                    selectedDay?.personal_price ??
-                      formation.personal_price
-                  )}
-                </span>
-              </div>
-
-              {selectedDay?.cpf_eligible && (
-                <div className="flex justify-between border-b border-ink/10 py-5">
-                  <span className="label text-ink/40">
-                    CPF
+                {selectedCity && (
+                  <span>
+                    {selectedCity}
                   </span>
-
-                  <span className="font-serif">
-                    {formatPrice(
-                      selectedDay.cpf_price
-                    )}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex justify-between border-b border-ink/10 py-5">
-                <span className="label text-ink/40">
-                  ACOMPTE
-                </span>
-
-                <span className="font-serif">
-                  {formatPrice(
-                    deposit
-                  )}
-                </span>
+                )}
               </div>
-            </div>
+            </Reveal>
 
-            {/* =================================================
-                PROGRAMME
-            ================================================= */}
-
-            {Array.isArray(
-              formation.steps
-            ) &&
-              formation.steps.length > 0 && (
-                <div className="mt-12">
-
-                  <p className="label mb-7 text-ink/40">
-                    PROGRAMME
-                  </p>
-
-                  <div className="space-y-7">
-                    {formation.steps.map(
-                      (step, index) => (
-                        <div
-                          key={`${step.title}-${index}`}
-                          className="flex gap-5"
-                        >
-                          <span className="label text-ink/30">
-                            {String(
-                              index + 1
-                            ).padStart(2, "0")}
-                          </span>
-
-                          <div>
-                            <h3 className="font-serif text-lg">
-                              {step.title}
-                            </h3>
-
-                            {step.description && (
-                              <p className="mt-2 text-sm font-light leading-relaxed text-ink/50">
-                                {
-                                  step.description
-                                }
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
-
-            {/* =================================================
-                PDF
-            ================================================= */}
-
-            {formation.pdf_program && (
-              <a
-                href={
-                  formation.pdf_program
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="label mt-8 inline-block border-b border-ink/20 pb-1 text-ink/60 hover:opacity-60"
-              >
-                Télécharger le programme PDF →
-              </a>
-            )}
-
-            {/* =================================================
-                RESERVE
-            ================================================= */}
-
-            {selectedDay && (
-              <button
-                type="button"
-                onClick={() =>
-                  handleReserve(
-                    selectedDay
-                  )
-                }
-                className="mt-10 inline-flex items-center gap-7 bg-ink px-8 py-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-ivory hover:opacity-80"
-              >
-                RÉSERVER MA PLACE
-
-                <span className="text-base">
-                  →
-                </span>
-              </button>
-            )}
           </div>
         </div>
       </section>
 
-      {/* ===================================================
+      {/* =================================================
+          DESCRIPTION
+      ================================================= */}
+
+      {formation.description && (
+        <section className="pb-20 lg:pb-28">
+          <div className="wrap">
+
+            <div
+              className="max-w-3xl text-lg font-light leading-relaxed text-ink/70"
+              dangerouslySetInnerHTML={{
+                __html:
+                  formation.description,
+              }}
+            />
+
+          </div>
+        </section>
+      )}
+
+      {/* =================================================
           SESSIONS DISPONIBLES
-      =================================================== */}
+      ================================================= */}
 
-      <section
-        id="sessions"
-        className="border-t border-ink/10"
-      >
-        <div className="mx-auto max-w-7xl px-6 py-24 md:px-10">
+      <section className="border-t border-ink/10 py-20 lg:py-28">
+        <div className="wrap">
 
-          <p className="label text-ink/40">
-            SESSIONS DISPONIBLES
-          </p>
+          <Reveal>
+            <p className="label text-ink/40">
+              Sessions disponibles
+            </p>
 
-          <h2 className="display mt-5 text-[clamp(3rem,7vw,5rem)]">
-            {cityParam ??
-              selectedDay?.city ??
-              "Toutes les villes"}
-          </h2>
+            <h2 className="display mt-5 text-4xl lg:text-6xl">
+              {selectedCity
+                ? selectedCity
+                : "Toutes les sessions"}
+            </h2>
+          </Reveal>
 
-          <div className="mt-12">
+          <div className="mt-12 border-t border-ink/10">
 
-            {cityDays.length === 0 ? (
-              <div className="border-t border-ink/10 py-10">
-                <p className="font-serif text-xl text-ink/50">
+            {sessions.length === 0 ? (
+              <div className="py-10">
+                <p className="text-sm text-ink/50">
                   Aucune session disponible
-                  pour cette ville.
+                  {selectedCity
+                    ? ` pour ${selectedCity}.`
+                    : "."}
                 </p>
               </div>
             ) : (
-              cityDays.map((day) => {
+              sessions.map((day) => {
 
-                const available =
-                  day.remaining_places > 0 &&
-                  day.status !==
-                    "completed" &&
-                  day.status !==
-                    "finished";
+                const reserveUrl =
+                  `/formations/${formation.slug}?city=${encodeURIComponent(
+                    day.city
+                  )}&day=${day.id}`;
 
                 return (
                   <div
                     key={day.id}
-                    className="border-t border-ink/10 py-7"
+                    className="border-b border-ink/10 py-8"
                   >
+                    <div className="grid gap-6 md:grid-cols-[1fr_auto_auto] md:items-center">
 
-                    <div className="grid gap-6 md:grid-cols-[1fr_auto_auto] md:items-center md:gap-12">
-
-                      {/* SESSION */}
+                      {/* CITY + DATE */}
 
                       <div>
                         <p className="font-serif text-2xl">
                           {day.city}
                         </p>
 
-                        <p className="mt-2 font-serif text-lg text-ink/55">
+                        <p className="mt-2 text-sm text-ink/60">
                           {formatDateRange(
                             day.start_date,
                             day.end_date
                           )}
                         </p>
 
-                        <p className="mt-2 text-xs text-ink/40">
-                          {day.remaining_places > 0
-                            ? `${day.remaining_places} ${
-                                day.remaining_places ===
-                                1
-                                  ? "place"
-                                  : "places"
-                              } restante${
-                                day.remaining_places ===
-                                1
-                                  ? ""
-                                  : "s"
-                              }`
-                            : "Complet"}
+                        <p className="mt-2 text-sm text-ink/50">
+                          {day.remaining_places}{" "}
+                          {day.remaining_places ===
+                          1
+                            ? "place restante"
+                            : "places restantes"}
                         </p>
                       </div>
 
-                      {/* PRICES */}
+                      {/* PRICE */}
 
                       <div className="md:text-right">
 
                         <p className="font-serif text-xl">
                           {formatPrice(
-                            day.personal_price ??
-                              formation.personal_price
+                            day.personal_price
                           )}
                         </p>
 
                         {day.cpf_eligible &&
-                          day.cpf_price && (
+                          day.cpf_price !==
+                            null &&
+                          day.cpf_price !==
+                            undefined &&
+                          day.cpf_price !==
+                            "" && (
                             <p className="mt-1 text-xs text-ink/40">
                               CPF{" "}
                               {formatPrice(
@@ -717,155 +532,147 @@ export function FormationDetailPage() {
                         <p className="mt-1 text-xs text-ink/40">
                           Acompte{" "}
                           {formatPrice(
-                            deposit
+                            formation.deposit_amount
                           )}
                         </p>
+
                       </div>
 
                       {/* RESERVE */}
 
-                      <button
-                        type="button"
-                        disabled={!available}
-                        onClick={() =>
-                          handleReserve(
-                            day
-                          )
-                        }
-                        className={
-                          available
-                            ? "inline-flex min-w-[135px] items-center justify-center gap-5 border border-ink px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink transition-all hover:bg-ink hover:text-ivory"
-                            : "inline-flex min-w-[135px] items-center justify-center border border-ink/10 px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink/25"
-                        }
-                      >
-                        {available
-                          ? "RÉSERVER"
-                          : "COMPLET"}
-                      </button>
+                      <div className="md:text-right">
+                        {day.remaining_places >
+                        0 ? (
+                          <Link
+                            to={reserveUrl}
+                            className="inline-flex min-w-[135px] items-center justify-center border border-ink px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:bg-ink hover:text-white"
+                          >
+                            RÉSERVER
+                          </Link>
+                        ) : (
+                          <span className="inline-flex min-w-[135px] items-center justify-center border border-ink/20 px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-ink/30">
+                            COMPLET
+                          </span>
+                        )}
+                      </div>
+
                     </div>
                   </div>
                 );
               })
             )}
+
           </div>
         </div>
       </section>
 
-      {/* ===================================================
-          RESERVATION
-      =================================================== */}
+      {/* =================================================
+          RESERVATION FORM
 
-      {showReservation &&
-        selectedDay && (
-          <section
-            id="reservation"
-            className="border-t border-ink/10"
-          >
-            <div className="mx-auto max-w-7xl px-6 py-24 md:px-10">
+          Appears on SAME PAGE after clicking RÉSERVER.
+          No PayPal.
+          No separate reservation page.
+      ================================================= */}
 
-              <div className="grid gap-14 md:grid-cols-[0.7fr_1.3fr] md:gap-20">
+      {selectedSession && (
+        <section
+          id="reservation"
+          className="border-t border-ink/10 py-20 lg:py-32"
+        >
+          <ReservationForm
+            formation={formation}
+            formationDay={selectedSession}
+          />
+        </section>
+      )}
 
-                {/* LEFT */}
+      {/* =================================================
+          PROGRAMME
+      ================================================= */}
 
-                <div>
-                  <p className="label text-ink/40">
-                    RÉSERVATION
-                  </p>
+      <section className="border-t border-ink/10 py-20 lg:py-32">
+        <div className="wrap">
 
-                  <h2 className="display mt-6 text-[clamp(3rem,6vw,5rem)] leading-[0.95]">
-                    RÉSERVER
-                    <br />
-                    MA PLACE
-                  </h2>
+          <div className="grid gap-12 lg:grid-cols-[0.35fr_0.65fr]">
 
-                  <div className="mt-10 border-t border-ink/10">
+            {/* LEFT */}
 
-                    <div className="flex justify-between border-b border-ink/10 py-5">
-                      <span className="label text-ink/40">
-                        FORMATION
-                      </span>
+            <Reveal>
+              <p className="label text-ink/40">
+                Programme
+              </p>
 
-                      <span className="max-w-[55%] text-right font-serif">
-                        {formation.title}
-                      </span>
-                    </div>
+              <h2 className="display mt-5 text-4xl lg:text-5xl">
+                Le programme
+              </h2>
+            </Reveal>
 
-                    <div className="flex justify-between border-b border-ink/10 py-5">
-                      <span className="label text-ink/40">
-                        VILLE
-                      </span>
+            {/* RIGHT */}
 
-                      <span className="font-serif">
-                        {selectedDay.city}
-                      </span>
-                    </div>
+            <Reveal delay={0.1}>
+              {formation.steps &&
+              formation.steps.length >
+                0 ? (
+                <div className="border-t border-ink/10">
 
-                    <div className="flex justify-between border-b border-ink/10 py-5">
-                      <span className="label text-ink/40">
-                        DATES
-                      </span>
+                  {formation.steps.map(
+                    (step, index) => (
+                      <div
+                        key={`${index}-${step.title}`}
+                        className="border-b border-ink/10 py-7"
+                      >
+                        <div className="grid gap-5 md:grid-cols-[60px_1fr]">
 
-                      <span className="font-serif text-right">
-                        {formatDateRange(
-                          selectedDay.start_date,
-                          selectedDay.end_date
-                        )}
-                      </span>
-                    </div>
+                          <span className="font-serif text-lg text-ink/40">
+                            {String(
+                              index + 1
+                            ).padStart(
+                              2,
+                              "0"
+                            )}
+                          </span>
 
-                    <div className="flex justify-between border-b border-ink/10 py-5">
-                      <span className="label text-ink/40">
-                        TARIF
-                      </span>
+                          <div>
+                            <h3 className="font-serif text-2xl">
+                              {step.title}
+                            </h3>
 
-                      <span className="font-serif">
-                        {formatPrice(
-                          selectedDay.personal_price ??
-                            formation.personal_price
-                        )}
-                      </span>
-                    </div>
+                            {step.description && (
+                              <p className="mt-3 max-w-2xl text-sm font-light leading-relaxed text-ink/60">
+                                {
+                                  step.description
+                                }
+                              </p>
+                            )}
+                          </div>
 
-                    <div className="flex justify-between border-b border-ink/10 py-5">
-                      <span className="label text-ink/40">
-                        ACOMPTE
-                      </span>
+                        </div>
+                      </div>
+                    )
+                  )}
 
-                      <span className="font-serif">
-                        {formatPrice(
-                          deposit
-                        )}
-                      </span>
-                    </div>
-
-                  </div>
                 </div>
+              ) : (
+                <p className="text-sm text-ink/50">
+                  Le programme sera communiqué
+                  prochainement.
+                </p>
+              )}
+            </Reveal>
 
-                {/* RESERVATION FORM */}
+          </div>
+        </div>
+      </section>
 
-                <div>
-                  <ReservationForm
-                    formation={formation}
-                    formationDay={
-                      selectedDay
-                    }
-                  />
-                </div>
+      {/* =================================================
+          BACK
+      ================================================= */}
 
-              </div>
-            </div>
-          </section>
-        )}
-
-      {/* ===================================================
-          FOOTER LINK
-      =================================================== */}
-
-      <section className="border-t border-ink/10">
-        <div className="mx-auto max-w-7xl px-6 py-12 md:px-10">
+      <section className="border-t border-ink/10 py-16">
+        <div className="wrap">
           <Link
             to="/formations"
-            className="label text-ink/40 hover:opacity-60"
+            className="label text-ink/40 transition-opacity hover:opacity-60"
           >
             ← Toutes les formations
           </Link>

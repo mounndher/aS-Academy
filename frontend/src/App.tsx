@@ -25,10 +25,6 @@ import { HomePage } from "@/pages/HomePage";
 import { FormationsListPage } from "@/pages/FormationsListPage";
 import { FormationDetailPage } from "@/pages/FormationDetailPage";
 
-/* =========================================================
-   LAYOUT
-========================================================= */
-
 function Layout() {
   const location = useLocation();
 
@@ -46,35 +42,30 @@ function Layout() {
           initial={false}
         >
           <motion.main
-            key={location.pathname}
+            key={location.pathname + location.search}
             {...pageTransition}
           >
             <Routes location={location}>
-              {/* HOME */}
+
               <Route
                 path="/"
                 element={<HomePage />}
               />
 
-              {/* ALL FORMATIONS */}
               <Route
                 path="/formations"
-                element={<FormationsListPage />}
+                element={
+                  <FormationsListPage />
+                }
               />
 
-              {/* FORMATION DETAIL */}
               <Route
                 path="/formations/:slug"
-                element={<FormationDetailPage />}
+                element={
+                  <FormationDetailPage />
+                }
               />
 
-              {/* OPTIONAL RESERVATION ROUTE */}
-              <Route
-                path="/formations/:slug/reservation"
-                element={<FormationDetailPage />}
-              />
-
-              {/* FALLBACK */}
               <Route
                 path="*"
                 element={
@@ -84,6 +75,7 @@ function Layout() {
                   />
                 }
               />
+
             </Routes>
           </motion.main>
         </AnimatePresence>
@@ -96,18 +88,18 @@ function Layout() {
   );
 }
 
-/* =========================================================
-   APP
-========================================================= */
-
 export default function App() {
   return (
     <HashRouter>
+
       <MotionConfig reducedMotion="user">
+
         <SiteUIProvider>
           <Layout />
         </SiteUIProvider>
+
       </MotionConfig>
+
     </HashRouter>
   );
 }
