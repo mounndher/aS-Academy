@@ -3,111 +3,108 @@ import {
   useState,
 } from "react";
 
-import type { Formation } from "@/types/formation";
-
-/* =========================================================
-   TYPES
-========================================================= */
-
-type FormationDay =
-  Formation["formationDays"][number];
+import type {
+  Formation,
+  FormationDay,
+} from "@/types/formation";
 
 interface ReservationFormProps {
   formation: Formation;
   formationDay: FormationDay;
 }
 
-/* =========================================================
-   DATE FORMATTER
-   Safe against null / invalid dates.
-========================================================= */
+// =========================================================
+// SAFE DATE
+// =========================================================
+
+function parseSafeDate(
+  value: string | null | undefined
+): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const clean = String(value).trim();
+
+  if (!clean) {
+    return null;
+  }
+
+  const match = clean.match(
+    /^(\d{4})-(\d{2})-(\d{2})$/
+  );
+
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+
+    const date = new Date(
+      year,
+      month - 1,
+      day
+    );
+
+    if (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    ) {
+      return date;
+    }
+
+    return null;
+  }
+
+  const parsed = new Date(clean);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+// =========================================================
+// DATE RANGE
+// =========================================================
 
 function formatDateRange(
   start: string | null | undefined,
   end: string | null | undefined
 ): string {
-  if (!start || !end) {
-    return "Dates à confirmer";
+  const startDate = parseSafeDate(start);
+  const endDate = parseSafeDate(end);
+
+  if (!startDate && !endDate) {
+    return "Dates à venir";
   }
 
-  const parseDate = (
-    value: string
-  ): Date | null => {
-    const clean = value.trim();
-
-    if (!clean) {
-      return null;
-    }
-
-    const match = clean.match(
-      /^(\d{4})-(\d{2})-(\d{2})/
-    );
-
-    if (match) {
-      const year = Number(match[1]);
-      const month = Number(match[2]);
-      const day = Number(match[3]);
-
-      const date = new Date(
-        year,
-        month - 1,
-        day
-      );
-
-      if (
-        Number.isNaN(date.getTime())
-      ) {
-        return null;
-      }
-
-      return date;
-    }
-
-    const date = new Date(clean);
-
-    if (
-      Number.isNaN(date.getTime())
-    ) {
-      return null;
-    }
-
-    return date;
-  };
-
-  const startDate = parseDate(start);
-  const endDate = parseDate(end);
-
-  if (!startDate || !endDate) {
-    return "Dates à confirmer";
+  if (!startDate) {
+    return endDate
+      ? formatDate(end)
+      : "Dates à venir";
   }
 
-  const startDay =
-    startDate.getDate();
+  if (!endDate) {
+    return formatDate(start);
+  }
 
-  const endDay =
-    endDate.getDate();
+  const startDay = startDate.getDate();
+  const endDay = endDate.getDate();
 
-  const startMonth =
-    new Intl.DateTimeFormat(
-      "fr-FR",
-      {
-        month: "long",
-      }
-    ).format(startDate);
+  const startMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    { month: "long" }
+  ).format(startDate);
 
-  const endMonth =
-    new Intl.DateTimeFormat(
-      "fr-FR",
-      {
-        month: "long",
-      }
-    ).format(endDate);
+  const endMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    { month: "long" }
+  ).format(endDate);
 
-  const startYear =
-    startDate.getFullYear();
-
-  const endYear =
-    endDate.getFullYear();
+  const startYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
 
   if (
     startMonth === endMonth &&
@@ -116,25 +113,39 @@ function formatDateRange(
     return `${startDay} — ${endDay} ${endMonth}`;
   }
 
-  if (
-    startYear === endYear
-  ) {
+  if (startYear === endYear) {
     return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
   }
 
   return `${startDay} ${startMonth} ${startYear} — ${endDay} ${endMonth} ${endYear}`;
 }
 
-/* =========================================================
-   PRICE
-========================================================= */
+// =========================================================
+// SINGLE DATE
+// =========================================================
+
+function formatDate(
+  value: string | null | undefined
+): string {
+  const date = parseSafeDate(value);
+
+  if (!date) {
+    return "Date à venir";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+// =========================================================
+// PRICE
+// =========================================================
 
 function formatPrice(
-  price:
-    | number
-    | string
-    | null
-    | undefined
+  price: number | string | null | undefined
 ): string {
   if (
     price === null ||
@@ -155,9 +166,9 @@ function formatPrice(
   )} €`;
 }
 
-/* =========================================================
-   COMPONENT
-========================================================= */
+// =========================================================
+// COMPONENT
+// =========================================================
 
 export function ReservationForm({
   formation,
@@ -169,9 +180,9 @@ export function ReservationForm({
   const [loading, setLoading] =
     useState(false);
 
-  /* =======================================================
-     SUBMIT
-  ======================================================= */
+  // =======================================================
+  // SUBMIT
+  // =======================================================
 
   function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -180,165 +191,144 @@ export function ReservationForm({
 
     setLoading(true);
 
-    /*
-     * Front-end only for now.
-     *
-     * Later you can connect this to:
-     *
-     * POST /api/reservations
-     *
-     * Laravel.
-     */
-
+    // Front-end demo for now.
+    // Connect your Laravel reservation API here.
     window.setTimeout(() => {
       setLoading(false);
       setSubmitted(true);
     }, 500);
   }
 
-  /* =======================================================
-     SUCCESS
-  ======================================================= */
+  // =======================================================
+  // SUCCESS
+  // =======================================================
 
   if (submitted) {
     return (
-      <div className="wrap">
+      <main className="bg-[#f8f7f4] px-6 py-20 md:px-10 lg:px-20">
+        <div className="mx-auto max-w-7xl">
 
-        <div className="max-w-3xl border border-ink/10 p-10 md:p-14">
-
-          <p className="label text-ink/45">
-            Réservation
-          </p>
-
-          <h2 className="display mt-6 text-4xl md:text-6xl">
-            Merci pour votre demande.
-          </h2>
-
-          <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink/60">
-            Votre demande de réservation a
-            bien été envoyée. L'académie vous
-            contactera pour confirmer votre
-            inscription.
-          </p>
-
-          <div className="mt-10 border-t border-ink/10 pt-7">
-
-            <p className="font-serif text-2xl">
-              {formation.title}
-            </p>
-
-            <p className="mt-3 text-sm text-ink/55">
-              {formationDay.city}
-            </p>
-
-            <p className="mt-1 text-sm text-ink/55">
-              {formatDateRange(
-                formationDay.start_date,
-                formationDay.end_date
-              )}
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-    );
-  }
-
-  /* =======================================================
-     FORM
-  ======================================================= */
-
-  return (
-    <div className="wrap">
-
-      <div className="grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
-
-        {/* =================================================
-            LEFT SUMMARY
-        ================================================= */}
-
-        <div>
-
-          <div className="flex items-center gap-4">
-            <span className="h-px w-7 bg-ink/50" />
+          <div className="max-w-2xl border border-ink/10 p-10 md:p-14">
 
             <p className="label text-ink/45">
               Réservation
             </p>
-          </div>
 
-          <h2 className="display mt-6 text-[clamp(3rem,6vw,5.5rem)] leading-[0.9]">
+            <h1 className="display mt-6 text-5xl">
+              Merci pour votre demande.
+            </h1>
+
+            <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink/60">
+              Votre demande de réservation
+              a bien été envoyée.
+              L'académie vous contactera
+              pour confirmer votre inscription.
+            </p>
+
+            <div className="mt-8 border-t border-ink/10 pt-6">
+
+              <p className="font-serif text-xl">
+                {formation.title}
+              </p>
+
+              <p className="mt-2 text-sm text-ink/55">
+                {formationDay.city}
+              </p>
+
+              <p className="mt-1 text-sm text-ink/55">
+                {formatDateRange(
+                  formationDay.start_date,
+                  formationDay.end_date
+                )}
+              </p>
+
+            </div>
+
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // =======================================================
+  // FORM
+  // =======================================================
+
+  return (
+    <main className="bg-[#f8f7f4] px-6 py-16 md:px-10 lg:px-20 lg:py-24">
+      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
+
+        {/* =================================================
+            LEFT
+        ================================================= */}
+
+        <div>
+
+          <p className="label flex items-center gap-4 text-ink/50">
+            <span className="h-px w-10 bg-current" />
+            Réservation
+          </p>
+
+          <h2 className="display mt-5 text-[clamp(3rem,6vw,5.5rem)] leading-[0.9]">
             Réserver
             <br />
             ma place
           </h2>
 
           <p className="mt-7 max-w-md text-sm font-light leading-relaxed text-ink/60">
-            Remplissez vos coordonnées et
-            envoyez votre demande de réservation
+            Remplissez vos coordonnées
+            pour réserver votre place
             auprès de l'académie.
           </p>
 
-          {/* SUMMARY */}
+          {/* =================================================
+              SELECTED SESSION
+          ================================================= */}
 
-          <div className="mt-10">
+          <div className="mt-10 border-t border-ink/10">
+
+            <div className="border-b border-ink/10 py-5">
+
+              <p className="label text-[10px] text-ink/45">
+                Session sélectionnée
+              </p>
+
+              <p className="mt-4 font-serif text-2xl">
+                {formationDay.city}
+              </p>
+
+              <p className="mt-2 text-sm text-ink/55">
+                {formatDateRange(
+                  formationDay.start_date,
+                  formationDay.end_date
+                )}
+              </p>
+
+            </div>
 
             {/* FORMATION */}
 
-            <div className="flex items-center justify-between border-t border-ink/10 py-4">
+            <div className="flex items-center justify-between border-b border-ink/10 py-5">
 
               <span className="label text-[10px] text-ink/45">
                 Formation
               </span>
 
-              <span className="max-w-[55%] text-right font-serif text-base">
+              <span className="max-w-[220px] text-right font-serif text-base">
                 {formation.title}
-              </span>
-
-            </div>
-
-            {/* CITY */}
-
-            <div className="flex items-center justify-between border-t border-ink/10 py-4">
-
-              <span className="label text-[10px] text-ink/45">
-                Ville
-              </span>
-
-              <span className="font-serif text-base">
-                {formationDay.city}
-              </span>
-
-            </div>
-
-            {/* DATES */}
-
-            <div className="flex items-center justify-between border-t border-ink/10 py-4">
-
-              <span className="label text-[10px] text-ink/45">
-                Dates
-              </span>
-
-              <span className="max-w-[60%] text-right font-serif text-base">
-                {formatDateRange(
-                  formationDay.start_date,
-                  formationDay.end_date
-                )}
               </span>
 
             </div>
 
             {/* PRICE */}
 
-            <div className="flex items-center justify-between border-t border-ink/10 py-4">
+            <div className="flex items-center justify-between border-b border-ink/10 py-5">
 
               <span className="label text-[10px] text-ink/45">
                 Tarif
               </span>
 
-              <span className="font-serif text-base">
+              <span className="font-serif text-xl">
                 {formatPrice(
                   formationDay.personal_price ??
                     formation.personal_price
@@ -347,42 +337,41 @@ export function ReservationForm({
 
             </div>
 
-            {/* CPF */}
+            {/* PLACES */}
 
-            {formationDay.cpf_eligible &&
-              formationDay.cpf_price !==
-                null &&
-              formationDay.cpf_price !==
-                undefined &&
-              formationDay.cpf_price !==
-                "" && (
-                <div className="flex items-center justify-between border-t border-ink/10 py-4">
+            <div className="flex items-center justify-between border-b border-ink/10 py-5">
 
-                  <span className="label text-[10px] text-ink/45">
-                    CPF
-                  </span>
+              <span className="label text-[10px] text-ink/45">
+                Places
+              </span>
 
-                  <span className="font-serif text-base">
-                    {formatPrice(
-                      formationDay.cpf_price
-                    )}
-                  </span>
+              <span className="font-serif text-base">
+                {Number(
+                  formationDay.remaining_places
+                ) > 0
+                  ? `${formationDay.remaining_places} restante${
+                      Number(
+                        formationDay.remaining_places
+                      ) > 1
+                        ? "s"
+                        : ""
+                    }`
+                  : "Complet"}
+              </span>
 
-                </div>
-              )}
+            </div>
 
             {/* DEPOSIT */}
 
-            <div className="flex items-center justify-between border-b border-t border-ink/10 py-5">
+            <div className="flex items-center justify-between border-b border-ink/10 py-5">
 
               <span className="label text-[10px] text-ink/45">
                 Acompte
               </span>
 
-              <span className="font-serif text-2xl">
+              <span className="font-serif text-xl">
                 {formatPrice(
-                  formation.deposit_amount ??
-                    150
+                  formation.deposit_amount
                 )}
               </span>
 
@@ -422,7 +411,7 @@ export function ReservationForm({
                 type="text"
                 required
                 placeholder="Votre prénom"
-                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
               />
             </div>
 
@@ -440,7 +429,7 @@ export function ReservationForm({
                 type="text"
                 required
                 placeholder="Votre nom"
-                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
               />
             </div>
 
@@ -464,7 +453,7 @@ export function ReservationForm({
                 type="email"
                 required
                 placeholder="vous@exemple.com"
-                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
               />
             </div>
 
@@ -482,7 +471,7 @@ export function ReservationForm({
                 type="tel"
                 required
                 placeholder="06 00 00 00 00"
-                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
               />
             </div>
 
@@ -505,7 +494,7 @@ export function ReservationForm({
               type="text"
               required
               placeholder="Numéro et rue"
-              className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
             />
 
           </div>
@@ -515,7 +504,6 @@ export function ReservationForm({
           <div className="mt-7 grid gap-7 md:grid-cols-2">
 
             <div>
-
               <label
                 htmlFor="postal_code"
                 className="label text-[10px] text-ink/45"
@@ -529,13 +517,11 @@ export function ReservationForm({
                 type="text"
                 required
                 placeholder="75000"
-                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
               />
-
             </div>
 
             <div>
-
               <label
                 htmlFor="customer_city"
                 className="label text-[10px] text-ink/45"
@@ -549,9 +535,8 @@ export function ReservationForm({
                 type="text"
                 required
                 placeholder="Votre ville"
-                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+                className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
               />
-
             </div>
 
           </div>
@@ -572,7 +557,7 @@ export function ReservationForm({
               name="message"
               rows={5}
               placeholder="Une question ou une information complémentaire..."
-              className="mt-3 w-full resize-none border border-ink/15 bg-transparent p-4 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
+              className="mt-3 w-full resize-none border border-ink/15 bg-transparent p-4 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
             />
 
           </div>
@@ -589,8 +574,7 @@ export function ReservationForm({
 
               <span className="font-serif text-2xl">
                 {formatPrice(
-                  formation.deposit_amount ??
-                    150
+                  formation.deposit_amount
                 )}
               </span>
 
@@ -598,7 +582,25 @@ export function ReservationForm({
 
           </div>
 
-          {/* SEND */}
+          {/* PAYMENT */}
+
+          <div className="mt-6">
+
+            <div className="border border-ink/15 bg-[#111111] px-5 py-4 text-sm text-white">
+              <span className="font-medium">
+                Paiement par PayPal
+              </span>
+            </div>
+
+            <p className="mt-3 border border-ink/10 p-4 text-xs leading-relaxed text-ink/55">
+              En validant, vous pourrez régler
+              l'acompte demandé. Le solde
+              sera réglé auprès de l'académie.
+            </p>
+
+          </div>
+
+          {/* SUBMIT */}
 
           <div className="mt-8 border-t border-ink/10 pt-6">
 
@@ -609,15 +611,16 @@ export function ReservationForm({
             >
               {loading
                 ? "Envoi..."
-                : "Envoyer"}
+                : `Payer ${formatPrice(
+                    formation.deposit_amount
+                  )} `}
             </button>
 
           </div>
 
         </form>
-
       </div>
-    </div>
+    </main>
   );
 }
 
