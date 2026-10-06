@@ -1,43 +1,14 @@
 import { useEffect, useState } from "react";
-
-import type {
-  Formation,
-  FormationApiResponse,
-} from "@/types/formation";
+import type { Formation } from "@/types/formation";
 
 const API_URL =
   import.meta.env.VITE_API_URL || "";
 
-function normalizeFormation(
-  response: unknown
-): Formation | null {
-  if (!response) {
-    return null;
-  }
-
-  const body =
-    response as FormationApiResponse;
-
-  const formation =
-    body.formation ??
-    body.data ??
-    response;
-
-  if (
-    !formation ||
-    typeof formation !== "object"
-  ) {
-    return null;
-  }
-
-  return formation as Formation;
-}
-
 export function useFormation(
   slug?: string
 ) {
-  const [formation, setFormation] =
-    useState<Formation | null>(null);
+  const [data, setData] =
+    useState<Formation | undefined>(undefined);
 
   const [loading, setLoading] =
     useState(true);
@@ -48,90 +19,108 @@ export function useFormation(
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function fetchFormation() {
       if (!slug) {
-        setFormation(null);
+        setData(undefined);
+        setError("Slug manquant");
         setLoading(false);
-        setError(
-          "Aucun slug de formation."
-        );
         return;
       }
 
-      setLoading(true);
-      setError(null);
-      setFormation(null);
-
       try {
-        if (!API_URL) {
+        setLoading(true);
+        setError(null);
+
+        /*
+         * IMPORTANT:
+         *
+         * Your Laravel API returns:
+         *
+         * {
+         *   success: true,
+         *   data: [...]
+         * }
+         *
+         * So we load ALL formations and
+         * find the requested slug.
+         */
+
+        const response = await fetch(
+          `${API_URL}/api/contenu/formations`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
           throw new Error(
-            "VITE_API_URL n'est pas configuré."
+            `Erreur API: ${response.status}`
           );
         }
 
-        const cleanSlug =
+        const json = await response.json();
+
+        const formations: Formation[] =
+          Array.isArray(json?.data)
+            ? json.data
+            : [];
+
+        /*
+         * React Router gives us:
+         *
+         * formation-extension-de-cils
+         *
+         * Decode it and remove accidental slash.
+         */
+
+        const requestedSlug =
           decodeURIComponent(slug)
-            .replace(/^\/+|\/+$/g, "")
-            .trim();
+            .replace(/\/+$/, "")
+            .trim()
+            .toLowerCase();
 
-        const response =
-          await fetch(
-            `${API_URL}/formations/${encodeURIComponent(
-              cleanSlug
-            )}`,
+        const formation =
+          formations.find(
+            (item) =>
+              String(item.slug)
+                .replace(/\/+$/, "")
+                .trim()
+                .toLowerCase() ===
+              requestedSlug
+          );
+
+        if (!formation) {
+          console.error(
+            "Formation introuvable.",
             {
-              method: "GET",
-
-              headers: {
-                Accept:
-                  "application/json",
-              },
-
-              cache: "no-store",
+              requestedSlug,
+              availableSlugs:
+                formations.map(
+                  (item) => item.slug
+                ),
             }
           );
 
-        if (!response.ok) {
-          if (
-            response.status === 404
-          ) {
-            throw new Error(
-              "Formation introuvable."
-            );
-          }
-
           throw new Error(
-            `Erreur API ${response.status}`
-          );
-        }
-
-        const json =
-          await response.json();
-
-        const result =
-          normalizeFormation(json);
-
-        if (!result) {
-          throw new Error(
-            "Réponse API invalide."
+            `Formation introuvable: ${slug}`
           );
         }
 
         if (!cancelled) {
-          setFormation(result);
+          setData(formation);
         }
       } catch (err) {
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setData(undefined);
+
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Erreur lors du chargement de la formation"
+          );
         }
-
-        setFormation(null);
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Impossible de charger la formation."
-        );
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -139,7 +128,7 @@ export function useFormation(
       }
     }
 
-    load();
+    fetchFormation();
 
     return () => {
       cancelled = true;
@@ -147,10 +136,8 @@ export function useFormation(
   }, [slug]);
 
   return {
-    formation,
+    data,
     loading,
     error,
   };
 }
-
-export default useFormation;
