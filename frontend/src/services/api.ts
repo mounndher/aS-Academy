@@ -7,7 +7,6 @@ import type { TrainingExperienceApiResponse } from "../types/trainingExperience"
 import type { SiteSettingApiResponse } from "../types/siteSetting";
 import type { PortfolioApiResponse } from "../types/portfolio";
 import type { FormationInformationApiResponse } from "../types/formationInformation";
-
 import type { Formation } from "@/types/formation";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -17,14 +16,12 @@ interface ApiResponse<T> {
   data: T;
 }
 
-/* =========================================================
-   ACADEMY
-========================================================= */
+// =========================================================
+// ACADEMY
+// =========================================================
 
 export async function getAcademySection(): Promise<AcademyApiResponse> {
-  const response = await fetch(
-    `${API_URL}/contenu/academy`
-  );
+  const response = await fetch(`${API_URL}/contenu/academy`);
 
   if (!response.ok) {
     throw new Error(
@@ -35,14 +32,12 @@ export async function getAcademySection(): Promise<AcademyApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   HERO
-========================================================= */
+// =========================================================
+// HERO
+// =========================================================
 
 export async function getHeroSection(): Promise<HeroApiResponse> {
-  const response = await fetch(
-    `${API_URL}/contenu/hero`
-  );
+  const response = await fetch(`${API_URL}/contenu/hero`);
 
   if (!response.ok) {
     throw new Error(
@@ -53,9 +48,9 @@ export async function getHeroSection(): Promise<HeroApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   INTRODUCTION
-========================================================= */
+// =========================================================
+// INTRODUCTION
+// =========================================================
 
 export async function getIntroductionSection(): Promise<IntroductionApiResponse> {
   const response = await fetch(
@@ -71,9 +66,9 @@ export async function getIntroductionSection(): Promise<IntroductionApiResponse>
   return response.json();
 }
 
-/* =========================================================
-   GALLERY
-========================================================= */
+// =========================================================
+// GALLERY
+// =========================================================
 
 export async function getGallerySection(): Promise<GalleryApiResponse> {
   const response = await fetch(
@@ -89,9 +84,9 @@ export async function getGallerySection(): Promise<GalleryApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   CONTACT
-========================================================= */
+// =========================================================
+// CONTACT
+// =========================================================
 
 export async function getContactSection(): Promise<ContactApiResponse> {
   const response = await fetch(
@@ -107,9 +102,9 @@ export async function getContactSection(): Promise<ContactApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   CONTACT MESSAGE
-========================================================= */
+// =========================================================
+// CONTACT MESSAGE
+// =========================================================
 
 export interface ContactMessagePayload {
   first_name: string;
@@ -152,7 +147,6 @@ export async function sendContactMessage(
   if (!response.ok) {
     return {
       success: false,
-
       message:
         data.message ||
         "Impossible d'envoyer votre message.",
@@ -164,9 +158,9 @@ export async function sendContactMessage(
   return data;
 }
 
-/* =========================================================
-   TRAINING EXPERIENCE
-========================================================= */
+// =========================================================
+// TRAINING EXPERIENCE
+// =========================================================
 
 export async function getTrainingExperience(): Promise<TrainingExperienceApiResponse> {
   const response = await fetch(
@@ -182,9 +176,9 @@ export async function getTrainingExperience(): Promise<TrainingExperienceApiResp
   return response.json();
 }
 
-/* =========================================================
-   SITE SETTINGS
-========================================================= */
+// =========================================================
+// SITE SETTINGS
+// =========================================================
 
 export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
   const response = await fetch(
@@ -200,9 +194,9 @@ export async function getSiteSettings(): Promise<SiteSettingApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   PORTFOLIO
-========================================================= */
+// =========================================================
+// PORTFOLIO
+// =========================================================
 
 export async function getPortfolio(): Promise<PortfolioApiResponse> {
   const response = await fetch(
@@ -218,9 +212,9 @@ export async function getPortfolio(): Promise<PortfolioApiResponse> {
   return response.json();
 }
 
-/* =========================================================
-   STORAGE
-========================================================= */
+// =========================================================
+// STORAGE
+// =========================================================
 
 export function getStorageUrl(
   path: string | null | undefined
@@ -237,14 +231,14 @@ export function getStorageUrl(
   }
 
   return `${API_URL.replace(
-    "/api",
+    /\/api$/,
     ""
   )}/storage/${path.replace(/^\/+/, "")}`;
 }
 
-/* =========================================================
-   FORMATION INFORMATION
-========================================================= */
+// =========================================================
+// FORMATION INFORMATION
+// =========================================================
 
 export async function getFormationInformation(): Promise<FormationInformationApiResponse> {
   const response = await fetch(
@@ -260,9 +254,9 @@ export async function getFormationInformation(): Promise<FormationInformationApi
   return response.json();
 }
 
-/* =========================================================
-   ALL FORMATIONS
-========================================================= */
+// =========================================================
+// ALL FORMATIONS
+// =========================================================
 
 export async function getFormations(): Promise<Formation[]> {
   const response = await fetch(
@@ -283,13 +277,17 @@ export async function getFormations(): Promise<Formation[]> {
     : [];
 }
 
-/* =========================================================
-   SINGLE FORMATION
-========================================================= */
+// =========================================================
+// SINGLE FORMATION
+// =========================================================
 
 export async function getFormation(
   slug: string
 ): Promise<Formation> {
+  if (!slug) {
+    throw new Error("Formation introuvable.");
+  }
+
   const response = await fetch(
     `${API_URL}/contenu/formations/${encodeURIComponent(
       slug
@@ -310,6 +308,12 @@ export async function getFormation(
 
   const json: ApiResponse<Formation> =
     await response.json();
+
+  if (!json.data) {
+    throw new Error(
+      "Formation introuvable."
+    );
+  }
 
   return json.data;
 }

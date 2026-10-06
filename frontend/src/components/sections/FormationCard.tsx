@@ -27,11 +27,6 @@ export interface FormationDay {
 
   status: string;
 
-  /*
-   * Optional:
-   * if a session has its own image,
-   * use it before formation.image.
-   */
   image?: string | null;
 }
 
@@ -152,37 +147,26 @@ export function formatDateRange(
   const startDate = new Date(start);
   const endDate = new Date(end);
 
-  const startDay = startDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "numeric",
-    }
-  );
+  const startDay = startDate.toLocaleDateString("fr-FR", {
+    day: "numeric",
+  });
 
-  const endDay = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      day: "numeric",
-    }
-  );
+  const endDay = endDate.toLocaleDateString("fr-FR", {
+    day: "numeric",
+  });
 
-  const startMonth = startDate.toLocaleDateString(
-    "fr-FR",
-    {
-      month: "long",
-    }
-  );
+  const startMonth = startDate.toLocaleDateString("fr-FR", {
+    month: "long",
+  });
 
-  const endMonth = endDate.toLocaleDateString(
-    "fr-FR",
-    {
-      month: "long",
-    }
-  );
+  const endMonth = endDate.toLocaleDateString("fr-FR", {
+    month: "long",
+  });
 
   const startYear = startDate.getFullYear();
   const endYear = endDate.getFullYear();
 
+  // Same exact day
   if (
     startDay === endDay &&
     startMonth === endMonth &&
@@ -191,6 +175,7 @@ export function formatDateRange(
     return `${startDay} ${startMonth}`;
   }
 
+  // Same month
   if (
     startMonth === endMonth &&
     startYear === endYear
@@ -198,6 +183,7 @@ export function formatDateRange(
     return `${startDay} — ${endDay} ${endMonth}`;
   }
 
+  // Different months
   return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
 }
 
@@ -243,23 +229,24 @@ export function FormationCard({
     programme?.duration ?? "3 jours";
 
   /*
-   * IMPORTANT:
+   * IMPORTANT
    *
-   * city = selected city
-   * day   = selected session
+   * The card opens the formation using:
    *
-   * Example:
+   * /formations/formation-slug?city=Paris&day=12
    *
-   * /formations/formation-extension-de-cils
-   * ?city=Paris
-   * &day=1
+   * The detail page will:
+   *
+   * 1. Load the formation using slug
+   * 2. Read city
+   * 3. Read day
+   * 4. Display the selected city/session
+   * 5. Display all sessions for that city
    */
 
   const detailUrl =
     `/formations/${formation.slug}` +
-    `?city=${encodeURIComponent(
-      formationDay.city
-    )}` +
+    `?city=${encodeURIComponent(formationDay.city)}` +
     `&day=${formationDay.id}`;
 
   const isAvailable =
@@ -267,9 +254,13 @@ export function FormationCard({
     formationDay.remaining_places > 0;
 
   /*
-   * Session image first.
-   * If there is no session image,
-   * use formation image.
+   * IMAGE
+   *
+   * First:
+   * formation day image
+   *
+   * If no image:
+   * formation image
    */
 
   const image =
@@ -321,10 +312,7 @@ export function FormationCard({
 
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
           <span className="font-serif text-lg tracking-normal text-ink/60">
-            {String(index + 1).padStart(
-              2,
-              "0"
-            )}
+            {String(index + 1).padStart(2, "0")}
           </span>
 
           <span className="h-px w-6 bg-current" />
@@ -414,6 +402,8 @@ export function FormationCard({
         ================================================= */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
+          {/* RESERVE */}
+
           <Button
             to={`${detailUrl}#reservation`}
             variant={
@@ -427,6 +417,8 @@ export function FormationCard({
               ? "Réserver"
               : "Demander une date"}
           </Button>
+
+          {/* DETAILS */}
 
           <Button
             to={detailUrl}

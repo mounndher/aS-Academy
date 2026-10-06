@@ -1,25 +1,11 @@
-import {
-  useEffect,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import { getFormation } from "@/services/api";
+import type { Formation } from "@/types/formation";
 
-import type {
-  Formation,
-} from "@/types/formation";
-
-export function useFormation(
-  slug?: string
-) {
-  const [data, setData] =
-    useState<Formation | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState<string | null>(null);
+export function useFormation(slug?: string) {
+  const [data, setData] = useState<Formation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,24 +14,23 @@ export function useFormation(
       if (!slug) {
         if (!cancelled) {
           setData(null);
-          setError(
-            "Formation introuvable."
-          );
+          setError("Formation introuvable.");
           setLoading(false);
         }
-
         return;
       }
 
       try {
-        setLoading(true);
-        setError(null);
+        if (!cancelled) {
+          setLoading(true);
+          setError(null);
+        }
 
-        const result =
-          await getFormation(slug);
+        const formation = await getFormation(slug);
 
         if (!cancelled) {
-          setData(result);
+          setData(formation);
+          setError(null);
         }
       } catch (err) {
         if (!cancelled) {
