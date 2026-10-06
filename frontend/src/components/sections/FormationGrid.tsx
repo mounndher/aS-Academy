@@ -16,32 +16,28 @@ import {
 ========================================================= */
 
 export function FormationGrid() {
-  /* =======================================================
-     FORMATIONS
-  ======================================================= */
-
   const {
     data: formationData,
     loading: formationsLoading,
     error: formationsError,
   } = useFormations();
 
-  /* =======================================================
-     FORMATION INFORMATION
-  ======================================================= */
-
   const {
     data: formationInformation,
     loading: informationLoading,
   } = useFormationInformation();
 
-  const information = formationInformation?.information;
+  const information =
+    formationInformation?.information;
 
-  /* =======================================================
+  /* =========================================================
      LOADING
-  ======================================================= */
+  ========================================================= */
 
-  if (informationLoading || formationsLoading) {
+  if (
+    informationLoading ||
+    formationsLoading
+  ) {
     return (
       <section
         id="formations"
@@ -56,9 +52,9 @@ export function FormationGrid() {
     );
   }
 
-  /* =======================================================
+  /* =========================================================
      ERROR
-  ======================================================= */
+  ========================================================= */
 
   if (formationsError) {
     return (
@@ -75,69 +71,79 @@ export function FormationGrid() {
     );
   }
 
-  /* =======================================================
-     NORMALIZE FORMATIONS
-  ======================================================= */
+  /* =========================================================
+     NORMALIZE
+  ========================================================= */
 
-  const safeFormations: Formation[] = Array.isArray(
-    formationData
-  )
-    ? formationData
-    : [];
+  const formations: Formation[] =
+    Array.isArray(formationData)
+      ? formationData
+      : [];
 
-  /* =======================================================
-     CREATE ONE CARD PER CITY
-     
-     Example:
-     
-     Formation Extension de Cils
-       ├── Paris
-       ├── Toulouse
-       ├── Bruxelles
-       └── Bordeaux
-     
-     => 4 cards
-  ======================================================= */
+  /* =========================================================
+     ONE CARD PER CITY
+  ========================================================= */
 
   const cards: {
     formation: Formation;
     day: FormationDay;
   }[] = [];
 
-  safeFormations.forEach((formation) => {
-    const days = Array.isArray(formation.formationDays)
-      ? formation.formationDays
-      : [];
+  formations.forEach(
+    (formation) => {
+      const days =
+        Array.isArray(
+          formation.formationDays
+        )
+          ? formation.formationDays
+          : [];
 
-    const cities = new Map<string, FormationDay>();
+      const cities =
+        new Map<
+          string,
+          FormationDay
+        >();
 
-    days.forEach((day) => {
-      if (!day.city || !day.city.trim()) {
-        return;
-      }
+      days.forEach((day) => {
+        if (
+          !day.city ||
+          !day.city.trim()
+        ) {
+          return;
+        }
 
-      const cityKey = day.city.trim().toLowerCase();
+        const key =
+          day.city
+            .trim()
+            .toLowerCase();
 
-      /*
-       * Keep only the first date for each city
-       * on the homepage.
-       */
-      if (!cities.has(cityKey)) {
-        cities.set(cityKey, day);
-      }
-    });
+        /*
+         * Keep the first session
+         * for each city.
+         */
 
-    cities.forEach((day) => {
-      cards.push({
-        formation,
-        day,
+        if (!cities.has(key)) {
+          cities.set(
+            key,
+            day
+          );
+        }
       });
-    });
-  });
 
-  /* =======================================================
+      cities.forEach(
+        (day) => {
+          cards.push({
+            formation,
+            day,
+          });
+        }
+      );
+    }
+  );
+
+  /* =========================================================
      RENDER
-  ======================================================= */
+  ========================================================= */
 
   return (
     <section
@@ -145,16 +151,16 @@ export function FormationGrid() {
       className="scroll-mt-16 bg-white py-24 lg:py-40"
     >
       <div className="wrap">
-
-        {/* =================================================
-            SECTION INFORMATION
-        ================================================= */}
-
         <SectionHeader
-          label={information?.eyebrow ?? "Formations"}
+          label={
+            information?.eyebrow ??
+            "Formations"
+          }
           title={[
-            information?.title ?? "Nos",
-            information?.subtitle ?? "Formations",
+            information?.title ??
+              "Nos",
+            information?.subtitle ??
+              "Formations",
           ]}
           subtitle={
             information?.description ??
@@ -162,19 +168,12 @@ export function FormationGrid() {
           }
         />
 
-        {/* =================================================
-            FORMATIONS
-        ================================================= */}
-
         <div className="mt-24 lg:mt-36">
-
-          {/* HEADER */}
-
           <Reveal>
             <div className="flex flex-col gap-3 border-b border-ink/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
-
               <p className="label text-ink/50">
-                Prochaines formations — réservation en ligne
+                Prochaines formations —
+                réservation en ligne
               </p>
 
               <Button
@@ -184,31 +183,37 @@ export function FormationGrid() {
               >
                 Toutes les formations
               </Button>
-
             </div>
           </Reveal>
-
-          {/* EMPTY */}
 
           {cards.length === 0 ? (
             <div className="mt-14 border border-ink/10 p-8">
               <p className="text-sm text-ink/50">
-                Aucune formation disponible actuellement.
+                Aucune formation
+                disponible actuellement.
               </p>
             </div>
           ) : (
-
-            /* GRID */
-
             <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-10 lg:grid-cols-3">
-
               {cards.map(
-                ({ formation, day }, index) => (
+                (
+                  {
+                    formation,
+                    day,
+                  },
+                  index
+                ) => (
                   <FormationCard
                     key={`${formation.id}-${day.id}`}
-                    formation={formation}
-                    formationDay={day}
-                    index={index}
+                    formation={
+                      formation
+                    }
+                    formationDay={
+                      day
+                    }
+                    index={
+                      index
+                    }
                     className={
                       index % 3 === 1
                         ? "lg:mt-20"
@@ -219,22 +224,18 @@ export function FormationGrid() {
                         ? "aspect-[4/5]"
                         : "aspect-[4/3]"
                     }
-                    delay={index * 0.08}
+                    delay={
+                      index * 0.08
+                    }
                   />
                 )
               )}
-
             </div>
           )}
-
         </div>
       </div>
     </section>
   );
 }
-
-/* =========================================================
-   DEFAULT EXPORT
-========================================================= */
 
 export default FormationGrid;

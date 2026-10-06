@@ -10,9 +10,9 @@ export const RESERVE_STATE = {
   scrollTo: "reservation",
 } as const;
 
-// =========================================================
-// META
-// =========================================================
+/* =========================================================
+   META
+========================================================= */
 
 export function Meta({
   label,
@@ -68,21 +68,29 @@ export function Meta({
   );
 }
 
-// =========================================================
-// TYPES
-// =========================================================
+/* =========================================================
+   TYPES
+========================================================= */
 
 export interface FormationDay {
   id: number;
   formation_id: number;
+
   city: string;
+
   start_date: string;
   end_date: string;
+
+  image?: string | null;
+
   personal_price: number | string | null;
+
   cpf_eligible: boolean;
   cpf_price: number | string | null;
+
   max_places: number;
   remaining_places: number;
+
   status: string;
 }
 
@@ -90,18 +98,23 @@ export interface FormationProgramme {
   id: number;
   name: string;
   slug: string;
+
   description: string | null;
   duration: string | null;
+
   is_active: boolean;
 }
 
 export interface Formation {
   id: number;
+
   programme_id: number | null;
+
   programme: FormationProgramme | null;
 
   title: string;
   slug: string;
+
   description: string | null;
 
   steps: {
@@ -110,26 +123,19 @@ export interface Formation {
   }[];
 
   image: string | null;
+
   pdf_program: string | null;
 
-  deposit_amount:
-    | number
-    | string
-    | null;
+  deposit_amount: number | string | null;
 
-  personal_price:
-    | number
-    | string
-    | null;
+  personal_price: number | string | null;
 
   has_sale: boolean;
 
-  sale_price:
-    | number
-    | string
-    | null;
+  sale_price: number | string | null;
 
   installment_enabled: boolean;
+
   installment_count: number | null;
 
   is_active: boolean;
@@ -137,63 +143,57 @@ export interface Formation {
   formationDays: FormationDay[];
 }
 
-// =========================================================
-// PROPS
-// =========================================================
+/* =========================================================
+   PROPS
+========================================================= */
 
 interface FormationCardProps {
   formation: Formation;
+
   formationDay: FormationDay;
+
   index: number;
+
   className?: string;
+
   imageAspect?: string;
+
   delay?: number;
 }
 
-// =========================================================
-// DATE
-// =========================================================
+/* =========================================================
+   DATE
+========================================================= */
 
 function formatDateRange(
   start: string,
   end: string
 ) {
-  const startDate =
-    new Date(start);
-
-  const endDate =
-    new Date(end);
+  const startDate = new Date(start);
+  const endDate = new Date(end);
 
   const startDay =
     startDate.toLocaleDateString(
       "fr-FR",
-      {
-        day: "2-digit",
-      }
+      { day: "2-digit" }
     );
 
   const endDay =
     endDate.toLocaleDateString(
       "fr-FR",
-      {
-        day: "2-digit",
-      }
+      { day: "2-digit" }
     );
 
   const startMonth =
     startDate.toLocaleDateString(
       "fr-FR",
-      {
-        month: "long",
-      }
+      { month: "long" }
     );
 
   const endMonth =
     endDate.toLocaleDateString(
       "fr-FR",
-      {
-        month: "long",
-      }
+      { month: "long" }
     );
 
   const startYear =
@@ -212,9 +212,9 @@ function formatDateRange(
   return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
 }
 
-// =========================================================
-// PRICE
-// =========================================================
+/* =========================================================
+   PRICE
+========================================================= */
 
 function formatPrice(
   price: number | string | null
@@ -232,34 +232,75 @@ function formatPrice(
   )} €`;
 }
 
-// =========================================================
-// CARD
-// =========================================================
+/* =========================================================
+   IMAGE
+========================================================= */
+
+function getFormationImage(
+  formation: Formation,
+  day: FormationDay
+) {
+  if (day.image) {
+    return day.image;
+  }
+
+  if (formation.image) {
+    return formation.image;
+  }
+
+  return null;
+}
+
+/* =========================================================
+   CARD
+========================================================= */
 
 export function FormationCard({
-  formation: f,
-  formationDay: day,
+  formation,
+  formationDay,
   index,
   className,
   imageAspect = "aspect-[4/3]",
   delay = 0,
 }: FormationCardProps) {
-  const programme = f.programme;
+  const programme =
+    formation.programme;
 
   const duration =
     programme?.duration ??
     "3 jours";
 
-  const image = f.image;
+  /*
+   * IMPORTANT:
+   *
+   * city identifies the selected session.
+   */
 
-  // IMPORTANT:
-  // The selected session ID is preserved.
   const detailUrl =
-    `/formations/${f.slug}?day=${day.id}`;
+    `/formations/${formation.slug}?city=${encodeURIComponent(
+      formationDay.city
+    )}`;
+
+  /*
+   * Reservation keeps both city
+   * and exact FormationDay ID.
+   */
+
+  const reservationUrl =
+    `/formations/${formation.slug}?city=${encodeURIComponent(
+      formationDay.city
+    )}&day=${formationDay.id}`;
+
+  const image =
+    getFormationImage(
+      formation,
+      formationDay
+    );
 
   const isAvailable =
-    day.status === "available" &&
-    day.remaining_places > 0;
+    formationDay.status ===
+      "available" &&
+    formationDay.remaining_places > 0;
 
   return (
     <article
@@ -272,13 +313,13 @@ export function FormationCard({
 
       <Link
         to={detailUrl}
-        aria-label={`${f.title} — ${day.city}`}
+        aria-label={`${formation.title} — ${formationDay.city}`}
         className="block"
       >
         {image ? (
           <ImageReveal
             src={image}
-            alt={f.title}
+            alt={`${formation.title} — ${formationDay.city}`}
             className={cn(
               "w-full",
               imageAspect
@@ -311,9 +352,10 @@ export function FormationCard({
           <span className="h-px w-6 bg-current" />
 
           {programme?.name ??
-            f.title}
+            formation.title}
 
           {" · "}
+
           {duration}
         </p>
 
@@ -324,7 +366,7 @@ export function FormationCard({
             to={detailUrl}
             className="transition-opacity duration-500 hover:opacity-60"
           >
-            {day.city}
+            {formationDay.city}
           </Link>
         </h3>
 
@@ -332,18 +374,19 @@ export function FormationCard({
 
         <p className="mt-2 font-serif text-xl text-ink/70 md:text-2xl">
           {formatDateRange(
-            day.start_date,
-            day.end_date
+            formationDay.start_date,
+            formationDay.end_date
           )}
         </p>
 
         {/* DESCRIPTION */}
 
-        {f.description && (
+        {formation.description && (
           <div
             className="mt-5 max-w-md text-base font-light leading-relaxed text-ink/60"
             dangerouslySetInnerHTML={{
-              __html: f.description,
+              __html:
+                formation.description,
             }}
           />
         )}
@@ -359,13 +402,13 @@ export function FormationCard({
           <Meta
             label="Tarif"
             value={formatPrice(
-              day.personal_price
+              formationDay.personal_price
             )}
             sub={
-              day.cpf_eligible &&
-              day.cpf_price
+              formationDay.cpf_eligible &&
+              formationDay.cpf_price
                 ? `CPF ${formatPrice(
-                    day.cpf_price
+                    formationDay.cpf_price
                   )}`
                 : undefined
             }
@@ -374,7 +417,7 @@ export function FormationCard({
           <Meta
             label="Acompte"
             value={formatPrice(
-              f.deposit_amount
+              formation.deposit_amount
             )}
             sub="PayPal"
             className="col-span-2 sm:col-span-1"
@@ -384,12 +427,12 @@ export function FormationCard({
         {/* BUTTONS */}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
-
           <Button
-            to={detailUrl}
+            to={reservationUrl}
             state={{
               ...RESERVE_STATE,
-              formationDayId: day.id,
+              formationDayId:
+                formationDay.id,
             }}
             variant={
               isAvailable
@@ -406,10 +449,10 @@ export function FormationCard({
           <Button
             to={detailUrl}
             variant="link-dark"
+            icon="arrow"
           >
             Voir la formation
           </Button>
-
         </div>
       </Reveal>
     </article>

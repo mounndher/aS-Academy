@@ -1,12 +1,23 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { getFormations } from "@/services/api";
-import type { Formation } from "@/types/formation";
+
+import type {
+  Formation,
+} from "@/types/formation";
 
 export function useFormations() {
-  const [data, setData] = useState<Formation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] =
+    useState<Formation[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -16,7 +27,8 @@ export function useFormations() {
         setLoading(true);
         setError(null);
 
-        const result = await getFormations();
+        const result =
+          await getFormations();
 
         if (!cancelled) {
           setData(

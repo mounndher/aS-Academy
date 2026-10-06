@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { getFormation } from "@/services/api";
-import type { Formation } from "@/types/formation";
+
+import type {
+  Formation,
+} from "@/types/formation";
 
 export function useFormation(
   slug?: string
@@ -20,11 +26,14 @@ export function useFormation(
 
     async function loadFormation() {
       if (!slug) {
-        setData(null);
-        setError(
-          "Formation introuvable."
-        );
-        setLoading(false);
+        if (!cancelled) {
+          setData(null);
+          setError(
+            "Formation introuvable."
+          );
+          setLoading(false);
+        }
+
         return;
       }
 
