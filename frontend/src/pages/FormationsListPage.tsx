@@ -1,400 +1,969 @@
-import { Link } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import {
+  Link,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
-import { site } from "@/data/site";
+import { useFormation } from "@/hooks/useFormation";
+import { ReservationForm } from "@/components/booking/ReservationForm";
 
-import { useFormations } from "@/hooks/useFormations";
-import { useScrollToState } from "@/hooks/useScrollToState";
+import type { Formation } from "@/types/formation";
 
-import { Button } from "@/components/ui/Button";
-import { ImageReveal } from "@/components/ui/ImageReveal";
-import { Reveal } from "@/components/ui/Reveal";
-import { SectionHeader } from "@/components/ui/SectionHeader";
+/* =========================================================
+   TYPES
+========================================================= */
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
-}
+type FormationDay =
+  Formation["formationDays"][number];
 
-function formatPrice(
-  price: string | number | null | undefined
-) {
-  if (
-    price === null ||
-    price === undefined ||
-    price === ""
-  ) {
-    return "Sur demande";
+/* =========================================================
+   SAFE DATE PARSER
+========================================================= */
+
+function parseDate(value: unknown): Date | null {
+  if (value === null || value === undefined) {
+    return null;
   }
 
-  return `${Number(price).toLocaleString("fr-FR")} €`;
-}
-
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "available":
-      return "Disponible";
-
-    case "complete":
-      return "Complet";
-
-    case "cancelled":
-      return "Annulée";
-
-    case "finished":
-      return "Terminée";
-
-    default:
-      return status;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime())
+      ? null
+      : value;
   }
-}
 
-function getStatusClass(status: string) {
-  switch (status) {
-    case "available":
-      return "text-green-700";
+  const raw = String(value).trim();
 
-    case "complete":
-      return "text-red-600";
-
-    case "cancelled":
-      return "text-red-600";
-
-    case "finished":
-      return "text-ink/40";
-
-    default:
-      return "text-ink/50";
+  if (!raw) {
+    return null;
   }
+
+  /*
+   * Laravel commonly returns:
+   *
+   * 2026-09-10
+   *
+   * or:
+   *
+   * 2026-09-10T00:00:00.000000Z
+   */
+
+  const match = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})/
+  );
+
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+
+    if (
+      !Number.isInteger(year) ||
+      !Number.isInteger(month) ||
+      !Number.isInteger(day) ||
+      month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      day > 31
+    ) {
+      return null;
+    }
+
+    const date = new Date(
+      year,
+      month - 1,
+      day
+    );
+
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return date;
+  }
+
+  const parsed = new Date(raw);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
 }
 
 /* =========================================================
-   DYNAMIC CARD
+   SAFE DATE RANGE
 ========================================================= */
 
-function Card({
-  formation,
-  formationDay,
-  index,
-}: {
-  formation: any;
-  formationDay: any;
-  index: number;
-}) {
-  const to =
-    `/formations/${formation.slug}` +
-    `?city=${encodeURIComponent(formationDay.city)}` +
-    `&day=${formationDay.id}`;
+function formatDateRange(
+  start: unknown,
+  end: unknown
+): string {
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
 
-  const isAvailable =
-    formationDay.status === "available" &&
-    Number(formationDay.remaining_places) > 0;
+  if (!startDate && !endDate) {
+    return "Dates à confirmer";
+  }
 
-  /*
-   * IMPORTANT:
-   *
-   * formation.programme is an OBJECT.
-   * We use programme.name instead of rendering
-   * the entire object.
-   */
+  if (startDate && !endDate) {
+    return new Intl.DateTimeFormat(
+      "fr-FR",
+      {
+        day: "numeric",
+        month: "long",
+      }
+    ).format(startDate);
+  }
 
-  const programmeName =
-    formation.programme?.name ||
-    formation.title ||
-    "Formation";
+  if (!startDate || !endDate) {
+    return "Dates à confirmer";
+  }
 
-  const duration =
-    formation.programme?.duration ||
-    "3 jours";
+  const startDay = startDate.getDate();
+  const endDay = endDate.getDate();
 
-  const image =
-    formationDay.image ||
-    formation.image;
+  const startMonth =
+    new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+    }).format(startDate);
 
-  return (
-    <article className="min-w-0">
-      {/* IMAGE */}
+  const endMonth =
+    new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+    }).format(endDate);
 
-      <Link
-        to={to}
-        aria-label={`${formation.title} — ${formationDay.city}`}
-        className="block w-full overflow-hidden"
-      >
-        {image ? (
-          <ImageReveal
-            src={image}
-            alt={`${formation.title} — ${formationDay.city}`}
-            className="aspect-[4/5] w-full"
-            priority={index < 3}
-          />
-        ) : (
-          <div className="flex aspect-[4/5] w-full items-center justify-center bg-ink/5">
-            <span className="px-4 text-center text-sm text-ink/40">
-              Image non disponible
-            </span>
-          </div>
-        )}
-      </Link>
+  const startYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
 
-      {/* CONTENT */}
+  if (
+    startMonth === endMonth &&
+    startYear === endYear
+  ) {
+    return `${startDay} — ${endDay} ${endMonth}`;
+  }
 
-      <Reveal delay={0.1 + index * 0.08}>
-        {/* PROGRAMME */}
+  if (startYear === endYear) {
+    return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
+  }
 
-        <p className="label mt-5 flex flex-wrap items-center gap-2 text-ink/40 sm:mt-6">
-          <span>{programmeName}</span>
+  return `${startDay} ${startMonth} ${startYear} — ${endDay} ${endMonth} ${endYear}`;
+}
 
-          <span>·</span>
+/* =========================================================
+   SAFE PRICE
+========================================================= */
 
-          <span>{duration}</span>
-        </p>
+function formatPrice(
+  value:
+    | number
+    | string
+    | null
+    | undefined
+): string {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "À venir";
+  }
 
-        {/* TITLE */}
+  const number = Number(value);
 
-        <h2 className="display mt-3 min-w-0 break-words text-[clamp(1.9rem,7vw,3rem)] leading-[0.95]">
-          <Link
-            to={to}
-            className="break-words transition-opacity duration-500 hover:opacity-60"
-          >
-            {formation.title}
-          </Link>
-        </h2>
+  if (Number.isNaN(number)) {
+    return `${String(value)} €`;
+  }
 
-        {/* DESCRIPTION */}
+  return `${number.toLocaleString("fr-FR")} €`;
+}
 
-        {formation.description && (
-          <div
-            className="mt-3 line-clamp-3 max-w-md break-words text-sm font-light leading-relaxed text-ink/55"
-            dangerouslySetInnerHTML={{
-              __html: formation.description,
-            }}
-          />
-        )}
+/* =========================================================
+   NORMALIZE CITY
+========================================================= */
 
-        {/* CITY */}
-
-        <p className="mt-5 break-words font-serif text-xl text-ink/70 sm:text-2xl">
-          {formationDay.city}
-        </p>
-
-        {/* DATES */}
-
-        <p className="mt-1 text-sm font-light leading-relaxed text-ink/50">
-          Du {formatDate(formationDay.start_date)} au{" "}
-          {formatDate(formationDay.end_date)}
-        </p>
-
-        {/* PRICE */}
-
-        <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-ink/10 pt-5">
-          <span className="font-serif text-2xl leading-none">
-            {formatPrice(
-              formationDay.personal_price
-            )}
-          </span>
-
-          {formationDay.cpf_price !== null &&
-            formationDay.cpf_price !== undefined && (
-              <span className="text-xs font-light text-ink/50">
-                CPF{" "}
-                {formatPrice(
-                  formationDay.cpf_price
-                )}
-              </span>
-            )}
-        </div>
-
-        {/* STATUS */}
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span
-            className={`text-sm ${getStatusClass(
-              formationDay.status
-            )}`}
-          >
-            {getStatusLabel(
-              formationDay.status
-            )}
-          </span>
-
-          {formationDay.status === "available" && (
-            <span className="text-xs text-ink/50">
-              {formationDay.remaining_places}{" "}
-              {Number(
-                formationDay.remaining_places
-              ) > 1
-                ? "places restantes"
-                : "place restante"}
-            </span>
-          )}
-        </div>
-
-        {/* PDF */}
-
-        {formation.pdf_program && (
-          <a
-            href={formation.pdf_program}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-block max-w-full break-words text-xs uppercase tracking-[0.12em] text-ink/50 underline underline-offset-4 transition-opacity hover:opacity-60 sm:tracking-[0.15em]"
-          >
-            Télécharger le programme PDF
-          </a>
-        )}
-
-        {/* BUTTON */}
-
-        <Button
-          to={to}
-          variant="outline-dark"
-          icon="arrow"
-          className="mt-6 w-full sm:w-auto"
-        >
-          {isAvailable
-            ? "Réserver"
-            : "Voir la formation"}
-        </Button>
-      </Reveal>
-    </article>
-  );
+function normalizeCity(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 /* =========================================================
    PAGE
 ========================================================= */
 
-export function FormationsListPage() {
-  useScrollToState();
+export function FormationDetailPage() {
+  /* =======================================================
+     ROUTER
+  ======================================================= */
+
+  const { slug } = useParams<{
+    slug: string;
+  }>();
+
+  const [
+    searchParams,
+    setSearchParams,
+  ] = useSearchParams();
+
+  /*
+   * Example:
+   *
+   * /formations/formation-extension-de-cils?city=Paris
+   *
+   * After clicking:
+   *
+   * /formations/formation-extension-de-cils?city=Paris&day=12
+   */
+
+  const selectedCity =
+    searchParams.get("city")?.trim() || "";
+
+  const selectedDayId =
+    searchParams.get("day");
+
+  /* =======================================================
+     API
+  ======================================================= */
 
   const {
-    data: formationData,
+    data: formation,
     loading,
     error,
-  } = useFormations();
+  } = useFormation(slug);
 
-  /* LOADING */
+  /* =======================================================
+     ALL SESSIONS
+     
+     IMPORTANT:
+     We keep ALL formationDays.
+     
+     If the API contains:
+     
+     Paris       → day 1
+     Toulouse    → day 3
+     Bruxelles   → day 5
+     Paris       → day 6
+     Bordeaux    → day 4
+     
+     the list will display ALL FIVE sessions.
+  ======================================================= */
+
+  const allSessions = useMemo<FormationDay[]>(
+    () => {
+      if (
+        !formation ||
+        !Array.isArray(
+          formation.formationDays
+        )
+      ) {
+        return [];
+      }
+
+      return formation.formationDays.filter(
+        Boolean
+      );
+    },
+    [formation]
+  );
+
+  /* =======================================================
+     FILTER BY CITY
+
+     If:
+       ?city=Paris
+
+     show ONLY Paris sessions.
+
+     IMPORTANT:
+     If Paris has TWO formationDays,
+     BOTH Paris sessions remain visible.
+  ======================================================= */
+
+  const sessions = useMemo<FormationDay[]>(
+    () => {
+      if (!selectedCity) {
+        return allSessions;
+      }
+
+      const wantedCity =
+        normalizeCity(selectedCity);
+
+      return allSessions.filter(
+        (day) =>
+          normalizeCity(day.city) ===
+          wantedCity
+      );
+    },
+    [
+      allSessions,
+      selectedCity,
+    ]
+  );
+
+  /* =======================================================
+     SELECTED SESSION
+
+     We use the exact day ID.
+
+     Example:
+       ?city=Paris&day=6
+
+     selects formationDay id 6,
+     even if another Paris session exists.
+  ======================================================= */
+
+  const selectedSession =
+    useMemo<FormationDay | null>(
+      () => {
+        if (!selectedDayId) {
+          return null;
+        }
+
+        const found =
+          allSessions.find(
+            (day) =>
+              String(day.id) ===
+              String(selectedDayId)
+          );
+
+        return found ?? null;
+      },
+      [
+        allSessions,
+        selectedDayId,
+      ]
+    );
+
+  /* =======================================================
+     PROGRAMME
+  ======================================================= */
+
+  const programme =
+    formation?.programme ?? null;
+
+  const duration =
+    programme?.duration ||
+    "3 jours";
+
+  const steps =
+    Array.isArray(formation?.steps)
+      ? formation.steps
+      : [];
+
+  /* =======================================================
+     SCROLL AFTER SELECTING SESSION
+  ======================================================= */
+
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const element =
+        document.getElementById(
+          "reservation"
+        );
+
+      if (!element) {
+        return;
+      }
+
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [selectedSession]);
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
 
   if (loading) {
     return (
-      <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
+      <main className="min-h-screen bg-ivory py-32">
         <div className="wrap">
           <p className="text-sm text-ink/50">
-            Chargement des formations...
+            Chargement de la formation...
           </p>
         </div>
-      </section>
+      </main>
     );
   }
 
-  /* ERROR */
+  /* =======================================================
+     ERROR
+  ======================================================= */
 
-  if (error) {
+  if (error || !formation) {
     return (
-      <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
+      <main className="min-h-screen bg-ivory py-32">
         <div className="wrap">
-          <p className="text-sm text-red-600">
-            {error}
+          <p className="label text-ink/40">
+            Formation
           </p>
+
+          <h1 className="display mt-6 text-5xl lg:text-7xl">
+            Formation introuvable
+          </h1>
+
+          {error && (
+            <p className="mt-5 max-w-xl text-sm text-ink/50">
+              {error}
+            </p>
+          )}
+
+          <Link
+            to="/formations"
+            className="mt-10 inline-flex border border-ink px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white"
+          >
+            ← Toutes les formations
+          </Link>
         </div>
-      </section>
+      </main>
     );
   }
 
-  const formations = Array.isArray(formationData)
-    ? formationData
-    : [];
-
-  /*
-   * ONE CARD FOR EVERY SESSION
-   *
-   * Formation Extension de Cils:
-   *
-   * Paris      → Card
-   * Toulouse   → Card
-   * Bruxelles  → Card
-   * Paris      → Card
-   * Bordeaux   → Card
-   *
-   * This is completely dynamic.
-   */
-
-  const cards = formations.flatMap(
-    (formation: any) => {
-      const days = Array.isArray(
-        formation.formationDays
-      )
-        ? formation.formationDays
-        : [];
-
-      return days
-        .filter(
-          (day: any) =>
-            day?.city &&
-            day.city.trim()
-        )
-        .map((day: any) => ({
-          formation,
-          day,
-        }));
-    }
-  );
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
-    <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
-      <div className="wrap">
-        {/* HEADER */}
+    <main className="bg-ivory">
 
-        <SectionHeader
-          label="Formations"
-          title={["Nos", "Formations"]}
-          subtitle="Découvrez nos formations professionnelles, leurs dates, leurs villes et leurs tarifs. Réservez directement en ligne."
-        />
+      {/* =================================================
+          HERO
+      ================================================= */}
 
-        {/* GRID */}
+      <section className="py-16 sm:py-20 lg:py-32">
+        <div className="wrap">
 
-        {cards.length === 0 ? (
-          <div className="mt-16 text-center sm:mt-20">
-            <p className="text-ink/50">
-              Aucune formation disponible pour le moment.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-12 grid grid-cols-1 gap-x-8 gap-y-14 sm:mt-16 sm:gap-y-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
-            {cards.map(
-              ({ formation, day }, index) => (
-                <Card
-                  key={`${formation.id}-${day.id}`}
-                  formation={formation}
-                  formationDay={day}
-                  index={index}
+          <Link
+            to="/formations"
+            className="label text-ink/40 transition-opacity hover:opacity-60"
+          >
+            ← Toutes les formations
+          </Link>
+
+          <div className="mt-10 grid gap-8 sm:mt-14 sm:gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+
+            {/* IMAGE */}
+
+            <div>
+              {formation.image ? (
+                <img
+                  src={formation.image}
+                  alt={formation.title}
+                  className="aspect-[4/3] w-full object-cover"
                 />
-              )
-            )}
+              ) : (
+                <div className="aspect-[4/3] w-full bg-ink/5" />
+              )}
+            </div>
+
+            {/* TITLE */}
+
+            <div>
+              <p className="label text-ink/40">
+                {programme?.name ||
+                  "Formation"}
+              </p>
+
+              <h1 className="display mt-5 break-words text-[clamp(2.5rem,11vw,6rem)] leading-[0.92]">
+                {formation.title}
+              </h1>
+
+              <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-sm text-ink/50">
+                <span>
+                  {duration}
+                </span>
+
+                {selectedSession && (
+                  <span>
+                    {selectedSession.city}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+      </section>
 
-        {/* INSTAGRAM */}
+      {/* =================================================
+          DESCRIPTION
+      ================================================= */}
 
-        <Reveal>
-          <p className="mt-16 border-t border-ink/10 pt-8 text-sm font-light leading-relaxed text-ink/55 sm:mt-20">
-            Une autre ville ou une autre date ?
-            Écrivez-nous sur Instagram{" "}
-            <a
-              href={site.instagram.url}
-              target="_blank"
-              rel="noreferrer"
-              className="link-line break-words text-ink"
-            >
-              {site.instagram.handle}
-            </a>
-            .
+      {formation.description && (
+        <section className="pb-20 lg:pb-28">
+          <div className="wrap">
+            <div
+              className="max-w-3xl text-lg font-light leading-relaxed text-ink/70"
+              dangerouslySetInnerHTML={{
+                __html:
+                  formation.description,
+              }}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* =================================================
+          PROGRAMME
+      ================================================= */}
+
+      <section className="border-t border-ink/10 py-20 lg:py-32">
+        <div className="wrap">
+
+          <div className="grid gap-12 lg:grid-cols-[0.35fr_0.65fr]">
+
+            {/* LEFT */}
+
+            <div>
+              <p className="label text-ink/40">
+                Programme
+              </p>
+
+              <h2 className="display mt-5 text-4xl lg:text-5xl">
+                Le programme
+              </h2>
+
+              {programme?.duration && (
+                <p className="mt-5 text-sm text-ink/50">
+                  Durée :{" "}
+                  {programme.duration}
+                </p>
+              )}
+
+              {programme?.description && (
+                <div
+                  className="prose prose-sm mt-8 font-light leading-relaxed text-ink/60"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      programme.description,
+                  }}
+                />
+              )}
+
+              {formation.pdf_program && (
+                <a
+                  href={formation.pdf_program}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-8 inline-flex border border-ink px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white"
+                >
+                  Télécharger le programme
+                </a>
+              )}
+            </div>
+
+            {/* RIGHT */}
+
+            <div>
+              {steps.length > 0 ? (
+                <div className="border-t border-ink/10">
+                  {steps.map(
+                    (
+                      step,
+                      index
+                    ) => (
+                      <div
+                        key={`${index}-${step.title}`}
+                        className="border-b border-ink/10 py-7"
+                      >
+                        <div className="grid gap-5 md:grid-cols-[60px_1fr]">
+
+                          <span className="font-serif text-lg text-ink/40">
+                            {String(
+                              index + 1
+                            ).padStart(
+                              2,
+                              "0"
+                            )}
+                          </span>
+
+                          <div>
+                            <h3 className="font-serif text-2xl">
+                              {step.title}
+                            </h3>
+
+                            {step.description && (
+                              <p className="mt-3 max-w-2xl text-sm font-light leading-relaxed text-ink/60">
+                                {
+                                  step.description
+                                }
+                              </p>
+                            )}
+                          </div>
+
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-ink/50">
+                  Le programme sera communiqué
+                  prochainement.
+                </p>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* =================================================
+          SESSIONS DISPONIBLES
+
+          ALL formationDays are displayed.
+
+          Example:
+
+          Paris       10 — 12 septembre
+          Toulouse    17 — 19 septembre
+          Bruxelles   1 octobre
+          Paris       8 — 15 octobre
+          Bordeaux    10 — 12 octobre
+
+          We DO NOT remove duplicate cities.
+      ================================================= */}
+
+      <section className="border-t border-ink/10 py-20 lg:py-28">
+        <div className="wrap">
+
+          <p className="label text-ink/40">
+            Sessions disponibles
           </p>
-        </Reveal>
-      </div>
-    </section>
+
+          <h2 className="display mt-5 text-4xl lg:text-6xl">
+            {selectedCity ||
+              "Toutes les sessions"}
+          </h2>
+
+          <div className="mt-12 border-t border-ink/10">
+
+            {sessions.length === 0 ? (
+              <div className="py-10">
+                <p className="text-sm text-ink/50">
+                  Aucune session disponible
+                  {selectedCity
+                    ? ` pour ${selectedCity}.`
+                    : "."}
+                </p>
+              </div>
+            ) : (
+              sessions.map((day) => {
+
+                const isSelected =
+                  selectedSession?.id ===
+                  day.id;
+
+                const remaining =
+                  Number(
+                    day.remaining_places
+                  ) || 0;
+
+                const isFull =
+                  remaining <= 0;
+
+                return (
+                  <div
+                    key={day.id}
+                    className="border-b border-ink/10 py-8"
+                  >
+                    <div className="grid gap-6 md:grid-cols-[1fr_auto_auto] md:items-center">
+
+                      {/* CITY / DATE / PLACES */}
+
+                      <div>
+                        <p className="font-serif text-2xl">
+                          {day.city ||
+                            "Ville à confirmer"}
+                        </p>
+
+                        <p className="mt-2 text-sm text-ink/60">
+                          {formatDateRange(
+                            day.start_date,
+                            day.end_date
+                          )}
+                        </p>
+
+                        <p className="mt-2 text-sm text-ink/50">
+                          {remaining}{" "}
+                          {remaining === 1
+                            ? "place restante"
+                            : "places restantes"}
+                        </p>
+                      </div>
+
+                      {/* PRICE */}
+
+                      <div className="md:text-right">
+                        <p className="font-serif text-xl">
+                          {formatPrice(
+                            day.personal_price ??
+                              formation.personal_price
+                          )}
+                        </p>
+
+                        {day.cpf_eligible &&
+                          day.cpf_price !==
+                            null &&
+                          day.cpf_price !==
+                            undefined &&
+                          day.cpf_price !==
+                            "" && (
+                            <p className="mt-1 text-xs text-ink/40">
+                              CPF{" "}
+                              {formatPrice(
+                                day.cpf_price
+                              )}
+                            </p>
+                          )}
+
+                        {formation.deposit_amount !==
+                          null &&
+                          formation.deposit_amount !==
+                            undefined && (
+                            <p className="mt-1 text-xs text-ink/40">
+                              Acompte{" "}
+                              {formatPrice(
+                                formation.deposit_amount
+                              )}
+                            </p>
+                          )}
+                      </div>
+
+                      {/* RESERVE */}
+
+                      <div className="md:text-right">
+                        {isFull ? (
+                          <span className="inline-flex min-w-[135px] items-center justify-center border border-ink/20 px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-ink/30">
+                            COMPLET
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const params =
+                                new URLSearchParams();
+
+                              if (day.city) {
+                                params.set(
+                                  "city",
+                                  day.city
+                                );
+                              }
+
+                              params.set(
+                                "day",
+                                String(day.id)
+                              );
+
+                              setSearchParams(
+                                params
+                              );
+                            }}
+                            className={`inline-flex min-w-[135px] items-center justify-center border px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] transition-colors ${
+                              isSelected
+                                ? "border-[#111111] bg-[#111111] text-white"
+                                : "border-ink text-ink hover:bg-ink hover:text-white"
+                            }`}
+                          >
+                            {isSelected
+                              ? "SÉLECTIONNÉE"
+                              : "RÉSERVER"}
+                          </button>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+          </div>
+        </div>
+      </section>
+
+      {/* =================================================
+          RESERVATION
+
+          ONLY AFTER CLICKING RÉSERVER
+      ================================================= */}
+
+      {selectedSession && (
+        <section
+          id="reservation"
+          className="scroll-mt-20 border-t border-ink/10 bg-white py-20 lg:py-32"
+        >
+          <div className="wrap">
+
+            <div className="grid gap-12 lg:grid-cols-[0.4fr_0.6fr]">
+
+              {/* LEFT */}
+
+              <div>
+                <p className="label flex items-center gap-4 text-ink/50">
+                  <span className="h-px w-10 bg-current" />
+                  Réservation
+                </p>
+
+                <h2 className="display mt-5 text-5xl md:text-6xl">
+                  RÉSERVER
+                  <br />
+                  MA PLACE
+                </h2>
+
+                <p className="mt-6 max-w-md text-sm leading-7 text-ink/55">
+                  Remplissez vos coordonnées
+                  pour réserver votre place.
+                </p>
+
+                {/* SELECTED SESSION */}
+
+                <div className="mt-8 border-t border-ink/10 pt-6">
+
+                  <p className="label text-[10px] text-ink/40">
+                    Session sélectionnée
+                  </p>
+
+                  <p className="mt-3 font-serif text-2xl">
+                    {selectedSession.city}
+                  </p>
+
+                  <p className="mt-1 text-sm text-ink/55">
+                    {formatDateRange(
+                      selectedSession.start_date,
+                      selectedSession.end_date
+                    )}
+                  </p>
+
+                  <div className="mt-6 border-t border-ink/10 pt-5">
+
+                    {/* FORMATION */}
+
+                    <div className="flex items-center justify-between gap-6">
+                      <span className="label text-[10px] text-ink/40">
+                        Formation
+                      </span>
+
+                      <span className="text-right font-serif text-xl">
+                        {formation.title}
+                      </span>
+                    </div>
+
+                    {/* PRICE */}
+
+                    <div className="mt-5 flex items-center justify-between gap-6">
+                      <span className="label text-[10px] text-ink/40">
+                        Tarif
+                      </span>
+
+                      <span className="font-serif text-xl">
+                        {formatPrice(
+                          selectedSession.personal_price ??
+                            formation.personal_price
+                        )}
+                      </span>
+                    </div>
+
+                    {/* PLACES */}
+
+                    <div className="mt-5 flex items-center justify-between gap-6">
+                      <span className="label text-[10px] text-ink/40">
+                        Places
+                      </span>
+
+                      <span className="text-sm text-ink/60">
+                        {Number(
+                          selectedSession.remaining_places
+                        ) || 0}{" "}
+                        restantes
+                      </span>
+                    </div>
+
+                    {/* DEPOSIT */}
+
+                    <div className="mt-5 flex items-center justify-between gap-6">
+                      <span className="label text-[10px] text-ink/40">
+                        Acompte
+                      </span>
+
+                      <span className="font-serif text-xl">
+                        {formatPrice(
+                          formation.deposit_amount
+                        )}
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT — FORM */}
+
+              <div>
+                <ReservationForm
+                  formation={formation}
+                  formationDay={
+                    selectedSession
+                  }
+                />
+              </div>
+
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* =================================================
+          PDF
+      ================================================= */}
+
+      {formation.pdf_program && (
+        <section className="border-t border-ink/10 py-16">
+          <div className="wrap">
+            <a
+              href={formation.pdf_program}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex border border-ink px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white"
+            >
+              Télécharger le programme
+            </a>
+          </div>
+        </section>
+      )}
+
+      {/* =================================================
+          BACK
+      ================================================= */}
+
+      <section className="border-t border-ink/10 py-16">
+        <div className="wrap">
+          <Link
+            to="/formations"
+            className="label text-ink/45 transition-opacity hover:opacity-60"
+          >
+            ← Toutes les formations
+          </Link>
+        </div>
+      </section>
+
+    </main>
   );
 }
 
-export default FormationsListPage;
+export default FormationDetailPage;
