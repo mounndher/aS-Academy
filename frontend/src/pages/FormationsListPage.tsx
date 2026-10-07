@@ -175,19 +175,24 @@ export function FormationsListPage() {
   /* =======================================================
      BUILD CARDS
 
-     IMPORTANT:
-     HOME / LIST PAGE:
-
      ONE CARD PER CITY.
 
-     If there are:
+     Example:
 
-     Paris 10–12 septembre
-     Paris 8–15 octobre
+     Paris
+     Toulouse
+     Bruxelles
+     Paris
+     Bordeaux
 
-     the list page shows ONE Paris card.
+     becomes:
 
-     The detail page still shows BOTH sessions.
+     Paris
+     Toulouse
+     Bruxelles
+     Bordeaux
+
+     The detail page still displays ALL sessions.
   ======================================================= */
 
   const cards = useMemo<
@@ -255,7 +260,16 @@ export function FormationsListPage() {
               AS Academy
             </p>
 
-            <h1 className="display mt-6 max-w-full break-words text-[clamp(3rem,10vw,8rem)] leading-[0.9]">
+            <h1
+              className="
+                display
+                mt-6
+                max-w-full
+                break-words
+                text-[clamp(3rem,10vw,8rem)]
+                leading-[0.9]
+              "
+            >
               NOS
               <br />
               FORMATIONS
@@ -283,7 +297,16 @@ export function FormationsListPage() {
               AS Academy
             </p>
 
-            <h1 className="display mt-6 max-w-full break-words text-[clamp(3rem,10vw,8rem)] leading-[0.9]">
+            <h1
+              className="
+                display
+                mt-6
+                max-w-full
+                break-words
+                text-[clamp(3rem,10vw,8rem)]
+                leading-[0.9]
+              "
+            >
               NOS
               <br />
               FORMATIONS
@@ -301,7 +324,24 @@ export function FormationsListPage() {
 
             <Link
               to="/"
-              className="mt-10 inline-flex max-w-full border border-ink px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white sm:px-7"
+              className="
+                mt-10
+                inline-flex
+                max-w-full
+                border
+                border-ink
+                px-6
+                py-4
+                text-center
+                text-xs
+                font-semibold
+                uppercase
+                tracking-[0.18em]
+                transition-colors
+                hover:bg-ink
+                hover:text-white
+                sm:px-7
+              "
             >
               ← Retour à l'accueil
             </Link>
@@ -324,7 +364,6 @@ export function FormationsListPage() {
 
       <section className="w-full overflow-hidden py-20 sm:py-24 lg:py-36">
         <div className="wrap min-w-0">
-
           <div className="min-w-0 max-w-6xl">
 
             <p className="label text-ink/40">
@@ -363,12 +402,11 @@ export function FormationsListPage() {
             </p>
 
           </div>
-
         </div>
       </section>
 
       {/* =================================================
-          FORMATIONS SECTION
+          FORMATIONS
       ================================================= */}
 
       <section
@@ -383,57 +421,21 @@ export function FormationsListPage() {
       >
         <div className="wrap min-w-0">
 
-          {/* SECTION HEADER */}
+          {/* ONLY TITLE */}
 
-          <div
-            className="
-              mb-12
-              flex
-              min-w-0
-              flex-col
-              gap-6
-              sm:mb-16
-              lg:flex-row
-              lg:items-end
-              lg:justify-between
-            "
-          >
-
-            <div className="min-w-0">
-
-              <p className="label text-ink/40">
-                Programme
-              </p>
-
-              <h2
-                className="
-                  display
-                  mt-4
-                  max-w-full
-                  break-words
-                  text-4xl
-                  sm:text-5xl
-                  lg:text-6xl
-                "
-              >
-                Toutes nos formations
-              </h2>
-
-            </div>
-
-            <p
+          <div className="mb-12 sm:mb-16">
+            <h2
               className="
-                max-w-md
+                display
+                max-w-full
                 break-words
-                text-sm
-                leading-7
-                text-ink/50
+                text-4xl
+                sm:text-5xl
+                lg:text-6xl
               "
             >
-              Choisissez une formation pour découvrir
-              les différentes sessions disponibles.
-            </p>
-
+              Toutes nos formations
+            </h2>
           </div>
 
           {/* =================================================
@@ -471,14 +473,13 @@ export function FormationsListPage() {
                   /* -----------------------------------------
                      PROGRAMME
 
-                     IMPORTANT:
                      programme is an OBJECT.
 
-                     NEVER:
+                     We NEVER render:
+
                      {formation.programme}
 
-                     We only use programme.name /
-                     programme.duration.
+                     We only use its properties.
                   ----------------------------------------- */
 
                   const programme =
