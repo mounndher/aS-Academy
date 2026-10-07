@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { useFormations } from "@/hooks/useFormations";
-import { FormationCard } from "@/components/sections/FormationCard";
 
 import type {
   Formation,
@@ -10,7 +9,7 @@ import type {
 } from "@/types/formation";
 
 /* =========================================================
-   SAFE DATE PARSER
+   DATE
 ========================================================= */
 
 function parseDate(value: unknown): Date | null {
@@ -95,13 +94,19 @@ function formatDateRange(
   const startDay = startDate.getDate();
   const endDay = endDate.getDate();
 
-  const startMonth = new Intl.DateTimeFormat("fr-FR", {
-    month: "long",
-  }).format(startDate);
+  const startMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      month: "long",
+    }
+  ).format(startDate);
 
-  const endMonth = new Intl.DateTimeFormat("fr-FR", {
-    month: "long",
-  }).format(endDate);
+  const endMonth = new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      month: "long",
+    }
+  ).format(endDate);
 
   const startYear = startDate.getFullYear();
   const endYear = endDate.getFullYear();
@@ -156,7 +161,7 @@ export function FormationsListPage() {
   } = useFormations();
 
   /* =======================================================
-     NORMALIZE DATA
+     SAFE FORMATIONS
   ======================================================= */
 
   const formations = useMemo<Formation[]>(() => {
@@ -171,19 +176,18 @@ export function FormationsListPage() {
      BUILD CARDS
 
      IMPORTANT:
-     On the formations page we display ONE CARD PER CITY.
+     HOME / LIST PAGE:
 
-     Example:
+     ONE CARD PER CITY.
 
-     Paris
-     Toulouse
-     Bruxelles
-     Bordeaux
+     If there are:
 
-     If Paris has two sessions, only the first Paris
-     session is used for the card.
+     Paris 10–12 septembre
+     Paris 8–15 octobre
 
-     The FormationDetailPage still displays ALL sessions.
+     the list page shows ONE Paris card.
+
+     The detail page still shows BOTH sessions.
   ======================================================= */
 
   const cards = useMemo<
@@ -210,13 +214,17 @@ export function FormationsListPage() {
       >();
 
       days.forEach((day) => {
-        if (!day || !day.city?.trim()) {
+        if (!day) {
           return;
         }
 
-        const key = day.city
-          .trim()
-          .toLowerCase();
+        const city = String(day.city ?? "").trim();
+
+        if (!city) {
+          return;
+        }
+
+        const key = city.toLowerCase();
 
         if (!cities.has(key)) {
           cities.set(key, day);
@@ -240,18 +248,20 @@ export function FormationsListPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-ivory">
-        <section className="py-32 sm:py-40">
-          <div className="wrap">
+      <main className="min-h-screen w-full overflow-x-hidden bg-ivory">
+        <section className="py-24 sm:py-32 lg:py-40">
+          <div className="wrap min-w-0">
             <p className="label text-ink/40">
-              Formations
+              AS Academy
             </p>
 
-            <h1 className="display mt-6 text-5xl sm:text-6xl lg:text-8xl">
-              Nos formations
+            <h1 className="display mt-6 max-w-full break-words text-[clamp(3rem,10vw,8rem)] leading-[0.9]">
+              NOS
+              <br />
+              FORMATIONS
             </h1>
 
-            <p className="mt-8 max-w-xl text-sm leading-7 text-ink/50">
+            <p className="mt-8 max-w-2xl text-base font-light leading-8 text-ink/60 sm:text-lg">
               Chargement des formations...
             </p>
           </div>
@@ -266,30 +276,32 @@ export function FormationsListPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-ivory">
-        <section className="py-32 sm:py-40">
-          <div className="wrap">
+      <main className="min-h-screen w-full overflow-x-hidden bg-ivory">
+        <section className="py-24 sm:py-32 lg:py-40">
+          <div className="wrap min-w-0">
             <p className="label text-ink/40">
-              Formations
+              AS Academy
             </p>
 
-            <h1 className="display mt-6 text-5xl sm:text-6xl lg:text-8xl">
-              Nos formations
+            <h1 className="display mt-6 max-w-full break-words text-[clamp(3rem,10vw,8rem)] leading-[0.9]">
+              NOS
+              <br />
+              FORMATIONS
             </h1>
 
-            <div className="mt-10 max-w-xl border-t border-ink/10 pt-8">
+            <div className="mt-10 max-w-2xl border-t border-ink/10 pt-8">
               <p className="text-sm leading-7 text-ink/60">
                 Impossible de charger les formations.
               </p>
 
-              <p className="mt-3 text-xs leading-6 text-ink/40">
+              <p className="mt-3 break-words text-xs leading-6 text-ink/40">
                 {error}
               </p>
             </div>
 
             <Link
               to="/"
-              className="mt-10 inline-flex border border-ink px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white"
+              className="mt-10 inline-flex max-w-full border border-ink px-6 py-4 text-center text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white sm:px-7"
             >
               ← Retour à l'accueil
             </Link>
@@ -300,60 +312,133 @@ export function FormationsListPage() {
   }
 
   /* =======================================================
-     RENDER
+     PAGE
   ======================================================= */
 
   return (
-    <main className="min-h-screen bg-ivory">
+    <main className="min-h-screen w-full min-w-0 overflow-x-hidden bg-ivory">
+
       {/* =================================================
           HERO
       ================================================= */}
 
-      <section className="py-20 sm:py-24 lg:py-36">
-        <div className="wrap">
-          <div className="max-w-5xl">
+      <section className="w-full overflow-hidden py-20 sm:py-24 lg:py-36">
+        <div className="wrap min-w-0">
+
+          <div className="min-w-0 max-w-6xl">
+
             <p className="label text-ink/40">
               AS Academy
             </p>
 
-            <h1 className="display mt-6 break-words text-[clamp(3rem,10vw,8rem)] leading-[0.9]">
-              Nos formations
+            <h1
+              className="
+                display
+                mt-6
+                max-w-full
+                break-words
+                text-[clamp(3rem,10vw,8rem)]
+                leading-[0.9]
+              "
+            >
+              NOS
+              <br />
+              FORMATIONS
             </h1>
 
-            <p className="mt-8 max-w-2xl text-base font-light leading-8 text-ink/60 sm:text-lg">
+            <p
+              className="
+                mt-8
+                max-w-2xl
+                break-words
+                text-base
+                font-light
+                leading-8
+                text-ink/60
+                sm:text-lg
+              "
+            >
               Découvrez nos formations professionnelles
               et choisissez la session qui vous convient.
             </p>
+
           </div>
+
         </div>
       </section>
 
       {/* =================================================
-          FORMATIONS
+          FORMATIONS SECTION
       ================================================= */}
 
-      <section className="border-t border-ink/10 py-20 sm:py-24 lg:py-32">
-        <div className="wrap">
+      <section
+        className="
+          w-full
+          border-t
+          border-ink/10
+          py-20
+          sm:py-24
+          lg:py-32
+        "
+      >
+        <div className="wrap min-w-0">
+
           {/* SECTION HEADER */}
 
-          <div className="mb-12 flex flex-col gap-6 sm:mb-16 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+          <div
+            className="
+              mb-12
+              flex
+              min-w-0
+              flex-col
+              gap-6
+              sm:mb-16
+              lg:flex-row
+              lg:items-end
+              lg:justify-between
+            "
+          >
+
+            <div className="min-w-0">
+
               <p className="label text-ink/40">
                 Programme
               </p>
 
-              <h2 className="display mt-4 text-4xl sm:text-5xl lg:text-6xl">
+              <h2
+                className="
+                  display
+                  mt-4
+                  max-w-full
+                  break-words
+                  text-4xl
+                  sm:text-5xl
+                  lg:text-6xl
+                "
+              >
                 Toutes nos formations
               </h2>
+
             </div>
 
-            <p className="max-w-md text-sm leading-7 text-ink/50">
+            <p
+              className="
+                max-w-md
+                break-words
+                text-sm
+                leading-7
+                text-ink/50
+              "
+            >
               Choisissez une formation pour découvrir
               les différentes sessions disponibles.
             </p>
+
           </div>
 
-          {/* EMPTY STATE */}
+          {/* =================================================
+              EMPTY
+          ================================================= */}
 
           {cards.length === 0 ? (
             <div className="border-t border-ink/10 py-16">
@@ -363,23 +448,469 @@ export function FormationsListPage() {
               </p>
             </div>
           ) : (
+
             /* =================================================
                CARDS
             ================================================= */
 
-            <div className="grid gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              className="
+                grid
+                min-w-0
+                grid-cols-1
+                gap-x-8
+                gap-y-16
+                sm:grid-cols-2
+                lg:grid-cols-3
+              "
+            >
+
               {cards.map(
-                ({ formation, day }, index) => (
-                  <FormationCard
-                    key={`${formation.id}-${day.id}`}
-                    formation={formation}
-                    formationDay={day}
-                    index={index}
-                  />
-                )
+                ({ formation, day }, index) => {
+
+                  /* -----------------------------------------
+                     PROGRAMME
+
+                     IMPORTANT:
+                     programme is an OBJECT.
+
+                     NEVER:
+                     {formation.programme}
+
+                     We only use programme.name /
+                     programme.duration.
+                  ----------------------------------------- */
+
+                  const programme =
+                    formation.programme &&
+                    typeof formation.programme ===
+                      "object"
+                      ? formation.programme
+                      : null;
+
+                  const programmeName =
+                    programme?.name ||
+                    formation.title ||
+                    "Formation";
+
+                  const duration =
+                    programme?.duration ||
+                    "3 jours";
+
+                  /* -----------------------------------------
+                     URL
+                  ----------------------------------------- */
+
+                  const detailUrl =
+                    `/formations/${formation.slug}` +
+                    `?city=${encodeURIComponent(
+                      day.city
+                    )}` +
+                    `&day=${day.id}`;
+
+                  /* -----------------------------------------
+                     AVAILABILITY
+                  ----------------------------------------- */
+
+                  const remaining =
+                    Number(day.remaining_places) || 0;
+
+                  const isAvailable =
+                    day.status === "available" &&
+                    remaining > 0;
+
+                  /* -----------------------------------------
+                     IMAGE
+                  ----------------------------------------- */
+
+                  const image =
+                    day.image ||
+                    formation.image;
+
+                  return (
+                    <article
+                      key={`${formation.id}-${day.id}`}
+                      className="
+                        group
+                        min-w-0
+                      "
+                    >
+
+                      {/* IMAGE */}
+
+                      <Link
+                        to={detailUrl}
+                        aria-label={`${formation.title} — ${day.city}`}
+                        className="
+                          block
+                          min-w-0
+                          overflow-hidden
+                        "
+                      >
+                        {image ? (
+                          <img
+                            src={image}
+                            alt={`${formation.title} — ${day.city}`}
+                            loading={
+                              index < 3
+                                ? "eager"
+                                : "lazy"
+                            }
+                            className="
+                              aspect-[4/3]
+                              w-full
+                              max-w-full
+                              object-cover
+                              transition-transform
+                              duration-700
+                              ease-out
+                              group-hover:scale-[1.02]
+                            "
+                          />
+                        ) : (
+                          <div
+                            className="
+                              aspect-[4/3]
+                              w-full
+                              bg-ink/5
+                            "
+                          />
+                        )}
+                      </Link>
+
+                      {/* CONTENT */}
+
+                      <div className="min-w-0">
+
+                        {/* LABEL */}
+
+                        <p
+                          className="
+                            label
+                            mt-7
+                            flex
+                            min-w-0
+                            flex-wrap
+                            items-center
+                            gap-x-4
+                            gap-y-2
+                            text-ink/40
+                          "
+                        >
+                          <span
+                            className="
+                              font-serif
+                              text-lg
+                              tracking-normal
+                              text-ink/60
+                            "
+                          >
+                            {String(index + 1).padStart(
+                              2,
+                              "0"
+                            )}
+                          </span>
+
+                          <span className="h-px w-6 bg-current" />
+
+                          <span className="break-words">
+                            {programmeName}
+                          </span>
+
+                          <span>·</span>
+
+                          <span>
+                            {duration}
+                          </span>
+                        </p>
+
+                        {/* CITY */}
+
+                        <h3
+                          className="
+                            display
+                            mt-4
+                            max-w-full
+                            break-words
+                            text-[clamp(2rem,5vw,3.25rem)]
+                            leading-[0.95]
+                          "
+                        >
+                          <Link
+                            to={detailUrl}
+                            className="
+                              transition-opacity
+                              hover:opacity-60
+                            "
+                          >
+                            {day.city ||
+                              "Ville à confirmer"}
+                          </Link>
+                        </h3>
+
+                        {/* DATE */}
+
+                        <p
+                          className="
+                            mt-4
+                            text-sm
+                            text-ink/60
+                          "
+                        >
+                          {formatDateRange(
+                            day.start_date,
+                            day.end_date
+                          )}
+                        </p>
+
+                        {/* DESCRIPTION */}
+
+                        {formation.description && (
+                          <div
+                            className="
+                              mt-5
+                              max-w-md
+                              break-words
+                              text-sm
+                              font-light
+                              leading-7
+                              text-ink/60
+                            "
+                            dangerouslySetInnerHTML={{
+                              __html:
+                                formation.description,
+                            }}
+                          />
+                        )}
+
+                        {/* INFORMATION */}
+
+                        <dl
+                          className="
+                            mt-7
+                            grid
+                            grid-cols-2
+                            border-t
+                            border-ink/10
+                            sm:grid-cols-3
+                          "
+                        >
+
+                          {/* DURATION */}
+
+                          <div
+                            className="
+                              min-w-0
+                              border-b
+                              border-ink/10
+                              py-4
+                              pr-4
+                            "
+                          >
+                            <dt
+                              className="
+                                label
+                                text-[10px]
+                                text-ink/40
+                              "
+                            >
+                              Durée
+                            </dt>
+
+                            <dd
+                              className="
+                                mt-2
+                                break-words
+                                font-serif
+                                text-xl
+                              "
+                            >
+                              {duration}
+                            </dd>
+                          </div>
+
+                          {/* PRICE */}
+
+                          <div
+                            className="
+                              min-w-0
+                              border-b
+                              border-ink/10
+                              py-4
+                              pr-4
+                            "
+                          >
+                            <dt
+                              className="
+                                label
+                                text-[10px]
+                                text-ink/40
+                              "
+                            >
+                              Tarif
+                            </dt>
+
+                            <dd
+                              className="
+                                mt-2
+                                break-words
+                                font-serif
+                                text-xl
+                              "
+                            >
+                              {formatPrice(
+                                day.personal_price ??
+                                  formation.personal_price
+                              )}
+                            </dd>
+
+                            {day.cpf_eligible &&
+                              day.cpf_price !== null &&
+                              day.cpf_price !==
+                                undefined &&
+                              day.cpf_price !== "" && (
+                                <dd
+                                  className="
+                                    mt-1
+                                    text-xs
+                                    text-ink/40
+                                  "
+                                >
+                                  CPF{" "}
+                                  {formatPrice(
+                                    day.cpf_price
+                                  )}
+                                </dd>
+                              )}
+                          </div>
+
+                          {/* PLACES */}
+
+                          <div
+                            className="
+                              col-span-2
+                              min-w-0
+                              border-b
+                              border-ink/10
+                              py-4
+                              pr-4
+                              sm:col-span-1
+                            "
+                          >
+                            <dt
+                              className="
+                                label
+                                text-[10px]
+                                text-ink/40
+                              "
+                            >
+                              Places
+                            </dt>
+
+                            <dd
+                              className="
+                                mt-2
+                                break-words
+                                font-serif
+                                text-xl
+                              "
+                            >
+                              {remaining}
+                            </dd>
+
+                            <dd
+                              className="
+                                mt-1
+                                text-xs
+                                text-ink/40
+                              "
+                            >
+                              {remaining === 1
+                                ? "place restante"
+                                : "places restantes"}
+                            </dd>
+                          </div>
+
+                        </dl>
+
+                        {/* BUTTONS */}
+
+                        <div
+                          className="
+                            mt-7
+                            flex
+                            min-w-0
+                            flex-wrap
+                            gap-3
+                          "
+                        >
+
+                          <Link
+                            to={detailUrl}
+                            className={`
+                              inline-flex
+                              min-h-[48px]
+                              max-w-full
+                              items-center
+                              justify-center
+                              border
+                              px-6
+                              py-3
+                              text-center
+                              text-xs
+                              font-semibold
+                              uppercase
+                              tracking-[0.18em]
+                              transition-colors
+                              ${
+                                isAvailable
+                                  ? "border-ink bg-ink text-white hover:bg-transparent hover:text-ink"
+                                  : "border-ink/30 text-ink/50 hover:border-ink hover:text-ink"
+                              }
+                            `}
+                          >
+                            {isAvailable
+                              ? "Réserver"
+                              : "Demander une date"}
+                          </Link>
+
+                          <Link
+                            to={detailUrl}
+                            className="
+                              inline-flex
+                              min-h-[48px]
+                              max-w-full
+                              items-center
+                              justify-center
+                              border
+                              border-ink
+                              px-6
+                              py-3
+                              text-center
+                              text-xs
+                              font-semibold
+                              uppercase
+                              tracking-[0.18em]
+                              transition-colors
+                              hover:bg-ink
+                              hover:text-white
+                            "
+                          >
+                            Voir la formation
+                          </Link>
+
+                        </div>
+
+                      </div>
+
+                    </article>
+                  );
+                }
               )}
+
             </div>
           )}
+
         </div>
       </section>
 
@@ -387,33 +918,85 @@ export function FormationsListPage() {
           INFORMATION
       ================================================= */}
 
-      <section className="border-t border-ink/10 py-20 sm:py-24 lg:py-32">
-        <div className="wrap">
-          <div className="grid gap-12 lg:grid-cols-[0.35fr_0.65fr]">
-            <div>
+      <section
+        className="
+          w-full
+          border-t
+          border-ink/10
+          py-20
+          sm:py-24
+          lg:py-32
+        "
+      >
+        <div className="wrap min-w-0">
+
+          <div
+            className="
+              grid
+              min-w-0
+              gap-12
+              lg:grid-cols-[0.35fr_0.65fr]
+            "
+          >
+
+            <div className="min-w-0">
+
               <p className="label text-ink/40">
                 Informations
               </p>
 
-              <h2 className="display mt-5 text-4xl sm:text-5xl">
+              <h2
+                className="
+                  display
+                  mt-5
+                  max-w-full
+                  break-words
+                  text-4xl
+                  sm:text-5xl
+                "
+              >
                 Une formation adaptée à votre projet
               </h2>
+
             </div>
 
-            <div className="max-w-3xl">
-              <p className="text-base font-light leading-8 text-ink/60 sm:text-lg">
+            <div className="min-w-0 max-w-3xl">
+
+              <p
+                className="
+                  break-words
+                  text-base
+                  font-light
+                  leading-8
+                  text-ink/60
+                  sm:text-lg
+                "
+              >
                 Chaque formation dispose de plusieurs
                 sessions selon les villes et les dates
                 disponibles.
               </p>
 
-              <p className="mt-6 text-base font-light leading-8 text-ink/60 sm:text-lg">
+              <p
+                className="
+                  mt-6
+                  break-words
+                  text-base
+                  font-light
+                  leading-8
+                  text-ink/60
+                  sm:text-lg
+                "
+              >
                 Cliquez sur une formation pour consulter
                 les dates, les places disponibles, les
                 tarifs et effectuer votre réservation.
               </p>
+
             </div>
+
           </div>
+
         </div>
       </section>
 
@@ -421,27 +1004,40 @@ export function FormationsListPage() {
           BACK HOME
       ================================================= */}
 
-      <section className="border-t border-ink/10 py-16">
-        <div className="wrap">
+      <section
+        className="
+          w-full
+          border-t
+          border-ink/10
+          py-16
+        "
+      >
+        <div className="wrap min-w-0">
+
           <Link
             to="/"
-            className="label text-ink/45 transition-opacity hover:opacity-60"
+            className="
+              label
+              inline-flex
+              max-w-full
+              break-words
+              text-ink/45
+              transition-opacity
+              hover:opacity-60
+            "
           >
             ← Retour à l'accueil
           </Link>
+
         </div>
       </section>
+
     </main>
   );
 }
 
 /* =========================================================
-   DEFAULT EXPORT
-
-   This gives you BOTH possibilities:
-
-   import { FormationsListPage } ...
-   import FormationsListPage ...
+   EXPORTS
 ========================================================= */
 
 export default FormationsListPage;
