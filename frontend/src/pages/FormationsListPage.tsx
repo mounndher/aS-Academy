@@ -51,33 +51,33 @@ export function FormationsListPage() {
   }
 
   /* =========================================================
-     NORMALIZE
+     FORMATIONS
   ========================================================= */
 
   const formations: Formation[] = Array.isArray(formationData)
     ? formationData
     : [];
 
-  /* =========================================================
-     CREATE ONE CARD PER SESSION / CITY
-     
-     Example:
-     
-     Formation Lash
-       → Paris      = Card
-       → Lyon       = Card
-       → Bruxelles  = Card
-  ========================================================= */
+  /*
+   * Create cards from the API data.
+   *
+   * Every formationDay becomes one FormationCard.
+   *
+   * Example:
+   *
+   * Formation A
+   *   ├── Paris      → card
+   *   ├── Lyon       → card
+   *   └── Bruxelles  → card
+   */
 
   const cards = formations.flatMap((formation) => {
-    const days = Array.isArray(formation.formationDays)
-      ? formation.formationDays
-      : [];
+    if (!Array.isArray(formation.formationDays)) {
+      return [];
+    }
 
-    return days
-      .filter((day) => {
-        return Boolean(day.city && day.city.trim());
-      })
+    return formation.formationDays
+      .filter((day) => day?.city?.trim())
       .map((day) => ({
         formation,
         day,
@@ -91,6 +91,7 @@ export function FormationsListPage() {
   return (
     <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
       <div className="wrap">
+
         {/* HEADER */}
 
         <SectionHeader
@@ -99,7 +100,7 @@ export function FormationsListPage() {
           subtitle="Découvrez nos formations professionnelles, leurs dates, leurs villes et leurs tarifs. Réservez directement en ligne."
         />
 
-        {/* FORMATIONS */}
+        {/* GRID */}
 
         {cards.length === 0 ? (
           <div className="mt-16 text-center sm:mt-20">
@@ -108,7 +109,7 @@ export function FormationsListPage() {
             </p>
           </div>
         ) : (
-          <div className="mt-12 grid min-w-0 grid-cols-1 gap-x-8 gap-y-16 sm:mt-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-x-8 gap-y-16 sm:mt-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
             {cards.map(({ formation, day }, index) => (
               <FormationCard
                 key={`${formation.id}-${day.id}`}
@@ -134,6 +135,7 @@ export function FormationsListPage() {
             sur Instagram.
           </p>
         </Reveal>
+
       </div>
     </section>
   );
