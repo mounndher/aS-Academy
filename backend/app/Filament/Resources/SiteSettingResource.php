@@ -46,6 +46,12 @@ class SiteSettingResource extends Resource
     {
         return $form
             ->schema([
+
+                /*
+                |--------------------------------------------------------------------------
+                | Informations générales
+                |--------------------------------------------------------------------------
+                */
                 Forms\Components\Section::make('Informations générales')
                     ->description('Informations principales du site.')
                     ->schema([
@@ -76,6 +82,11 @@ class SiteSettingResource extends Resource
                     ])
                     ->columns(2),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Coordonnées
+                |--------------------------------------------------------------------------
+                */
                 Forms\Components\Section::make('Coordonnées')
                     ->description('Informations de contact affichées sur le site.')
                     ->schema([
@@ -103,6 +114,11 @@ class SiteSettingResource extends Resource
                     ])
                     ->columns(2),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Réseaux sociaux
+                |--------------------------------------------------------------------------
+                */
                 Forms\Components\Section::make('Réseaux sociaux')
                     ->description('Liens vers vos réseaux sociaux.')
                     ->schema([
@@ -128,6 +144,11 @@ class SiteSettingResource extends Resource
                     ])
                     ->columns(2),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Footer
+                |--------------------------------------------------------------------------
+                */
                 Forms\Components\Section::make('Footer')
                     ->description('Contenu affiché dans le pied de page.')
                     ->schema([
@@ -144,6 +165,11 @@ class SiteSettingResource extends Resource
                             ->columnSpanFull(),
                     ]),
 
+                /*
+                |--------------------------------------------------------------------------
+                | SEO
+                |--------------------------------------------------------------------------
+                */
                 Forms\Components\Section::make('SEO')
                     ->description('Informations utilisées pour le référencement.')
                     ->schema([
@@ -167,6 +193,52 @@ class SiteSettingResource extends Resource
                     ])
                     ->columns(2),
 
+                /*
+                |--------------------------------------------------------------------------
+                | Informations bancaires et annulation
+                |--------------------------------------------------------------------------
+                */
+                Forms\Components\Section::make('Informations bancaires et annulation')
+                    ->description('Informations bancaires utilisées pour les paiements et conditions d’annulation.')
+                    ->schema([
+                        Forms\Components\TextInput::make('iban')
+                            ->label('IBAN')
+                            ->maxLength(255)
+                            ->placeholder('FR76 1234 5678 9012 3456 7890 123')
+                            ->helperText('IBAN du compte bancaire.'),
+
+                        Forms\Components\TextInput::make('bic')
+                            ->label('BIC / SWIFT')
+                            ->maxLength(50)
+                            ->placeholder('BNPAFRPP')
+                            ->helperText('Code BIC/SWIFT de la banque.'),
+
+                        Forms\Components\Textarea::make('account_holder_address')
+                            ->label('Adresse du titulaire du compte')
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->placeholder('Adresse complète du titulaire du compte')
+                            ->columnSpanFull(),
+
+                        Forms\Components\Textarea::make('cancellation_policy')
+                            ->label('Remarque / Conditions d’annulation')
+                            ->rows(5)
+                            ->maxLength(2000)
+                            ->placeholder(
+                                'Exemple : Toute annulation moins de 48 heures avant la formation entraîne la perte de l’acompte.'
+                            )
+                            ->helperText(
+                                'Texte affiché concernant les conditions ou remarques liées aux annulations.'
+                            )
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Statut
+                |--------------------------------------------------------------------------
+                */
                 Forms\Components\Section::make('Statut')
                     ->schema([
                         Forms\Components\Toggle::make('is_active')
