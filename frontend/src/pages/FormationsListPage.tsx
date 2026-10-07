@@ -18,6 +18,10 @@ export function FormationsListPage() {
     error,
   } = useFormations();
 
+  /* =========================================================
+     LOADING
+  ========================================================= */
+
   if (loading) {
     return (
       <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
@@ -29,6 +33,10 @@ export function FormationsListPage() {
       </section>
     );
   }
+
+  /* =========================================================
+     ERROR
+  ========================================================= */
 
   if (error) {
     return (
@@ -42,37 +50,49 @@ export function FormationsListPage() {
     );
   }
 
+  /* =========================================================
+     NORMALIZE
+  ========================================================= */
+
   const formations: Formation[] = Array.isArray(formationData)
     ? formationData
     : [];
 
-  /*
-   * Create one card for each formation session.
-   *
-   * If a formation has:
-   * Paris
-   * Lyon
-   * Bruxelles
-   *
-   * it will display 3 cards.
-   */
+  /* =========================================================
+     CREATE ONE CARD PER SESSION / CITY
+     
+     Example:
+     
+     Formation Lash
+       → Paris      = Card
+       → Lyon       = Card
+       → Bruxelles  = Card
+  ========================================================= */
+
   const cards = formations.flatMap((formation) => {
     const days = Array.isArray(formation.formationDays)
       ? formation.formationDays
       : [];
 
     return days
-      .filter((day) => day.city && day.city.trim())
+      .filter((day) => {
+        return Boolean(day.city && day.city.trim());
+      })
       .map((day) => ({
         formation,
         day,
       }));
   });
 
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
       <div className="wrap">
         {/* HEADER */}
+
         <SectionHeader
           label="Formations"
           title={["Nos", "Formations"]}
@@ -80,6 +100,7 @@ export function FormationsListPage() {
         />
 
         {/* FORMATIONS */}
+
         {cards.length === 0 ? (
           <div className="mt-16 text-center sm:mt-20">
             <p className="text-ink/50">
@@ -87,7 +108,7 @@ export function FormationsListPage() {
             </p>
           </div>
         ) : (
-          <div className="mt-12 grid grid-cols-1 gap-x-8 gap-y-16 sm:mt-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
+          <div className="mt-12 grid min-w-0 grid-cols-1 gap-x-8 gap-y-16 sm:mt-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
             {cards.map(({ formation, day }, index) => (
               <FormationCard
                 key={`${formation.id}-${day.id}`}
@@ -106,6 +127,7 @@ export function FormationsListPage() {
         )}
 
         {/* INSTAGRAM */}
+
         <Reveal>
           <p className="mt-16 border-t border-ink/10 pt-8 text-sm font-light leading-relaxed text-ink/55 sm:mt-20">
             Une autre ville ou une autre date ? Écrivez-nous
