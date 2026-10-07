@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Contenu\PortfolioController;
 use App\Http\Controllers\Api\Contenu\TrainingExperienceController;
 use App\Http\Controllers\Api\Contenu\SiteSettingController;
 use App\Http\Controllers\Api\Contenu\FormationApiController;
+use App\Http\Controllers\Api\ReservationController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -26,7 +27,10 @@ use App\Http\Controllers\Api\Contenu\FormationApiController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
+Route::post(
+    '/reservations',
+    [ReservationController::class, 'store']
+);
 Route::post('/contact/messages', [ContactMessageController::class, 'store'])
     ->middleware('throttle:10,1');
 Route::get('/formation-days', [FormationDayController::class, 'index']);
