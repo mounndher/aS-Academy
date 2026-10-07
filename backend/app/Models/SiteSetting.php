@@ -13,6 +13,10 @@ class SiteSetting extends Model
         'tagline',
         'logo',
         'favicon',
+        'iban',
+        'bic',
+        'account_holder_address',
+        'cancellation_policy',
 
         'email',
         'phone',
