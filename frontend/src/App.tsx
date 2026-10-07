@@ -41,7 +41,7 @@ function Layout() {
           <motion.main
             key={location.pathname + location.search}
             {...pageTransition}
-            className="w-full"
+            className="w-full min-w-0"
           >
             <Routes location={location}>
               <Route path="/" element={<HomePage />} />
