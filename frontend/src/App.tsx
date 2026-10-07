@@ -32,50 +32,34 @@ function Layout() {
     <>
       <ScrollToTop />
 
-      <div className="relative min-h-screen bg-ivory text-ink">
+      <div className="relative min-h-screen w-full overflow-x-hidden bg-ivory text-ink">
         <Navbar />
 
         <MobileMenu />
 
-        <AnimatePresence
-          mode="wait"
-          initial={false}
-        >
+        <AnimatePresence mode="wait" initial={false}>
           <motion.main
             key={location.pathname + location.search}
             {...pageTransition}
+            className="w-full"
           >
             <Routes location={location}>
-
-              <Route
-                path="/"
-                element={<HomePage />}
-              />
+              <Route path="/" element={<HomePage />} />
 
               <Route
                 path="/formations"
-                element={
-                  <FormationsListPage />
-                }
+                element={<FormationsListPage />}
               />
 
               <Route
                 path="/formations/:slug"
-                element={
-                  <FormationDetailPage />
-                }
+                element={<FormationDetailPage />}
               />
 
               <Route
                 path="*"
-                element={
-                  <Navigate
-                    to="/"
-                    replace
-                  />
-                }
+                element={<Navigate to="/" replace />}
               />
-
             </Routes>
           </motion.main>
         </AnimatePresence>
@@ -91,15 +75,11 @@ function Layout() {
 export default function App() {
   return (
     <HashRouter>
-
       <MotionConfig reducedMotion="user">
-
         <SiteUIProvider>
           <Layout />
         </SiteUIProvider>
-
       </MotionConfig>
-
     </HashRouter>
   );
 }

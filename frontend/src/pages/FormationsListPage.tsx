@@ -18,8 +18,14 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-function formatPrice(price: string | number | null | undefined) {
-  if (price === null || price === undefined || price === "") {
+function formatPrice(
+  price: string | number | null | undefined
+) {
+  if (
+    price === null ||
+    price === undefined ||
+    price === ""
+  ) {
     return "Sur demande";
   }
 
@@ -76,12 +82,12 @@ function Card({
   const to = `/formations/${formation.slug}`;
 
   return (
-    <article>
+    <article className="min-w-0">
       {/* IMAGE */}
       <Link
         to={to}
         aria-label={formation.title}
-        className="block"
+        className="block overflow-hidden"
       >
         {formation.image ? (
           <ImageReveal
@@ -91,8 +97,8 @@ function Card({
             priority={index < 3}
           />
         ) : (
-          <div className="aspect-[4/5] w-full bg-ink/5 flex items-center justify-center">
-            <span className="text-sm text-ink/40">
+          <div className="flex aspect-[4/5] w-full items-center justify-center bg-ink/5">
+            <span className="px-4 text-center text-sm text-ink/40">
               Image non disponible
             </span>
           </div>
@@ -102,15 +108,15 @@ function Card({
       {/* CONTENT */}
       <Reveal delay={0.1 + index * 0.08}>
         {/* PROGRAMME */}
-        <p className="label mt-6 text-ink/40">
+        <p className="label mt-5 text-ink/40 sm:mt-6">
           {formation.programme || "Formation"}
         </p>
 
         {/* TITLE */}
-        <h2 className="display mt-3 text-[clamp(2rem,5vw,3rem)]">
+        <h2 className="display mt-3 text-[clamp(1.9rem,7vw,3rem)] leading-[0.95]">
           <Link
             to={to}
-            className="transition-opacity duration-500 hover:opacity-60"
+            className="break-words transition-opacity duration-500 hover:opacity-60"
           >
             {formation.title}
           </Link>
@@ -127,12 +133,12 @@ function Card({
         {day ? (
           <>
             {/* CITY */}
-            <p className="mt-5 font-serif text-xl text-ink/70 md:text-2xl">
+            <p className="mt-5 break-words font-serif text-xl text-ink/70 sm:text-2xl">
               {day.city}
             </p>
 
             {/* DATES */}
-            <p className="mt-1 text-sm font-light text-ink/50">
+            <p className="mt-1 text-sm font-light leading-relaxed text-ink/50">
               Du {formatDate(day.start_date)} au{" "}
               {formatDate(day.end_date)}
             </p>
@@ -143,15 +149,16 @@ function Card({
                 {formatPrice(day.personal_price)}
               </span>
 
-              {day.cpf_price !== null && (
-                <span className="text-xs font-light text-ink/50">
-                  CPF {formatPrice(day.cpf_price)}
-                </span>
-              )}
+              {day.cpf_price !== null &&
+                day.cpf_price !== undefined && (
+                  <span className="text-xs font-light text-ink/50">
+                    CPF {formatPrice(day.cpf_price)}
+                  </span>
+                )}
             </div>
 
             {/* STATUS */}
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span
                 className={`text-sm ${getStatusClass(
                   day.status
@@ -184,7 +191,7 @@ function Card({
             href={formation.pdf_program}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-block text-xs uppercase tracking-[0.15em] text-ink/50 underline underline-offset-4 transition-opacity hover:opacity-60"
+            className="mt-4 inline-block max-w-full break-words text-xs uppercase tracking-[0.12em] text-ink/50 underline underline-offset-4 transition-opacity hover:opacity-60 sm:tracking-[0.15em]"
           >
             Télécharger le programme PDF
           </a>
@@ -213,13 +220,9 @@ export function FormationsListPage() {
     error,
   } = useFormations();
 
-  /* =========================
-     LOADING
-  ========================= */
-
   if (loading) {
     return (
-      <section className="bg-ivory pt-28 pb-24 lg:pt-36 lg:pb-36">
+      <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
         <div className="wrap">
           <p className="text-sm text-ink/50">
             Chargement des formations...
@@ -229,13 +232,9 @@ export function FormationsListPage() {
     );
   }
 
-  /* =========================
-     ERROR
-  ========================= */
-
   if (error) {
     return (
-      <section className="bg-ivory pt-28 pb-24 lg:pt-36 lg:pb-36">
+      <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
         <div className="wrap">
           <p className="text-sm text-red-600">
             {error}
@@ -246,9 +245,8 @@ export function FormationsListPage() {
   }
 
   return (
-    <section className="bg-ivory pt-28 pb-24 lg:pt-36 lg:pb-36">
+    <section className="bg-ivory pb-24 pt-28 sm:pb-28 lg:pb-36 lg:pt-36">
       <div className="wrap">
-
         {/* HEADER */}
         <SectionHeader
           label="Formations"
@@ -258,40 +256,41 @@ export function FormationsListPage() {
 
         {/* FORMATIONS */}
         {formations.length === 0 ? (
-          <div className="mt-20 text-center">
+          <div className="mt-16 text-center sm:mt-20">
             <p className="text-ink/50">
               Aucune formation disponible pour le moment.
             </p>
           </div>
         ) : (
-          <div className="mt-16 grid gap-x-8 gap-y-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
-            {formations.map((formation, index) => (
-              <Card
-                key={formation.id}
-                formation={formation}
-                index={index}
-              />
-            ))}
+          <div className="mt-12 grid grid-cols-1 gap-x-8 gap-y-14 sm:mt-16 sm:gap-y-16 md:grid-cols-2 lg:mt-24 lg:grid-cols-3">
+            {formations.map(
+              (formation, index) => (
+                <Card
+                  key={formation.id}
+                  formation={formation}
+                  index={index}
+                />
+              )
+            )}
           </div>
         )}
 
         {/* INSTAGRAM */}
         <Reveal>
-          <p className="mt-20 border-t border-ink/10 pt-8 text-sm font-light text-ink/55">
+          <p className="mt-16 border-t border-ink/10 pt-8 text-sm font-light leading-relaxed text-ink/55 sm:mt-20">
             Une autre ville ou une autre date ? Écrivez-nous
             sur Instagram{" "}
             <a
               href={site.instagram.url}
               target="_blank"
               rel="noreferrer"
-              className="link-line text-ink"
+              className="link-line break-words text-ink"
             >
               {site.instagram.handle}
             </a>
             .
           </p>
         </Reveal>
-
       </div>
     </section>
   );

@@ -1,21 +1,26 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import { cn } from "@/utils/cn";
-
 import { site } from "@/data/site";
 
 import { useSiteUI } from "@/context/SiteUIContext";
 import { useSectionNav } from "@/hooks/useSectionNav";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 import { Button } from "@/components/ui/Button";
-
-import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
-  const { menuOpen, setMenuOpen, openBooking } = useSiteUI();
+  const {
+    menuOpen,
+    setMenuOpen,
+    openBooking,
+  } = useSiteUI();
 
   const goTo = useSectionNav();
   const navigate = useNavigate();
@@ -25,7 +30,9 @@ export function Navbar() {
   const { settings } = useSiteSettings();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 24);
+    };
 
     onScroll();
 
@@ -34,21 +41,19 @@ export function Navbar() {
     });
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener(
+        "scroll",
+        onScroll
+      );
     };
   }, []);
 
-  /**
-   * Only the home page has a dark hero
-   * under the transparent navbar.
-   */
-  const solid = (scrolled || pathname !== "/") && !menuOpen;
+  const solid =
+    (scrolled || pathname !== "/") &&
+    !menuOpen;
 
-  /**
-   * Site settings from Laravel.
-   * Fallback keeps the navbar working if API is unavailable.
-   */
-  const siteName = settings?.site_name || "AS Academy";
+  const siteName =
+    settings?.site_name || "AS Academy";
 
   const logo = settings?.logo || null;
 
@@ -58,40 +63,40 @@ export function Navbar() {
         "fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color,color,backdrop-filter] duration-700 ease-luxury",
         solid
           ? "border-ink/10 bg-ivory/85 text-ink backdrop-blur-md"
-          : "border-transparent bg-transparent text-ivory",
+          : "border-transparent bg-transparent text-ivory"
       )}
     >
-      <div className="wrap flex h-[72px] items-center justify-between lg:h-[88px]">
-        {/* Wordmark */}
+      <div className="wrap flex h-[68px] items-center justify-between sm:h-[76px] lg:h-[88px]">
+        {/* LOGO */}
         <button
           type="button"
           onClick={() => {
             setMenuOpen(false);
             goTo("accueil");
           }}
-          className="flex items-baseline gap-2.5 transition-opacity duration-500 hover:opacity-70"
+          className="flex min-w-0 max-w-[calc(100%-80px)] items-baseline gap-2.5 transition-opacity duration-500 hover:opacity-70"
           aria-label={`${siteName} — Accueil`}
         >
           {logo ? (
             <img
               src={logo}
               alt={siteName}
-              className="h-10 w-auto object-contain lg:h-12"
+              className="h-9 max-w-[150px] w-auto object-contain sm:h-10 sm:max-w-[180px] lg:h-12 lg:max-w-[220px]"
             />
           ) : (
             <>
-              <span className="font-serif text-[26px] font-semibold leading-none tracking-[0.02em] lg:text-[30px]">
+              <span className="font-serif text-[24px] font-semibold leading-none tracking-[0.02em] sm:text-[26px] lg:text-[30px]">
                 AS
               </span>
 
-              <span className="label text-[10px] tracking-[0.36em]">
+              <span className="label text-[9px] tracking-[0.28em] sm:text-[10px] sm:tracking-[0.36em]">
                 Academy
               </span>
             </>
           )}
         </button>
 
-        {/* Desktop navigation */}
+        {/* DESKTOP NAVIGATION */}
         <nav
           className="hidden items-center gap-8 lg:flex xl:gap-10"
           aria-label="Navigation principale"
@@ -116,29 +121,40 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-5">
+        {/* RIGHT */}
+        <div className="flex shrink-0 items-center gap-2 sm:gap-5">
           <Button
-            variant={solid ? "outline-dark" : "outline-light"}
+            variant={
+              solid
+                ? "outline-dark"
+                : "outline-light"
+            }
             className="hidden md:inline-flex"
             onClick={() => openBooking()}
           >
             {site.cta.book}
           </Button>
 
-          {/* Hamburger */}
+          {/* HAMBURGER */}
           <button
             type="button"
-            className="relative flex h-11 w-11 items-center justify-center lg:hidden"
-            onClick={() => setMenuOpen(!menuOpen)}
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center lg:hidden"
+            onClick={() =>
+              setMenuOpen(!menuOpen)
+            }
             aria-expanded={menuOpen}
-            aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-label={
+              menuOpen
+                ? "Fermer le menu"
+                : "Ouvrir le menu"
+            }
           >
             <span
               className={cn(
                 "absolute h-px w-7 bg-current transition-transform duration-500 ease-luxury",
                 menuOpen
                   ? "translate-y-0 rotate-45"
-                  : "-translate-y-[4px]",
+                  : "-translate-y-[4px]"
               )}
             />
 
@@ -147,7 +163,7 @@ export function Navbar() {
                 "absolute h-px w-7 bg-current transition-transform duration-500 ease-luxury",
                 menuOpen
                   ? "translate-y-0 -rotate-45"
-                  : "translate-y-[4px]",
+                  : "translate-y-[4px]"
               )}
             />
           </button>

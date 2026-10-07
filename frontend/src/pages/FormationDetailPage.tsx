@@ -524,7 +524,7 @@ export function FormationDetailPage() {
           HERO
       ================================================= */}
 
-      <section className="py-20 lg:py-32">
+      <section className="py-16 sm:py-20 lg:py-32">
 
         <div className="wrap">
 
@@ -535,7 +535,7 @@ export function FormationDetailPage() {
             ← Toutes les formations
           </Link>
 
-          <div className="mt-14 grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+         <div className="mt-10 grid gap-8 sm:mt-14 sm:gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
 
             {/* IMAGE */}
 
@@ -570,7 +570,7 @@ export function FormationDetailPage() {
                   "Formation"}
               </p>
 
-              <h1 className="display mt-5 text-[clamp(3rem,7vw,6rem)] leading-[0.95]">
+             <h1 className="display mt-5 break-words text-[clamp(2.5rem,11vw,6rem)] leading-[0.92]">
                 {formation.title}
               </h1>
 
