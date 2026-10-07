@@ -25,6 +25,7 @@ import { HomePage } from "@/pages/HomePage";
 import { FormationsListPage } from "@/pages/FormationsListPage";
 import { FormationDetailPage } from "@/pages/FormationDetailPage";
 
+
 function Layout() {
   const location = useLocation();
 
