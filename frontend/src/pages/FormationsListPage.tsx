@@ -38,16 +38,6 @@ function parseDate(value: unknown): Date | null {
     return null;
   }
 
-  /*
-   * Laravel commonly returns:
-   *
-   * 2026-09-10
-   *
-   * or:
-   *
-   * 2026-09-10T00:00:00.000000Z
-   */
-
   const match = raw.match(
     /^(\d{4})-(\d{2})-(\d{2})/
   );
@@ -88,15 +78,13 @@ function parseDate(value: unknown): Date | null {
 
   const parsed = new Date(raw);
 
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed;
+  return Number.isNaN(parsed.getTime())
+    ? null
+    : parsed;
 }
 
 /* =========================================================
-   SAFE DATE RANGE
+   DATE RANGE
 ========================================================= */
 
 function formatDateRange(
@@ -137,8 +125,11 @@ function formatDateRange(
       month: "long",
     }).format(endDate);
 
-  const startYear = startDate.getFullYear();
-  const endYear = endDate.getFullYear();
+  const startYear =
+    startDate.getFullYear();
+
+  const endYear =
+    endDate.getFullYear();
 
   if (
     startMonth === endMonth &&
@@ -155,7 +146,7 @@ function formatDateRange(
 }
 
 /* =========================================================
-   SAFE PRICE
+   PRICE
 ========================================================= */
 
 function formatPrice(
@@ -183,10 +174,12 @@ function formatPrice(
 }
 
 /* =========================================================
-   NORMALIZE CITY
+   CITY
 ========================================================= */
 
-function normalizeCity(value: unknown): string {
+function normalizeCity(
+  value: unknown
+): string {
   return String(value ?? "")
     .trim()
     .toLowerCase();
@@ -210,16 +203,6 @@ export function FormationDetailPage() {
     setSearchParams,
   ] = useSearchParams();
 
-  /*
-   * Example:
-   *
-   * /formations/formation-extension-de-cils?city=Paris
-   *
-   * After clicking:
-   *
-   * /formations/formation-extension-de-cils?city=Paris&day=12
-   */
-
   const selectedCity =
     searchParams.get("city")?.trim() || "";
 
@@ -237,24 +220,24 @@ export function FormationDetailPage() {
   } = useFormation(slug);
 
   /* =======================================================
-     ALL SESSIONS
-     
+     ALL FORMATION DAYS
+
      IMPORTANT:
-     We keep ALL formationDays.
-     
-     If the API contains:
-     
-     Paris       → day 1
-     Toulouse    → day 3
-     Bruxelles   → day 5
-     Paris       → day 6
-     Bordeaux    → day 4
-     
-     the list will display ALL FIVE sessions.
+     We DO NOT remove duplicate cities.
+
+     Example:
+
+     Paris       10–12 septembre
+     Toulouse    17–19 septembre
+     Bruxelles   1 octobre
+     Paris       8–15 octobre
+     Bordeaux    10–12 octobre
+
+     ALL 5 sessions remain.
   ======================================================= */
 
-  const allSessions = useMemo<FormationDay[]>(
-    () => {
+  const allSessions =
+    useMemo<FormationDay[]>(() => {
       if (
         !formation ||
         !Array.isArray(
@@ -267,25 +250,21 @@ export function FormationDetailPage() {
       return formation.formationDays.filter(
         Boolean
       );
-    },
-    [formation]
-  );
+    }, [formation]);
 
   /* =======================================================
      FILTER BY CITY
 
-     If:
-       ?city=Paris
+     If city=Paris:
 
-     show ONLY Paris sessions.
+     Paris 10–12 septembre
+     Paris 8–15 octobre
 
-     IMPORTANT:
-     If Paris has TWO formationDays,
-     BOTH Paris sessions remain visible.
+     Both remain visible.
   ======================================================= */
 
-  const sessions = useMemo<FormationDay[]>(
-    () => {
+  const sessions =
+    useMemo<FormationDay[]>(() => {
       if (!selectedCity) {
         return allSessions;
       }
@@ -298,57 +277,66 @@ export function FormationDetailPage() {
           normalizeCity(day.city) ===
           wantedCity
       );
-    },
-    [
+    }, [
       allSessions,
       selectedCity,
-    ]
-  );
+    ]);
 
   /* =======================================================
      SELECTED SESSION
 
-     We use the exact day ID.
-
-     Example:
-       ?city=Paris&day=6
-
-     selects formationDay id 6,
-     even if another Paris session exists.
+     Uses exact formationDay.id.
   ======================================================= */
 
   const selectedSession =
-    useMemo<FormationDay | null>(
-      () => {
-        if (!selectedDayId) {
-          return null;
-        }
+    useMemo<FormationDay | null>(() => {
+      if (!selectedDayId) {
+        return null;
+      }
 
-        const found =
-          allSessions.find(
-            (day) =>
-              String(day.id) ===
-              String(selectedDayId)
-          );
+      const found =
+        allSessions.find(
+          (day) =>
+            String(day.id) ===
+            String(selectedDayId)
+        );
 
-        return found ?? null;
-      },
-      [
-        allSessions,
-        selectedDayId,
-      ]
-    );
+      return found ?? null;
+    }, [
+      allSessions,
+      selectedDayId,
+    ]);
 
   /* =======================================================
-     PROGRAMME
+     SAFE PROGRAMME
+
+     programme can be null.
+     Never render formation.programme directly.
   ======================================================= */
 
   const programme =
-    formation?.programme ?? null;
+    formation?.programme &&
+    typeof formation.programme ===
+      "object"
+      ? formation.programme
+      : null;
+
+  const programmeName =
+    programme?.name ||
+    formation?.title ||
+    "Formation";
 
   const duration =
     programme?.duration ||
     "3 jours";
+
+  const programmeDescription =
+    programme?.description ||
+    null;
+
+  /* =======================================================
+     STEPS
+  ======================================================= */
 
   const steps =
     Array.isArray(formation?.steps)
@@ -356,7 +344,7 @@ export function FormationDetailPage() {
       : [];
 
   /* =======================================================
-     SCROLL AFTER SELECTING SESSION
+     SCROLL TO RESERVATION
   ======================================================= */
 
   useEffect(() => {
@@ -364,21 +352,22 @@ export function FormationDetailPage() {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      const element =
-        document.getElementById(
-          "reservation"
-        );
+    const timer =
+      window.setTimeout(() => {
+        const element =
+          document.getElementById(
+            "reservation"
+          );
 
-      if (!element) {
-        return;
-      }
+        if (!element) {
+          return;
+        }
 
-      element.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
 
     return () => {
       window.clearTimeout(timer);
@@ -475,8 +464,7 @@ export function FormationDetailPage() {
 
             <div>
               <p className="label text-ink/40">
-                {programme?.name ||
-                  "Formation"}
+                {programmeName}
               </p>
 
               <h1 className="display mt-5 break-words text-[clamp(2.5rem,11vw,6rem)] leading-[0.92]">
@@ -495,6 +483,7 @@ export function FormationDetailPage() {
                 )}
               </div>
             </div>
+
           </div>
         </div>
       </section>
@@ -544,19 +533,21 @@ export function FormationDetailPage() {
                 </p>
               )}
 
-              {programme?.description && (
+              {programmeDescription && (
                 <div
                   className="prose prose-sm mt-8 font-light leading-relaxed text-ink/60"
                   dangerouslySetInnerHTML={{
                     __html:
-                      programme.description,
+                      programmeDescription,
                   }}
                 />
               )}
 
               {formation.pdf_program && (
                 <a
-                  href={formation.pdf_program}
+                  href={
+                    formation.pdf_program
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-8 inline-flex border border-ink px-7 py-4 text-xs font-semibold uppercase tracking-[0.18em] transition-colors hover:bg-ink hover:text-white"
@@ -626,16 +617,6 @@ export function FormationDetailPage() {
           SESSIONS DISPONIBLES
 
           ALL formationDays are displayed.
-
-          Example:
-
-          Paris       10 — 12 septembre
-          Toulouse    17 — 19 septembre
-          Bruxelles   1 octobre
-          Paris       8 — 15 octobre
-          Bordeaux    10 — 12 octobre
-
-          We DO NOT remove duplicate cities.
       ================================================= */}
 
       <section className="border-t border-ink/10 py-20 lg:py-28">
@@ -663,7 +644,6 @@ export function FormationDetailPage() {
               </div>
             ) : (
               sessions.map((day) => {
-
                 const isSelected =
                   selectedSession?.id ===
                   day.id;
@@ -799,8 +779,6 @@ export function FormationDetailPage() {
 
       {/* =================================================
           RESERVATION
-
-          ONLY AFTER CLICKING RÉSERVER
       ================================================= */}
 
       {selectedSession && (
@@ -830,8 +808,6 @@ export function FormationDetailPage() {
                   Remplissez vos coordonnées
                   pour réserver votre place.
                 </p>
-
-                {/* SELECTED SESSION */}
 
                 <div className="mt-8 border-t border-ink/10 pt-6">
 
@@ -912,7 +888,7 @@ export function FormationDetailPage() {
                 </div>
               </div>
 
-              {/* RIGHT — FORM */}
+              {/* RIGHT */}
 
               <div>
                 <ReservationForm
