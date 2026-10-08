@@ -22,6 +22,7 @@ class Reservation extends Model
     'deposit_amount',
     'status',
     'payment_proof',
+   
     'notes',
 ];
 
