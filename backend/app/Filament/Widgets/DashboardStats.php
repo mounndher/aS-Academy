@@ -18,49 +18,121 @@ class DashboardStats extends BaseWidget
         $startOfMonth = Carbon::now()->startOfMonth();
         $endOfMonth = Carbon::now()->endOfMonth();
 
-        $reservationsThisMonth = Reservation::whereBetween(
-            'created_at',
-            [$startOfMonth, $endOfMonth]
-        )->count();
+        /*
+        |--------------------------------------------------------------------------
+        | RESERVATIONS THIS MONTH
+        |--------------------------------------------------------------------------
+        */
 
-        $revenueThisMonth = (float) Reservation::whereBetween(
-            'created_at',
-            [$startOfMonth, $endOfMonth]
-        )->sum('sold_price');
+        $reservationsThisMonth = Reservation::query()
+            ->whereBetween('created_at', [
+                $startOfMonth,
+                $endOfMonth,
+            ])
+            ->count();
 
-        $paymentsReceivedThisMonth = (float) Payment::where(
-            'status',
-            'paid'
-        )->whereBetween(
-            'paid_at',
-            [$startOfMonth, $endOfMonth]
-        )->sum('amount');
+        /*
+        |--------------------------------------------------------------------------
+        | REVENUE THIS MONTH
+        |--------------------------------------------------------------------------
+        */
 
-        $totalCustomers = Customer::count();
+        $revenueThisMonth = (float) Reservation::query()
+            ->whereBetween('created_at', [
+                $startOfMonth,
+                $endOfMonth,
+            ])
+            ->sum('sold_price');
 
-        $pendingReservations = Reservation::whereIn(
-            'status',
-            ['pending', 'pending_payment']
-        )->count();
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENTS RECEIVED THIS MONTH
+        |--------------------------------------------------------------------------
+        */
+
+        $paymentsReceivedThisMonth = (float) Payment::query()
+            ->where('status', 'paid')
+            ->whereNotNull('paid_at')
+            ->whereBetween('paid_at', [
+                $startOfMonth,
+                $endOfMonth,
+            ])
+            ->sum('amount');
+
+        /*
+        |--------------------------------------------------------------------------
+        | TOTAL CUSTOMERS
+        |--------------------------------------------------------------------------
+        */
+
+        $totalCustomers = Customer::query()->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | PENDING RESERVATIONS
+        |--------------------------------------------------------------------------
+        */
+
+        $pendingReservations = Reservation::query()
+            ->whereIn('status', [
+                'pending',
+                'pending_payment',
+            ])
+            ->count();
 
         return [
+
+            /*
+            |--------------------------------------------------------------------------
+            | RESERVATIONS
+            |--------------------------------------------------------------------------
+            */
+
             Stat::make(
                 'Réservations ce mois',
-                number_format($reservationsThisMonth, 0, ',', ' ')
+                number_format(
+                    $reservationsThisMonth,
+                    0,
+                    ',',
+                    ' '
+                )
             )
                 ->description(
                     $pendingReservations . ' en attente'
                 )
-                ->descriptionIcon('heroicon-m-calendar-days')
+                ->descriptionIcon(
+                    'heroicon-m-calendar-days'
+                )
                 ->color('warning'),
+
+            /*
+            |--------------------------------------------------------------------------
+            | REVENUE
+            |--------------------------------------------------------------------------
+            */
 
             Stat::make(
                 'Chiffre d’affaires',
-                number_format($revenueThisMonth, 2, ',', ' ') . ' €'
+                number_format(
+                    $revenueThisMonth,
+                    2,
+                    ',',
+                    ' '
+                ) . ' €'
             )
-                ->description('Prix vendu ce mois')
-                ->descriptionIcon('heroicon-m-banknotes')
+                ->description(
+                    'Prix vendu ce mois'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-banknotes'
+                )
                 ->color('success'),
+
+            /*
+            |--------------------------------------------------------------------------
+            | PAYMENTS
+            |--------------------------------------------------------------------------
+            */
 
             Stat::make(
                 'Paiements reçus',
@@ -71,16 +143,35 @@ class DashboardStats extends BaseWidget
                     ' '
                 ) . ' €'
             )
-                ->description('Paiements confirmés')
-                ->descriptionIcon('heroicon-m-credit-card')
+                ->description(
+                    'Paiements confirmés ce mois'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-credit-card'
+                )
                 ->color('primary'),
+
+            /*
+            |--------------------------------------------------------------------------
+            | CUSTOMERS
+            |--------------------------------------------------------------------------
+            */
 
             Stat::make(
                 'Clients',
-                number_format($totalCustomers, 0, ',', ' ')
+                number_format(
+                    $totalCustomers,
+                    0,
+                    ',',
+                    ' '
+                )
             )
-                ->description('Clients enregistrés')
-                ->descriptionIcon('heroicon-m-users')
+                ->description(
+                    'Clients enregistrés'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-users'
+                )
                 ->color('gray'),
         ];
     }

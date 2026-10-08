@@ -10,25 +10,46 @@ class RevenuePerMonthChart extends ChartWidget
 {
     protected static ?int $sort = 3;
 
-    protected ?string $heading = 'Chiffre d’affaires';
+    protected static ?string $heading = 'Chiffre d’affaires';
 
-    protected ?string $description =
+    protected static ?string $description =
         'Prix vendu sur les 12 derniers mois';
 
     protected function getData(): array
     {
+        /*
+        |--------------------------------------------------------------------------
+        | LAST 12 MONTHS
+        |--------------------------------------------------------------------------
+        */
+
         $months = collect();
 
         for ($i = 11; $i >= 0; $i--) {
             $months->push(
-                Carbon::now()->subMonths($i)->startOfMonth()
+                Carbon::now()
+                    ->subMonths($i)
+                    ->startOfMonth()
             );
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | RESERVATIONS
+        |--------------------------------------------------------------------------
+        */
+
         $reservations = Reservation::query()
             ->whereBetween('created_at', [
-                $months->first()->copy()->startOfMonth(),
-                $months->last()->copy()->endOfMonth(),
+                $months
+                    ->first()
+                    ->copy()
+                    ->startOfMonth(),
+
+                $months
+                    ->last()
+                    ->copy()
+                    ->endOfMonth(),
             ])
             ->get([
                 'sold_price',
@@ -40,10 +61,17 @@ class RevenuePerMonthChart extends ChartWidget
                 )->format('Y-m');
             });
 
+        /*
+        |--------------------------------------------------------------------------
+        | LABELS + DATA
+        |--------------------------------------------------------------------------
+        */
+
         $labels = [];
         $data = [];
 
         foreach ($months as $month) {
+
             $key = $month->format('Y-m');
 
             $labels[] = $month
@@ -61,13 +89,25 @@ class RevenuePerMonthChart extends ChartWidget
         }
 
         return [
+
             'datasets' => [
+
                 [
                     'label' => 'Chiffre d’affaires',
+
                     'data' => $data,
-                    'borderWidth' => 1,
+
+                    'backgroundColor' =>
+                        'rgba(201, 169, 106, 0.75)',
+
+                    'borderColor' => '#C9A96A',
+
+                    'borderWidth' => 2,
+
+                    'borderRadius' => 8,
                 ],
             ],
+
             'labels' => $labels,
         ];
     }

@@ -2,72 +2,118 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Customer;
+use App\Models\Reservation;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 
-class CustomersPerMonthChart extends ChartWidget
+class RevenuePerMonthChart extends ChartWidget
 {
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 3;
 
-    protected ?string $heading = 'Nouveaux clients';
+    protected static ?string $heading = 'Chiffre d’affaires';
 
-    protected ?string $description =
-        'Nouveaux clients enregistrés par mois';
+    protected static ?string $description =
+        'Prix vendu sur les 12 derniers mois';
 
     protected function getData(): array
     {
+        /*
+        |--------------------------------------------------------------------------
+        | LAST 12 MONTHS
+        |--------------------------------------------------------------------------
+        */
+
         $months = collect();
 
         for ($i = 11; $i >= 0; $i--) {
             $months->push(
-                Carbon::now()->subMonths($i)->startOfMonth()
+                Carbon::now()
+                    ->subMonths($i)
+                    ->startOfMonth()
             );
         }
 
-        $customers = Customer::query()
+        /*
+        |--------------------------------------------------------------------------
+        | RESERVATIONS
+        |--------------------------------------------------------------------------
+        */
+
+        $reservations = Reservation::query()
             ->whereBetween('created_at', [
-                $months->first()->copy()->startOfMonth(),
-                $months->last()->copy()->endOfMonth(),
+                $months
+                    ->first()
+                    ->copy()
+                    ->startOfMonth(),
+
+                $months
+                    ->last()
+                    ->copy()
+                    ->endOfMonth(),
             ])
-            ->get(['created_at'])
-            ->groupBy(function ($customer) {
+            ->get([
+                'sold_price',
+                'created_at',
+            ])
+            ->groupBy(function ($reservation) {
                 return Carbon::parse(
-                    $customer->created_at
+                    $reservation->created_at
                 )->format('Y-m');
             });
+
+        /*
+        |--------------------------------------------------------------------------
+        | LABELS + DATA
+        |--------------------------------------------------------------------------
+        */
 
         $labels = [];
         $data = [];
 
         foreach ($months as $month) {
+
             $key = $month->format('Y-m');
 
             $labels[] = $month
                 ->locale('fr')
                 ->translatedFormat('M');
 
-            $data[] = $customers
-                ->get($key, collect())
-                ->count();
+            $data[] = round(
+                $reservations
+                    ->get($key, collect())
+                    ->sum(function ($reservation) {
+                        return (float) $reservation->sold_price;
+                    }),
+                2
+            );
         }
 
         return [
+
             'datasets' => [
+
                 [
-                    'label' => 'Nouveaux clients',
+                    'label' => 'Chiffre d’affaires',
+
                     'data' => $data,
-                    'fill' => true,
-                    'tension' => 0.4,
-                    'borderWidth' => 3,
+
+                    'backgroundColor' =>
+                        'rgba(201, 169, 106, 0.75)',
+
+                    'borderColor' => '#C9A96A',
+
+                    'borderWidth' => 2,
+
+                    'borderRadius' => 8,
                 ],
             ],
+
             'labels' => $labels,
         ];
     }
 
     protected function getType(): string
     {
-        return 'line';
+        return 'bar';
     }
 }
