@@ -15,7 +15,7 @@
     */
 
     /*
-     * Prix officiel de la session selon le type de tarif.
+     * Prix officiel selon le type de tarif :
      *
      * normal => formation_days.price
      * cpf    => formation_days.cpf_price
@@ -25,10 +25,7 @@
         : (float) ($day?->price ?? 0);
 
     /*
-     * Prix réellement vendu pour cette réservation.
-     *
-     * Le prix peut être modifié plus tard par l'administration
-     * sans modifier le prix officiel de la session.
+     * Prix réellement vendu.
      */
     $soldPrice = (float) (
         $reservation->sold_price
@@ -55,7 +52,7 @@
     );
 
     /*
-     * Remise éventuelle.
+     * Remise.
      */
     $discount = max(
         0,
@@ -84,17 +81,17 @@
     );
 
     /*
-     * Libellé du plan de paiement.
+     * Plan de paiement.
      */
     $paymentPlanLabel = $paymentInstallments === 2
         ? '2 paiements'
         : 'Paiement en 1 fois';
 
     /*
-     |--------------------------------------------------------------------------
-     | STATUS
-     |--------------------------------------------------------------------------
-     */
+    |--------------------------------------------------------------------------
+    | STATUS
+    |--------------------------------------------------------------------------
+    */
 
     $statusLabel = match ($reservation->status) {
 
@@ -140,10 +137,10 @@
     };
 
     /*
-     |--------------------------------------------------------------------------
-     | SESSION DATE
-     |--------------------------------------------------------------------------
-     */
+    |--------------------------------------------------------------------------
+    | SESSION DATE
+    |--------------------------------------------------------------------------
+    */
 
     $sessionDate = 'Date à confirmer';
 
@@ -177,15 +174,10 @@
     }
 
     /*
-     |--------------------------------------------------------------------------
-     | PAYMENT PROOF
-     |--------------------------------------------------------------------------
-     |
-     | Files are stored directly inside:
-     |
-     | public/payments/proofs/
-     |
-     */
+    |--------------------------------------------------------------------------
+    | PAYMENT PROOF
+    |--------------------------------------------------------------------------
+    */
 
     $paymentProofUrl = null;
 
@@ -200,6 +192,7 @@
 
 
 <style>
+
     * {
         box-sizing: border-box;
     }
@@ -209,6 +202,7 @@
         max-width: 1180px;
         margin: 0 auto;
         padding: 10px 0 40px;
+
         color: #171717;
 
         font-family:
@@ -221,15 +215,19 @@
             sans-serif;
     }
 
+
     .as-invoice {
         background: #ffffff;
+
         border: 1px solid #e5e7eb;
         border-radius: 14px;
+
         overflow: hidden;
 
         box-shadow:
             0 10px 30px rgba(0, 0, 0, 0.05);
     }
+
 
     /* =====================================================
        TOP
@@ -237,6 +235,7 @@
 
     .as-top {
         display: flex;
+
         align-items: flex-start;
         justify-content: space-between;
 
@@ -247,15 +246,18 @@
         border-bottom: 1px solid #e5e7eb;
     }
 
+
     .as-brand {
         font-size: 12px;
         font-weight: 700;
 
         letter-spacing: 0.28em;
+
         text-transform: uppercase;
 
         color: #111111;
     }
+
 
     .as-document-title {
         margin-top: 12px;
@@ -268,6 +270,7 @@
         color: #111111;
     }
 
+
     .as-document-subtitle {
         margin-top: 7px;
 
@@ -276,19 +279,23 @@
         color: #6b7280;
     }
 
+
     .as-reference-block {
         text-align: right;
     }
+
 
     .as-reference-label {
         font-size: 10px;
         font-weight: 700;
 
         text-transform: uppercase;
+
         letter-spacing: 0.17em;
 
         color: #9ca3af;
     }
+
 
     .as-reference {
         margin-top: 7px;
@@ -299,6 +306,7 @@
         color: #111111;
     }
 
+
     .as-created {
         margin-top: 6px;
 
@@ -306,6 +314,7 @@
 
         color: #6b7280;
     }
+
 
     .as-status {
         display: inline-flex;
@@ -323,25 +332,30 @@
         font-weight: 700;
     }
 
+
     .status-pending {
         background: #fff7ed;
         color: #b45309;
     }
+
 
     .status-warning {
         background: #fef3c7;
         color: #92400e;
     }
 
+
     .status-success {
         background: #ecfdf5;
         color: #047857;
     }
 
+
     .status-danger {
         background: #fef2f2;
         color: #b91c1c;
     }
+
 
     /* =====================================================
        SECTIONS
@@ -353,6 +367,7 @@
         border-bottom: 1px solid #e5e7eb;
     }
 
+
     .as-section-title {
         margin-bottom: 18px;
 
@@ -360,10 +375,12 @@
         font-weight: 700;
 
         text-transform: uppercase;
+
         letter-spacing: 0.18em;
 
         color: #9ca3af;
     }
+
 
     /* =====================================================
        CLIENT + SESSION
@@ -377,6 +394,7 @@
         gap: 26px;
     }
 
+
     .as-info-card {
         border: 1px solid #e5e7eb;
         border-radius: 10px;
@@ -386,15 +404,18 @@
         background: #ffffff;
     }
 
+
     .as-card-label {
         font-size: 10px;
         font-weight: 700;
 
         text-transform: uppercase;
+
         letter-spacing: 0.15em;
 
         color: #9ca3af;
     }
+
 
     .as-main-value {
         margin-top: 10px;
@@ -405,6 +426,7 @@
         color: #111111;
     }
 
+
     .as-small-value {
         margin-top: 5px;
 
@@ -414,6 +436,7 @@
         color: #6b7280;
     }
 
+
     .as-session-city {
         margin-top: 9px;
 
@@ -421,7 +444,10 @@
         font-weight: 600;
 
         letter-spacing: -0.02em;
+
+        color: #111111;
     }
+
 
     .as-session-date {
         margin-top: 7px;
@@ -431,6 +457,7 @@
         color: #4b5563;
     }
 
+
     .as-session-id {
         margin-top: 11px;
 
@@ -438,6 +465,7 @@
 
         color: #9ca3af;
     }
+
 
     /* =====================================================
        FORMATION
@@ -454,15 +482,18 @@
         overflow: hidden;
     }
 
+
     .as-formation-item {
         padding: 20px;
 
         border-right: 1px solid #e5e7eb;
     }
 
+
     .as-formation-item:last-child {
         border-right: none;
     }
+
 
     .as-value {
         margin-top: 8px;
@@ -472,6 +503,7 @@
 
         color: #111111;
     }
+
 
     /* =====================================================
        PRICING
@@ -483,13 +515,16 @@
         border-collapse: collapse;
     }
 
+
     .as-price-table tr {
         border-bottom: 1px solid #f0f0f0;
     }
 
+
     .as-price-table tr:last-child {
         border-bottom: none;
     }
+
 
     .as-price-table td {
         padding: 15px 0;
@@ -497,9 +532,11 @@
         font-size: 14px;
     }
 
+
     .as-price-label {
         color: #6b7280;
     }
+
 
     .as-price-value {
         text-align: right;
@@ -511,10 +548,22 @@
         white-space: nowrap;
     }
 
+
     .as-discount {
         color: #047857;
+
         font-weight: 600;
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TOTAL
+    |--------------------------------------------------------------------------
+    |
+    | Grosse ligne noire + gros texte
+    |
+    */
 
     .as-total {
         display: flex;
@@ -524,23 +573,56 @@
 
         gap: 20px;
 
-        margin-top: 18px;
-        padding-top: 20px;
+        margin-top: 20px;
 
-        border-top: 1px solid #111111;
+        padding-top: 22px;
+
+        /*
+         * GROSSE LIGNE
+         */
+        border-top: 3px solid #111111;
     }
+
 
     .as-total-label {
-        font-size: 15px;
-        font-weight: 600;
-    }
+        font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
 
-    .as-total-value {
-        font-size: 25px;
+        font-size: 17px;
+
         font-weight: 700;
 
-        letter-spacing: -0.03em;
+        color: #111111;
     }
+
+
+    .as-total-value {
+        font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+
+        font-size: 28px;
+
+        font-weight: 800;
+
+        letter-spacing: -0.03em;
+
+        color: #111111;
+
+        white-space: nowrap;
+    }
+
 
     .as-remaining {
         display: flex;
@@ -548,18 +630,37 @@
         align-items: center;
         justify-content: space-between;
 
-        margin-top: 8px;
+        gap: 20px;
 
-        font-size: 13px;
+        margin-top: 10px;
 
-        color: #6b7280;
-    }
+        font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
 
-    .as-remaining strong {
-        font-weight: 600;
+        font-size: 14px;
+
+        font-weight: 500;
 
         color: #111111;
     }
+
+
+    .as-remaining strong {
+        font-size: 16px;
+
+        font-weight: 700;
+
+        color: #111111;
+
+        white-space: nowrap;
+    }
+
 
     /* =====================================================
        PAYMENT
@@ -575,6 +676,7 @@
         align-items: center;
     }
 
+
     .as-proof-image {
         width: 150px;
         height: 105px;
@@ -587,6 +689,7 @@
         background: #f9fafb;
     }
 
+
     .as-proof-placeholder {
         width: 150px;
         height: 105px;
@@ -597,6 +700,7 @@
         justify-content: center;
 
         border: 1px dashed #d1d5db;
+
         border-radius: 8px;
 
         background: #fafafa;
@@ -608,12 +712,15 @@
         text-align: center;
     }
 
+
     .as-proof-name {
         font-size: 14px;
+
         font-weight: 600;
 
         color: #111111;
     }
+
 
     .as-proof-description {
         margin-top: 6px;
@@ -623,15 +730,18 @@
         color: #6b7280;
     }
 
+
     .as-proof-button {
         display: inline-flex;
 
         align-items: center;
 
         margin-top: 13px;
+
         padding: 9px 15px;
 
         border: 1px solid #d1d5db;
+
         border-radius: 7px;
 
         color: #374151;
@@ -639,10 +749,12 @@
         text-decoration: none;
 
         font-size: 12px;
+
         font-weight: 600;
 
         transition: 0.2s ease;
     }
+
 
     .as-proof-button:hover {
         background: #111111;
@@ -652,12 +764,15 @@
         color: #ffffff;
     }
 
+
     .as-payment-details {
         margin-top: 15px;
+
         padding-top: 15px;
 
         border-top: 1px solid #f0f0f0;
     }
+
 
     .as-payment-detail-row {
         display: flex;
@@ -672,13 +787,16 @@
         font-size: 13px;
     }
 
+
     .as-payment-detail-row span:first-child {
         color: #6b7280;
     }
 
+
     .as-payment-detail-row strong {
         color: #111111;
     }
+
 
     /* =====================================================
        NOTES
@@ -688,15 +806,18 @@
         padding: 17px 19px;
 
         border: 1px solid #e5e7eb;
+
         border-radius: 9px;
 
         background: #fafafa;
 
         font-size: 13px;
+
         line-height: 1.7;
 
         color: #4b5563;
     }
+
 
     /* =====================================================
        FOOTER
@@ -715,15 +836,19 @@
         background: #fafafa;
     }
 
+
     .as-footer-brand {
         font-size: 11px;
+
         font-weight: 700;
 
         text-transform: uppercase;
+
         letter-spacing: 0.2em;
 
         color: #111111;
     }
+
 
     .as-footer-text {
         margin-top: 5px;
@@ -733,9 +858,11 @@
         color: #6b7280;
     }
 
+
     .as-footer-right {
         text-align: right;
     }
+
 
     /* =====================================================
        RESPONSIVE
@@ -747,35 +874,43 @@
             padding: 28px 24px;
         }
 
+
         .as-section {
             padding: 26px 24px;
         }
+
 
         .as-footer {
             padding: 22px 24px;
         }
 
+
         .as-formation-grid {
             grid-template-columns: 1fr 1fr;
         }
+
 
         .as-formation-item:nth-child(2) {
             border-right: none;
         }
 
+
         .as-formation-item:last-child {
             grid-column: 1 / -1;
 
             border-top: 1px solid #e5e7eb;
+
             border-right: none;
         }
     }
+
 
     @media (max-width: 640px) {
 
         .as-reservation-page {
             padding: 0;
         }
+
 
         .as-invoice {
             border-radius: 0;
@@ -784,61 +919,83 @@
             border-right: none;
         }
 
+
         .as-top {
             flex-direction: column;
+
             gap: 20px;
         }
+
 
         .as-reference-block {
             text-align: left;
         }
 
+
         .as-grid-two {
             grid-template-columns: 1fr;
         }
+
 
         .as-formation-grid {
             grid-template-columns: 1fr;
         }
 
+
         .as-formation-item {
             border-right: none;
+
             border-bottom: 1px solid #e5e7eb;
         }
+
 
         .as-formation-item:last-child {
             border-bottom: none;
         }
 
+
         .as-payment {
             grid-template-columns: 1fr;
         }
 
+
         .as-proof-image,
         .as-proof-placeholder {
             width: 100%;
+
             height: 190px;
         }
 
+
         .as-footer {
             flex-direction: column;
+
             align-items: flex-start;
         }
+
 
         .as-footer-right {
             text-align: left;
         }
 
+
         .as-total-value {
-            font-size: 21px;
+            font-size: 24px;
+        }
+
+
+        .as-total-label {
+            font-size: 16px;
         }
     }
+
 </style>
 
 
 <div class="as-reservation-page">
 
     <div class="as-invoice">
+
 
         {{-- ==================================================
              HEADER
@@ -879,9 +1036,11 @@
                 </div>
 
                 <div>
+
                     <span class="as-status {{ $statusClass }}">
                         {{ $statusLabel }}
                     </span>
+
                 </div>
 
             </div>
@@ -899,7 +1058,9 @@
                 Informations
             </div>
 
+
             <div class="as-grid-two">
+
 
                 {{-- CLIENT --}}
 
@@ -909,10 +1070,14 @@
                         Cliente
                     </div>
 
+
                     <div class="as-main-value">
+
                         {{ $customer?->first_name }}
                         {{ $customer?->last_name }}
+
                     </div>
+
 
                     @if($customer?->email)
 
@@ -922,6 +1087,7 @@
 
                     @endif
 
+
                     @if($customer?->phone)
 
                         <div class="as-small-value">
@@ -929,6 +1095,7 @@
                         </div>
 
                     @endif
+
 
                     @if($customer?->address)
 
@@ -938,11 +1105,14 @@
 
                     @endif
 
+
                     @if($customer?->postal_code || $customer?->city)
 
                         <div class="as-small-value">
+
                             {{ $customer->postal_code }}
                             {{ $customer->city }}
+
                         </div>
 
                     @endif
@@ -958,13 +1128,16 @@
                         Session sélectionnée
                     </div>
 
+
                     <div class="as-session-city">
                         {{ $day?->city ?? '—' }}
                     </div>
 
+
                     <div class="as-session-date">
                         {{ $sessionDate }}
                     </div>
+
 
                     @if($day)
 
@@ -991,7 +1164,9 @@
                 Formation
             </div>
 
+
             <div class="as-formation-grid">
+
 
                 <div class="as-formation-item">
 
@@ -1046,9 +1221,11 @@
                 Facturation
             </div>
 
+
             <table class="as-price-table">
 
                 <tbody>
+
 
                     {{-- PRIX OFFICIEL --}}
 
@@ -1148,7 +1325,9 @@
             </table>
 
 
-            {{-- TOTAL --}}
+            {{-- ==================================================
+                 TOTAL
+            ================================================== --}}
 
             <div class="as-total">
 
@@ -1163,7 +1342,9 @@
             </div>
 
 
-            {{-- RESTE --}}
+            {{-- ==================================================
+                 RESTE À PAYER
+            ================================================== --}}
 
             <div class="as-remaining">
 
@@ -1190,7 +1371,9 @@
                 Paiement
             </div>
 
+
             <div class="as-payment">
+
 
                 @if($paymentProofUrl)
 
@@ -1215,9 +1398,11 @@
                             Preuve de paiement reçue
                         </div>
 
+
                         <div class="as-proof-description">
                             La cliente a transmis une preuve de paiement.
                         </div>
+
 
                         <a
                             href="{{ $paymentProofUrl }}"
@@ -1230,18 +1415,25 @@
 
                     </div>
 
+
                 @else
 
+
                     <div class="as-proof-placeholder">
-                        Aucune preuve<br>
+
+                        Aucune preuve
+                        <br>
                         de paiement
+
                     </div>
+
 
                     <div>
 
                         <div class="as-proof-name">
                             Aucune preuve de paiement
                         </div>
+
 
                         <div class="as-proof-description">
                             Aucun document n'a encore été transmis.
@@ -1259,6 +1451,7 @@
             @if($payment)
 
                 <div class="as-payment-details">
+
 
                     <div class="as-payment-detail-row">
 
@@ -1280,28 +1473,39 @@
                         </span>
 
                         <strong>
+
                             @switch($payment->status)
 
                                 @case('paid')
+
                                     Payé
+
                                     @break
 
                                 @case('pending')
+
                                     En attente
+
                                     @break
 
                                 @case('failed')
+
                                     Échec
+
                                     @break
 
                                 @case('cancelled')
+
                                     Annulé
+
                                     @break
 
                                 @default
+
                                     {{ ucfirst($payment->status ?? '—') }}
 
                             @endswitch
+
                         </strong>
 
                     </div>
@@ -1323,6 +1527,7 @@
 
                     @endif
 
+
                 </div>
 
             @endif
@@ -1342,6 +1547,7 @@
                     Message de la cliente
                 </div>
 
+
                 <div class="as-note">
                     {{ $reservation->notes }}
                 </div>
@@ -1356,6 +1562,7 @@
         ================================================== --}}
 
         <div class="as-footer">
+
 
             <div>
 
@@ -1381,6 +1588,7 @@
                 </div>
 
             </div>
+
 
         </div>
 
