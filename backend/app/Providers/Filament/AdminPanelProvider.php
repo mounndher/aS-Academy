@@ -30,6 +30,7 @@ class AdminPanelProvider extends PanelProvider
 
             ->login()
             ->passwordReset()
+            ->profile(isSimple: false)
 
             ->colors([
                 'primary' => Color::Amber,
@@ -79,10 +80,7 @@ class AdminPanelProvider extends PanelProvider
                 for: 'App\\Filament\\Widgets'
             )
 
-            ->widgets([
-                Widgets\AccountWidget::class,
-                Widgets\FilamentInfoWidget::class,
-            ])
+            
 
             /*
             |--------------------------------------------------------------------------
