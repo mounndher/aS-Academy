@@ -9,21 +9,28 @@ class Reservation extends Model
 {
     use HasFactory;
       protected $fillable = [
-        'reference',
-        'formation_id',
-        'formation_day_id',
-        'customer_id',
-        'total_amount',
-        'deposit_amount',
-        'status',
-        'payment_proof',
-        'notes',
-    ];
+    'reference',
+    'formation_id',
+    'formation_day_id',
+    'customer_id',
 
-    protected $casts = [
-        'total_amount' => 'decimal:2',
-        'deposit_amount' => 'decimal:2',
-    ];
+    'pricing_type',
+    'sold_price',
+    'payment_installments',
+
+    'total_amount',
+    'deposit_amount',
+    'status',
+    'payment_proof',
+    'notes',
+];
+
+   protected $casts = [
+    'sold_price' => 'decimal:2',
+    'total_amount' => 'decimal:2',
+    'deposit_amount' => 'decimal:2',
+    'payment_installments' => 'integer',
+];
 
     public function formation()
     {
