@@ -1,4 +1,5 @@
 @php
+
     $reservation = $record;
 
     $formation = $reservation->formation;
@@ -7,60 +8,86 @@
     $customer = $reservation->customer;
     $payment = $reservation->payment;
 
+
     /*
     |--------------------------------------------------------------------------
     | PRICE
     |--------------------------------------------------------------------------
-    | The price comes from the selected FormationDay.
+    |
+    | The price belongs to formation_days.price
+    |
     */
+
     $formationPrice = (float) (
-        $day?->personal_price
+        $day?->price
         ?? $reservation->total_amount
         ?? 0
     );
+
 
     /*
     |--------------------------------------------------------------------------
     | DEPOSIT
     |--------------------------------------------------------------------------
     */
+
     $deposit = (float) (
         $reservation->deposit_amount
         ?? 0
     );
+
 
     /*
     |--------------------------------------------------------------------------
     | REMAINING
     |--------------------------------------------------------------------------
     */
+
     $remaining = max(
         0,
         $formationPrice - $deposit
     );
+
 
     /*
     |--------------------------------------------------------------------------
     | STATUS
     |--------------------------------------------------------------------------
     */
+
     $statusLabel = match ($reservation->status) {
-        'pending' => 'En attente',
-        'pending_payment' => 'Paiement en attente',
-        'confirmed' => 'Confirmée',
-        'cancelled' => 'Annulée',
-        'completed' => 'Terminée',
-        default => ucfirst(
-            str_replace(
-                '_',
-                ' ',
-                $reservation->status
-            )
-        ),
+
+        'pending' =>
+            'En attente',
+
+        'pending_payment' =>
+            'Paiement en attente',
+
+        'confirmed' =>
+            'Confirmée',
+
+        'cancelled' =>
+            'Annulée',
+
+        'completed' =>
+            'Terminée',
+
+        default =>
+            ucfirst(
+                str_replace(
+                    '_',
+                    ' ',
+                    $reservation->status
+                )
+            ),
+
     };
 
+
     $statusClass = match ($reservation->status) {
-        'confirmed', 'completed' =>
+
+        'confirmed',
+        'completed' =>
             'status-success',
 
         'cancelled' =>
@@ -71,47 +98,70 @@
 
         default =>
             'status-pending',
+
     };
+
 
     /*
     |--------------------------------------------------------------------------
     | SESSION DATE
     |--------------------------------------------------------------------------
     */
+
     $sessionDate = 'Date à confirmer';
 
     if ($day) {
+
         $start = $day->start_date
-            ? \Carbon\Carbon::parse($day->start_date)
+            ? \Carbon\Carbon::parse(
+                $day->start_date
+            )
                 ->locale('fr')
                 ->translatedFormat('d F Y')
             : null;
+
 
         $end = $day->end_date
-            ? \Carbon\Carbon::parse($day->end_date)
+            ? \Carbon\Carbon::parse(
+                $day->end_date
+            )
                 ->locale('fr')
                 ->translatedFormat('d F Y')
             : null;
 
+
         if ($start && $end) {
-            $sessionDate = $start . ' → ' . $end;
+
+            $sessionDate =
+                $start . ' → ' . $end;
+
         } elseif ($start) {
+
             $sessionDate = $start;
         }
     }
 
+
     /*
     |--------------------------------------------------------------------------
-    | PAYMENT PROOF URL
+    | PAYMENT PROOF
     |--------------------------------------------------------------------------
+    |
+    | Files are stored directly inside public/
+    |
+    | public/payments/proofs/filename.jpg
+    |
     */
+
     $paymentProofUrl = null;
 
     if ($payment?->payment_proof) {
+
         $paymentProofUrl = asset(
-            'storage/' . $payment->payment_proof
+            $payment->payment_proof
         );
     }
+
 @endphp
 
 
