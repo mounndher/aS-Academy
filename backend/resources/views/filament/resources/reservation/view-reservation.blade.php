@@ -1,80 +1,659 @@
-<div class="space-y-6">
+@php
+    $reservation = $record;
 
-    {{-- HEADER --}}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    $formation = $reservation->formation;
+    $programme = $formation?->programme;
+    $day = $reservation->formationDay;
+    $customer = $reservation->customer;
+    $payment = $reservation->payment;
 
-        <div>
-            <div class="text-sm font-medium text-gray-500">
-                RÉSERVATION
+    /*
+    |--------------------------------------------------------------------------
+    | PRICE
+    |--------------------------------------------------------------------------
+    | The price comes from the selected FormationDay.
+    */
+    $formationPrice = (float) (
+        $day?->personal_price
+        ?? $reservation->total_amount
+        ?? 0
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | DEPOSIT
+    |--------------------------------------------------------------------------
+    */
+    $deposit = (float) (
+        $reservation->deposit_amount
+        ?? 0
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | REMAINING
+    |--------------------------------------------------------------------------
+    */
+    $remaining = max(
+        0,
+        $formationPrice - $deposit
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | STATUS
+    |--------------------------------------------------------------------------
+    */
+    $statusLabel = match ($reservation->status) {
+        'pending' => 'En attente',
+        'pending_payment' => 'Paiement en attente',
+        'confirmed' => 'Confirmée',
+        'cancelled' => 'Annulée',
+        'completed' => 'Terminée',
+        default => ucfirst(
+            str_replace(
+                '_',
+                ' ',
+                $reservation->status
+            )
+        ),
+    };
+
+    $statusClass = match ($reservation->status) {
+        'confirmed', 'completed' =>
+            'status-success',
+
+        'cancelled' =>
+            'status-danger',
+
+        'pending_payment' =>
+            'status-warning',
+
+        default =>
+            'status-pending',
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | SESSION DATE
+    |--------------------------------------------------------------------------
+    */
+    $sessionDate = 'Date à confirmer';
+
+    if ($day) {
+        $start = $day->start_date
+            ? \Carbon\Carbon::parse($day->start_date)
+                ->locale('fr')
+                ->translatedFormat('d F Y')
+            : null;
+
+        $end = $day->end_date
+            ? \Carbon\Carbon::parse($day->end_date)
+                ->locale('fr')
+                ->translatedFormat('d F Y')
+            : null;
+
+        if ($start && $end) {
+            $sessionDate = $start . ' → ' . $end;
+        } elseif ($start) {
+            $sessionDate = $start;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PAYMENT PROOF URL
+    |--------------------------------------------------------------------------
+    */
+    $paymentProofUrl = null;
+
+    if ($payment?->payment_proof) {
+        $paymentProofUrl = asset(
+            'storage/' . $payment->payment_proof
+        );
+    }
+@endphp
+
+
+<style>
+    .as-reservation-page {
+        width: 100%;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 10px 0 40px;
+        color: #171717;
+        font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+    }
+
+    .as-invoice {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow:
+            0 10px 30px rgba(0, 0, 0, 0.05);
+    }
+
+    /* =====================================================
+       TOP
+    ===================================================== */
+
+    .as-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 32px;
+        padding: 34px 38px 30px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .as-brand {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: #111111;
+    }
+
+    .as-document-title {
+        margin-top: 12px;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        color: #111111;
+    }
+
+    .as-document-subtitle {
+        margin-top: 7px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .as-reference-block {
+        text-align: right;
+    }
+
+    .as-reference-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.17em;
+        color: #9ca3af;
+    }
+
+    .as-reference {
+        margin-top: 7px;
+        font-size: 17px;
+        font-weight: 600;
+        color: #111111;
+    }
+
+    .as-created {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .as-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 12px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .status-pending {
+        background: #fff7ed;
+        color: #b45309;
+    }
+
+    .status-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-success {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .status-danger {
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+    /* =====================================================
+       SECTIONS
+    ===================================================== */
+
+    .as-section {
+        padding: 30px 38px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .as-section-title {
+        margin-bottom: 18px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: #9ca3af;
+    }
+
+    /* =====================================================
+       CLIENT + SESSION
+    ===================================================== */
+
+    .as-grid-two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 26px;
+    }
+
+    .as-info-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 20px;
+        background: #ffffff;
+    }
+
+    .as-card-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #9ca3af;
+    }
+
+    .as-main-value {
+        margin-top: 10px;
+        font-size: 17px;
+        font-weight: 600;
+        color: #111111;
+    }
+
+    .as-small-value {
+        margin-top: 5px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #6b7280;
+    }
+
+    .as-session-city {
+        margin-top: 9px;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+    }
+
+    .as-session-date {
+        margin-top: 7px;
+        font-size: 13px;
+        color: #4b5563;
+    }
+
+    .as-session-id {
+        margin-top: 11px;
+        font-size: 11px;
+        color: #9ca3af;
+    }
+
+    /* =====================================================
+       FORMATION
+    ===================================================== */
+
+    .as-formation-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 0.7fr;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .as-formation-item {
+        padding: 20px;
+        border-right: 1px solid #e5e7eb;
+    }
+
+    .as-formation-item:last-child {
+        border-right: none;
+    }
+
+    .as-value {
+        margin-top: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #111111;
+    }
+
+    /* =====================================================
+       PRICING
+    ===================================================== */
+
+    .as-price-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .as-price-table tr {
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .as-price-table tr:last-child {
+        border-bottom: none;
+    }
+
+    .as-price-table td {
+        padding: 15px 0;
+        font-size: 14px;
+    }
+
+    .as-price-label {
+        color: #6b7280;
+    }
+
+    .as-price-value {
+        text-align: right;
+        font-weight: 500;
+        color: #111111;
+        white-space: nowrap;
+    }
+
+    .as-total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 18px;
+        padding-top: 20px;
+        border-top: 1px solid #111111;
+    }
+
+    .as-total-label {
+        font-size: 15px;
+        font-weight: 600;
+    }
+
+    .as-total-value {
+        font-size: 25px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+    }
+
+    .as-remaining {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .as-remaining strong {
+        font-weight: 600;
+        color: #111111;
+    }
+
+    /* =====================================================
+       PAYMENT
+    ===================================================== */
+
+    .as-payment {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 22px;
+        align-items: center;
+    }
+
+    .as-proof-image {
+        width: 150px;
+        height: 105px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #f9fafb;
+    }
+
+    .as-proof-placeholder {
+        width: 150px;
+        height: 105px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed #d1d5db;
+        border-radius: 8px;
+        background: #fafafa;
+        color: #9ca3af;
+        font-size: 12px;
+        text-align: center;
+    }
+
+    .as-proof-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111111;
+    }
+
+    .as-proof-description {
+        margin-top: 6px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .as-proof-button {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 13px;
+        padding: 9px 15px;
+        border: 1px solid #d1d5db;
+        border-radius: 7px;
+        color: #374151;
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 600;
+        transition: 0.2s ease;
+    }
+
+    .as-proof-button:hover {
+        background: #111111;
+        border-color: #111111;
+        color: #ffffff;
+    }
+
+    /* =====================================================
+       NOTES
+    ===================================================== */
+
+    .as-note {
+        padding: 17px 19px;
+        border: 1px solid #e5e7eb;
+        border-radius: 9px;
+        background: #fafafa;
+        font-size: 13px;
+        line-height: 1.7;
+        color: #4b5563;
+    }
+
+    /* =====================================================
+       FOOTER
+    ===================================================== */
+
+    .as-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 24px 38px;
+        background: #fafafa;
+    }
+
+    .as-footer-brand {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: #111111;
+    }
+
+    .as-footer-text {
+        margin-top: 5px;
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .as-footer-right {
+        text-align: right;
+    }
+
+    /* =====================================================
+       RESPONSIVE
+    ===================================================== */
+
+    @media (max-width: 900px) {
+
+        .as-top {
+            padding: 28px 24px;
+        }
+
+        .as-section {
+            padding: 26px 24px;
+        }
+
+        .as-footer {
+            padding: 22px 24px;
+        }
+
+        .as-formation-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .as-formation-item:nth-child(2) {
+            border-right: none;
+        }
+
+        .as-formation-item:last-child {
+            grid-column: 1 / -1;
+            border-top: 1px solid #e5e7eb;
+            border-right: none;
+        }
+    }
+
+    @media (max-width: 640px) {
+
+        .as-reservation-page {
+            padding: 0;
+        }
+
+        .as-invoice {
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+        }
+
+        .as-top {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .as-reference-block {
+            text-align: left;
+        }
+
+        .as-grid-two {
+            grid-template-columns: 1fr;
+        }
+
+        .as-formation-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .as-formation-item {
+            border-right: none;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .as-formation-item:last-child {
+            border-bottom: none;
+        }
+
+        .as-payment {
+            grid-template-columns: 1fr;
+        }
+
+        .as-proof-image,
+        .as-proof-placeholder {
+            width: 100%;
+            height: 190px;
+        }
+
+        .as-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .as-footer-right {
+            text-align: left;
+        }
+    }
+</style>
+
+
+<div class="as-reservation-page">
+
+    <div class="as-invoice">
+
+        {{-- ==================================================
+             HEADER
+        ================================================== --}}
+
+        <div class="as-top">
+
+            <div>
+
+                <div class="as-brand">
+                    AS Academy
+                </div>
+
+                <div class="as-document-title">
+                    Réservation
+                </div>
+
+                <div class="as-document-subtitle">
+                    Récapitulatif de réservation
+                </div>
+
             </div>
 
-            <h1 class="mt-1 text-2xl font-bold tracking-tight text-gray-950">
-                {{ $record->reference }}
-            </h1>
 
-            <div class="mt-2 text-sm text-gray-500">
-                Créée le
-                {{ $record->created_at?->format('d/m/Y à H:i') }}
-            </div>
-        </div>
+            <div class="as-reference-block">
 
-        <div>
-            @php
-                $status = $record->status;
+                <div class="as-reference-label">
+                    Référence
+                </div>
 
-                $statusLabel = match ($status) {
-                    'pending' => 'En attente',
-                    'pending_payment' => 'Paiement en attente',
-                    'confirmed' => 'Confirmée',
-                    'cancelled' => 'Annulée',
-                    'completed' => 'Terminée',
-                    default => $status,
-                };
-            @endphp
+                <div class="as-reference">
+                    {{ $reservation->reference }}
+                </div>
 
-            <span
-                class="inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium
-                {{ $status === 'confirmed'
-                    ? 'bg-green-100 text-green-700'
-                    : ($status === 'cancelled'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-orange-100 text-orange-700') }}"
-            >
-                {{ $statusLabel }}
-            </span>
-        </div>
-
-    </div>
-
-
-    {{-- INVOICE --}}
-    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-
-        {{-- INVOICE HEADER --}}
-        <div class="border-b border-gray-200 px-6 py-6 sm:px-8">
-
-            <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                <div class="as-created">
+                    Créée le
+                    {{ $reservation->created_at?->format('d/m/Y à H:i') }}
+                </div>
 
                 <div>
-                    <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                        Formation
-                    </div>
-
-                    <h2 class="mt-2 text-xl font-semibold text-gray-950">
-                        {{ $record->formation?->title ?? 'Formation' }}
-                    </h2>
-                </div>
-
-                <div class="text-left sm:text-right">
-
-                    <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                        Référence
-                    </div>
-
-                    <div class="mt-2 font-semibold text-gray-950">
-                        {{ $record->reference }}
-                    </div>
-
+                    <span class="as-status {{ $statusClass }}">
+                        {{ $statusLabel }}
+                    </span>
                 </div>
 
             </div>
@@ -82,81 +661,144 @@
         </div>
 
 
-        {{-- CUSTOMER + SESSION --}}
-        <div class="grid grid-cols-1 divide-y divide-gray-200 md:grid-cols-2 md:divide-x md:divide-y-0">
+        {{-- ==================================================
+             CLIENT + SESSION
+        ================================================== --}}
 
-            {{-- CLIENT --}}
-            <div class="p-6 sm:p-8">
+        <div class="as-section">
 
-                <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    Cliente
-                </div>
-
-                <div class="mt-4 space-y-1">
-
-                    <div class="text-lg font-semibold text-gray-950">
-                        {{ $record->customer?->first_name }}
-                        {{ $record->customer?->last_name }}
-                    </div>
-
-                    <div class="text-sm text-gray-600">
-                        {{ $record->customer?->email }}
-                    </div>
-
-                    <div class="text-sm text-gray-600">
-                        {{ $record->customer?->phone }}
-                    </div>
-
-                    @if($record->customer?->address)
-                        <div class="pt-2 text-sm text-gray-600">
-                            {{ $record->customer->address }}
-                        </div>
-                    @endif
-
-                    @if($record->customer?->postal_code || $record->customer?->city)
-                        <div class="text-sm text-gray-600">
-                            {{ $record->customer?->postal_code }}
-                            {{ $record->customer?->city }}
-                        </div>
-                    @endif
-
-                </div>
-
+            <div class="as-section-title">
+                Informations
             </div>
 
+            <div class="as-grid-two">
 
-            {{-- SESSION --}}
-            <div class="p-6 sm:p-8">
+                {{-- CLIENT --}}
 
-                <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    Session sélectionnée
+                <div class="as-info-card">
+
+                    <div class="as-card-label">
+                        Cliente
+                    </div>
+
+                    <div class="as-main-value">
+                        {{ $customer?->first_name }}
+                        {{ $customer?->last_name }}
+                    </div>
+
+                    @if($customer?->email)
+
+                        <div class="as-small-value">
+                            {{ $customer->email }}
+                        </div>
+
+                    @endif
+
+                    @if($customer?->phone)
+
+                        <div class="as-small-value">
+                            {{ $customer->phone }}
+                        </div>
+
+                    @endif
+
+                    @if($customer?->address)
+
+                        <div class="as-small-value">
+                            {{ $customer->address }}
+                        </div>
+
+                    @endif
+
+                    @if($customer?->postal_code || $customer?->city)
+
+                        <div class="as-small-value">
+                            {{ $customer->postal_code }}
+                            {{ $customer->city }}
+                        </div>
+
+                    @endif
+
                 </div>
 
-                @php
-                    $day = $record->formationDay;
-                @endphp
 
-                <div class="mt-4 space-y-2">
+                {{-- SESSION --}}
 
-                    <div class="text-lg font-semibold text-gray-950">
+                <div class="as-info-card">
+
+                    <div class="as-card-label">
+                        Session sélectionnée
+                    </div>
+
+                    <div class="as-session-city">
                         {{ $day?->city ?? '—' }}
                     </div>
 
+                    <div class="as-session-date">
+                        {{ $sessionDate }}
+                    </div>
+
                     @if($day)
-                        <div class="text-sm text-gray-600">
 
-                            {{ \Carbon\Carbon::parse($day->start_date)->format('d/m/Y') }}
-
-                            @if($day->end_date)
-                                →
-                                {{ \Carbon\Carbon::parse($day->end_date)->format('d/m/Y') }}
-                            @endif
-
+                        <div class="as-session-id">
+                            Session #{{ $day->id }}
                         </div>
+
                     @endif
 
-                    <div class="pt-2 text-sm text-gray-500">
-                        Session #{{ $day?->id }}
+                </div>
+
+            </div>
+
+        </div>
+
+
+        {{-- ==================================================
+             FORMATION
+        ================================================== --}}
+
+        <div class="as-section">
+
+            <div class="as-section-title">
+                Formation
+            </div>
+
+            <div class="as-formation-grid">
+
+                <div class="as-formation-item">
+
+                    <div class="as-card-label">
+                        Formation
+                    </div>
+
+                    <div class="as-value">
+                        {{ $formation?->title ?? '—' }}
+                    </div>
+
+                </div>
+
+
+                <div class="as-formation-item">
+
+                    <div class="as-card-label">
+                        Programme
+                    </div>
+
+                    <div class="as-value">
+                        {{ $programme?->name ?? '—' }}
+                    </div>
+
+                </div>
+
+
+                <div class="as-formation-item">
+
+                    <div class="as-card-label">
+                        Durée
+                    </div>
+
+                    <div class="as-value">
+                        {{ $programme?->duration ?? '—' }}
                     </div>
 
                 </div>
@@ -166,155 +808,165 @@
         </div>
 
 
-        {{-- FORMATION DETAILS --}}
-        <div class="border-t border-gray-200 px-6 py-6 sm:px-8">
+        {{-- ==================================================
+             FACTURATION
+        ================================================== --}}
 
-            <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                Détails de la formation
-            </div>
+        <div class="as-section">
 
-            <div class="mt-5 overflow-hidden rounded-lg border border-gray-200">
-
-                <div class="grid grid-cols-1 sm:grid-cols-2">
-
-                    <div class="border-b border-gray-200 px-5 py-4 sm:border-r">
-                        <div class="text-xs text-gray-400">
-                            Formation
-                        </div>
-
-                        <div class="mt-1 font-medium text-gray-900">
-                            {{ $record->formation?->title ?? '—' }}
-                        </div>
-                    </div>
-
-
-                    <div class="border-b border-gray-200 px-5 py-4">
-                        <div class="text-xs text-gray-400">
-                            Programme
-                        </div>
-
-                        <div class="mt-1 font-medium text-gray-900">
-                            {{ $record->formation?->programme?->name ?? '—' }}
-                        </div>
-                    </div>
-
-
-                    <div class="border-b border-gray-200 px-5 py-4 sm:border-r">
-                        <div class="text-xs text-gray-400">
-                            Ville
-                        </div>
-
-                        <div class="mt-1 font-medium text-gray-900">
-                            {{ $day?->city ?? '—' }}
-                        </div>
-                    </div>
-
-
-                    <div class="border-b border-gray-200 px-5 py-4">
-                        <div class="text-xs text-gray-400">
-                            Places restantes
-                        </div>
-
-                        <div class="mt-1 font-medium text-gray-900">
-                            {{ $day?->remaining_places ?? '—' }}
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        {{-- PRICING --}}
-        <div class="border-t border-gray-200 px-6 py-6 sm:px-8">
-
-            <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            <div class="as-section-title">
                 Facturation
             </div>
 
-            @php
-                $formationPrice = $day?->personal_price ?? 0;
-                $deposit = $record->deposit_amount ?? 0;
-                $remaining = max(0, $formationPrice - $deposit);
-            @endphp
+            <table class="as-price-table">
 
-            <div class="mt-5 space-y-4">
+                <tbody>
 
-                {{-- FORMATION PRICE --}}
-                <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+                    <tr>
 
-                    <span class="text-sm text-gray-600">
-                        Prix de la formation
-                    </span>
+                        <td class="as-price-label">
+                            Prix de la formation
+                        </td>
 
-                    <span class="font-medium text-gray-900">
-                        {{ number_format($formationPrice, 2, ',', ' ') }} €
-                    </span>
+                        <td class="as-price-value">
+                            {{ number_format($formationPrice, 2, ',', ' ') }} €
+                        </td>
 
+                    </tr>
+
+
+                    <tr>
+
+                        <td class="as-price-label">
+                            Acompte
+                        </td>
+
+                        <td class="as-price-value">
+                            {{ number_format($deposit, 2, ',', ' ') }} €
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+
+            <div class="as-total">
+
+                <div class="as-total-label">
+                    Total formation
                 </div>
 
-
-                {{-- DEPOSIT --}}
-                <div class="flex items-center justify-between border-b border-gray-100 pb-4">
-
-                    <span class="text-sm text-gray-600">
-                        Acompte
-                    </span>
-
-                    <span class="font-medium text-gray-900">
-                        {{ number_format($deposit, 2, ',', ' ') }} €
-                    </span>
-
+                <div class="as-total-value">
+                    {{ number_format($formationPrice, 2, ',', ' ') }} €
                 </div>
 
+            </div>
 
-                {{-- REMAINING --}}
-                <div class="flex items-center justify-between">
 
-                    <span class="font-semibold text-gray-950">
-                        Reste à payer
-                    </span>
+            <div class="as-remaining">
 
-                    <span class="text-xl font-semibold text-gray-950">
-                        {{ number_format($remaining, 2, ',', ' ') }} €
-                    </span>
+                <span>
+                    Reste à payer
+                </span>
 
-                </div>
+                <strong>
+                    {{ number_format($remaining, 2, ',', ' ') }} €
+                </strong>
 
             </div>
 
         </div>
 
 
-        {{-- PAYMENT PROOF --}}
-        @if($record->payment?->payment_proof)
+        {{-- ==================================================
+             PAYMENT PROOF
+        ================================================== --}}
 
-            <div class="border-t border-gray-200 px-6 py-6 sm:px-8">
+        <div class="as-section">
 
-                <div class="flex items-center justify-between">
+            <div class="as-section-title">
+                Paiement
+            </div>
+
+            <div class="as-payment">
+
+                @if($paymentProofUrl)
+
+                    <a
+                        href="{{ $paymentProofUrl }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <img
+                            src="{{ $paymentProofUrl }}"
+                            alt="Preuve de paiement"
+                            class="as-proof-image"
+                        >
+                    </a>
 
                     <div>
 
-                        <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                            Paiement
+                        <div class="as-proof-name">
+                            Preuve de paiement reçue
                         </div>
 
-                        <div class="mt-2 font-medium text-gray-900">
-                            Preuve de paiement
+                        <div class="as-proof-description">
+                            La cliente a transmis une preuve de paiement.
+                        </div>
+
+                        <a
+                            href="{{ $paymentProofUrl }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="as-proof-button"
+                        >
+                            Voir la preuve en grand
+                        </a>
+
+                    </div>
+
+                @else
+
+                    <div class="as-proof-placeholder">
+                        Aucune preuve<br>
+                        de paiement
+                    </div>
+
+                    <div>
+
+                        <div class="as-proof-name">
+                            Aucune preuve de paiement
+                        </div>
+
+                        <div class="as-proof-description">
+                            Aucun document n'a encore été transmis.
                         </div>
 
                     </div>
 
-                    <a
-                        href="{{ asset('storage/' . $record->payment->payment_proof) }}"
-                        target="_blank"
-                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                        Voir la preuve
-                    </a>
+                @endif
 
+            </div>
+
+        </div>
+
+
+        {{-- ==================================================
+             MESSAGE
+        ================================================== --}}
+
+        @if($reservation->notes)
+
+            <div class="as-section">
+
+                <div class="as-section-title">
+                    Message de la cliente
+                </div>
+
+                <div class="as-note">
+                    {{ $reservation->notes }}
                 </div>
 
             </div>
@@ -322,43 +974,32 @@
         @endif
 
 
-        {{-- NOTES --}}
-        @if($record->notes)
+        {{-- ==================================================
+             FOOTER
+        ================================================== --}}
 
-            <div class="border-t border-gray-200 px-6 py-6 sm:px-8">
+        <div class="as-footer">
 
-                <div class="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    Message
+            <div>
+
+                <div class="as-footer-brand">
+                    AS Academy
                 </div>
 
-                <div class="mt-3 text-sm leading-6 text-gray-600">
-                    {{ $record->notes }}
+                <div class="as-footer-text">
+                    Formation professionnelle
                 </div>
 
             </div>
 
-        @endif
+            <div class="as-footer-right">
 
-
-        {{-- TOTAL --}}
-        <div class="border-t border-gray-200 bg-gray-50 px-6 py-6 sm:px-8">
-
-            <div class="flex items-center justify-between">
-
-                <div>
-                    <div class="text-xs uppercase tracking-widest text-gray-400">
-                        Total formation
-                    </div>
-
-                    <div class="mt-1 text-sm text-gray-500">
-                        Session {{ $day?->city }}
-                    </div>
+                <div class="as-footer-brand">
+                    Réservation
                 </div>
 
-                <div class="text-2xl font-semibold text-gray-950">
-
-                    {{ number_format($formationPrice, 2, ',', ' ') }} €
-
+                <div class="as-footer-text">
+                    {{ $reservation->reference }}
                 </div>
 
             </div>

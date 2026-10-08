@@ -451,7 +451,7 @@ class ReservationController extends Controller
             ],
         ], 201);
     }
-    public function store(Request $request)
+    public function store13(Request $request)
 {
     // =========================================================
     // 1. VALIDATION
@@ -852,6 +852,492 @@ class ReservationController extends Controller
     ], 201);
 }
 
+public function store(Request $request)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | 1. VALIDATION
+    |--------------------------------------------------------------------------
+    */
+
+    $validated = $request->validate([
+        'formation_id' => [
+            'required',
+            'integer',
+            'exists:formations,id',
+        ],
+
+        'formation_day_id' => [
+            'required',
+            'integer',
+            'exists:formation_days,id',
+        ],
+
+        'first_name' => [
+            'required',
+            'string',
+            'max:100',
+        ],
+
+        'last_name' => [
+            'required',
+            'string',
+            'max:100',
+        ],
+
+        'email' => [
+            'required',
+            'email',
+            'max:255',
+        ],
+
+        'phone' => [
+            'required',
+            'string',
+            'max:50',
+        ],
+
+        'address' => [
+            'required',
+            'string',
+            'max:255',
+        ],
+
+        'postal_code' => [
+            'required',
+            'string',
+            'max:20',
+        ],
+
+        'city' => [
+            'required',
+            'string',
+            'max:100',
+        ],
+
+        'message' => [
+            'nullable',
+            'string',
+            'max:2000',
+        ],
+
+        'payment_proof' => [
+            'nullable',
+            'image',
+            'mimes:jpg,jpeg,png,webp',
+            'max:5120',
+        ],
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 2. CREATE RESERVATION
+    |--------------------------------------------------------------------------
+    */
+
+    $reservation = DB::transaction(function () use ($validated, $request) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Formation
+        |--------------------------------------------------------------------------
+        */
+
+        $formation = Formation::findOrFail(
+            $validated['formation_id']
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Selected session
+        |--------------------------------------------------------------------------
+        */
+
+        $formationDay = FormationDay::query()
+            ->where('id', $validated['formation_day_id'])
+            ->where('formation_id', $formation->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$formationDay) {
+            abort(
+                422,
+                'La session sélectionnée ne correspond pas à cette formation.'
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Available places
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $formationDay->remaining_places === null ||
+            $formationDay->remaining_places <= 0
+        ) {
+            abort(
+                422,
+                'Cette session est complète.'
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | PRICE
+        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | The price belongs to FormationDay.
+        |
+        | Example:
+        | formation_day_id = 1
+        | Paris
+        | personal_price = 850
+        |
+        */
+
+        $totalAmount = (float) $formationDay->personal_price;
+
+        if ($totalAmount <= 0) {
+            abort(
+                422,
+                'Le tarif de cette session n\'est pas configuré.'
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | DEPOSIT
+        |--------------------------------------------------------------------------
+        |
+        | Fixed deposit configured on Formation.
+        |
+        | Example:
+        | deposit_amount = 150
+        |
+        */
+
+        $depositAmount = (float) $formation->deposit_amount;
+
+        if ($depositAmount <= 0) {
+            $depositAmount = round(
+                $totalAmount * 0.30,
+                2
+            );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Safety
+        |--------------------------------------------------------------------------
+        */
+
+        if ($depositAmount > $totalAmount) {
+            $depositAmount = $totalAmount;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CUSTOMER
+        |--------------------------------------------------------------------------
+        */
+
+        $customer = Customer::updateOrCreate(
+            [
+                'email' => $validated['email'],
+            ],
+            [
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'phone' => $validated['phone'],
+                'address' => $validated['address'],
+                'postal_code' => $validated['postal_code'],
+                'city' => $validated['city'],
+            ]
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESERVATION REFERENCE
+        |--------------------------------------------------------------------------
+        */
+
+        do {
+            $reference = 'RES-' . strtoupper(
+                Str::random(8)
+            );
+        } while (
+            Reservation::where(
+                'reference',
+                $reference
+            )->exists()
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENT PROOF
+        |--------------------------------------------------------------------------
+        */
+
+        $paymentProof = null;
+
+        if ($request->hasFile('payment_proof')) {
+            $paymentProof = $request
+                ->file('payment_proof')
+                ->store(
+                    'payments/proofs',
+                    'public'
+                );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESERVATION
+        |--------------------------------------------------------------------------
+        */
+
+        $reservation = Reservation::create([
+            'reference' => $reference,
+
+            'formation_id' => $formation->id,
+
+            'formation_day_id' => $formationDay->id,
+
+            'customer_id' => $customer->id,
+
+            'total_amount' => $totalAmount,
+
+            'deposit_amount' => $depositAmount,
+
+            'status' => 'pending',
+
+            'notes' =>
+                $validated['message'] ?? null,
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENT
+        |--------------------------------------------------------------------------
+        */
+
+        Payment::create([
+            'reservation_id' =>
+                $reservation->id,
+
+            'provider' =>
+                'bank_transfer',
+
+            'transaction_id' =>
+                null,
+
+            'amount' =>
+                $depositAmount,
+
+            'currency' =>
+                'EUR',
+
+            'status' =>
+                'pending',
+
+            'payment_proof' =>
+                $paymentProof,
+
+            'paid_at' =>
+                null,
+        ]);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | DECREASE AVAILABLE PLACES
+        |--------------------------------------------------------------------------
+        */
+
+        $formationDay->decrement(
+            'remaining_places'
+        );
+
+
+        return $reservation;
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOAD RELATIONSHIPS
+    |--------------------------------------------------------------------------
+    */
+
+    $reservation->load([
+        'formation',
+        'formation.programme',
+        'formationDay',
+        'customer',
+        'payment',
+    ]);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN NOTIFICATION
+    |--------------------------------------------------------------------------
+    */
+
+    $this->sendAdminNotification(
+        $reservation
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | BANK INFORMATION
+    |--------------------------------------------------------------------------
+    */
+
+    $settings = SiteSetting::first();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | REMAINING AMOUNT
+    |--------------------------------------------------------------------------
+    */
+
+    $remainingAmount = max(
+        0,
+        (float) $reservation->total_amount
+        - (float) $reservation->deposit_amount
+    );
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | RESPONSE
+    |--------------------------------------------------------------------------
+    */
+
+    return response()->json([
+        'success' => true,
+
+        'message' =>
+            'Votre réservation a été envoyée avec succès.',
+
+        'reservation' => [
+
+            'id' =>
+                $reservation->id,
+
+            'reference' =>
+                $reservation->reference,
+
+            'status' =>
+                $reservation->status,
+
+            'formation' => [
+
+                'id' =>
+                    $reservation->formation->id,
+
+                'title' =>
+                    $reservation->formation->title,
+
+                'programme' =>
+                    $reservation
+                        ->formation
+                        ->programme
+                        ?->name,
+            ],
+
+            'session' => [
+
+                'id' =>
+                    $reservation->formationDay->id,
+
+                'city' =>
+                    $reservation
+                        ->formationDay
+                        ->city,
+
+                'start_date' =>
+                    $reservation
+                        ->formationDay
+                        ->start_date,
+
+                'end_date' =>
+                    $reservation
+                        ->formationDay
+                        ->end_date,
+
+                'price' =>
+                    $reservation
+                        ->formationDay
+                        ->personal_price,
+
+                'remaining_places' =>
+                    $reservation
+                        ->formationDay
+                        ->remaining_places,
+            ],
+
+            'customer' => [
+
+                'first_name' =>
+                    $reservation
+                        ->customer
+                        ->first_name,
+
+                'last_name' =>
+                    $reservation
+                        ->customer
+                        ->last_name,
+
+                'email' =>
+                    $reservation
+                        ->customer
+                        ->email,
+            ],
+
+            'total_amount' =>
+                $reservation->total_amount,
+
+            'deposit_amount' =>
+                $reservation->deposit_amount,
+
+            'remaining_amount' =>
+                $remainingAmount,
+
+            'payment_proof' =>
+                $reservation
+                    ->payment
+                    ?->payment_proof,
+        ],
+
+        'bank_information' => [
+
+            'iban' =>
+                $settings?->iban,
+
+            'bic' =>
+                $settings?->bic,
+
+            'account_holder_address' =>
+                $settings?->account_holder_address,
+        ],
+    ], 201);
+}
     /**
      * Send reservation notification to admin.
      */
