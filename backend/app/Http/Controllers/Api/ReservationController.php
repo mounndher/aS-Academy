@@ -852,7 +852,6 @@ class ReservationController extends Controller
     ], 201);
 }
 
-
 public function store(Request $request)
 {
     /*
@@ -922,6 +921,35 @@ public function store(Request $request)
             'max:2000',
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | NORMAL / CPF
+        |--------------------------------------------------------------------------
+        */
+
+        'pricing_type' => [
+            'required',
+            'in:normal,cpf',
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | 1 OR 2 PAYMENTS ONLY
+        |--------------------------------------------------------------------------
+        */
+
+        'payment_installments' => [
+            'required',
+            'integer',
+            'in:1,2',
+        ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENT PROOF
+        |--------------------------------------------------------------------------
+        */
+
         'payment_proof' => [
             'nullable',
             'image',
@@ -933,11 +961,14 @@ public function store(Request $request)
 
     /*
     |--------------------------------------------------------------------------
-    | 2. CREATE RESERVATION
+    | 2. TRANSACTION
     |--------------------------------------------------------------------------
     */
 
-    $reservation = DB::transaction(function () use ($validated, $request) {
+    $reservation = DB::transaction(function () use (
+        $validated,
+        $request
+    ) {
 
         /*
         |--------------------------------------------------------------------------
@@ -952,15 +983,22 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | Selected Formation Day
+        | Formation Day
         |--------------------------------------------------------------------------
         */
 
         $formationDay = FormationDay::query()
-            ->where('id', $validated['formation_day_id'])
-            ->where('formation_id', $formation->id)
+            ->where(
+                'id',
+                $validated['formation_day_id']
+            )
+            ->where(
+                'formation_id',
+                $formation->id
+            )
             ->lockForUpdate()
             ->first();
+
 
         if (!$formationDay) {
             abort(
@@ -972,7 +1010,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | Check available places
+        | Places
         |--------------------------------------------------------------------------
         */
 
@@ -989,55 +1027,120 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | PRICE
+        | BASE PRICE
+        |--------------------------------------------------------------------------
+        */
+
+        if ($validated['pricing_type'] === 'cpf') {
+
+            if (!$formationDay->cpf_eligible) {
+                abort(
+                    422,
+                    'Le tarif CPF n’est pas disponible pour cette session.'
+                );
+            }
+
+            if (
+                $formationDay->cpf_price === null ||
+                $formationDay->cpf_price <= 0
+            ) {
+                abort(
+                    422,
+                    'Le tarif CPF n’est pas configuré pour cette session.'
+                );
+            }
+
+            $basePrice = (float) $formationDay->cpf_price;
+
+        } else {
+
+            if (
+                $formationDay->price === null ||
+                $formationDay->price <= 0
+            ) {
+                abort(
+                    422,
+                    'Le tarif de cette session n’est pas configuré.'
+                );
+            }
+
+            $basePrice = (float) $formationDay->price;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SOLD PRICE
         |--------------------------------------------------------------------------
         |
-        | IMPORTANT:
-        | Your real database column is:
+        | At creation, sold_price = base price.
         |
-        | formation_days.price
-        |
-        | NOT personal_price.
+        | The admin can later change sold_price to give
+        | a discount WITHOUT changing formation_days.price.
         |
         */
 
-        $totalAmount = (float) $formationDay->price;
-
-        if ($totalAmount <= 0) {
-            abort(
-                422,
-                'Le tarif de cette session n\'est pas configuré.'
-            );
-        }
+        $soldPrice = $basePrice;
 
 
         /*
         |--------------------------------------------------------------------------
         | DEPOSIT
         |--------------------------------------------------------------------------
+        */
+
+        $depositAmount = (float) (
+            $formation->deposit_amount ?? 0
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | PAYMENT PLAN
+        |--------------------------------------------------------------------------
         |
-        | Deposit comes from formations.deposit_amount.
+        | 1 = full payment
+        | 2 = two payments maximum
         |
         */
 
-        $depositAmount = (float) $formation->deposit_amount;
+        $paymentInstallments =
+            (int) $validated['payment_installments'];
 
-        if ($depositAmount <= 0) {
-            $depositAmount = round(
-                $totalAmount * 0.30,
-                2
-            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Full payment
+        |--------------------------------------------------------------------------
+        */
+
+        if ($paymentInstallments === 1) {
+
+            $depositAmount = $soldPrice;
         }
 
 
         /*
         |--------------------------------------------------------------------------
-        | Safety
+        | Two payments
         |--------------------------------------------------------------------------
         */
 
-        if ($depositAmount > $totalAmount) {
-            $depositAmount = $totalAmount;
+        if ($paymentInstallments === 2) {
+
+            if ($depositAmount <= 0) {
+                $depositAmount = round(
+                    $soldPrice * 0.30,
+                    2
+                );
+            }
+
+            if ($depositAmount >= $soldPrice) {
+                abort(
+                    422,
+                    'L’acompte doit être inférieur au prix final.'
+                );
+            }
         }
 
 
@@ -1049,29 +1152,44 @@ public function store(Request $request)
 
         $customer = Customer::updateOrCreate(
             [
-                'email' => $validated['email'],
+                'email' =>
+                    $validated['email'],
             ],
             [
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'phone' => $validated['phone'],
-                'address' => $validated['address'],
-                'postal_code' => $validated['postal_code'],
-                'city' => $validated['city'],
+                'first_name' =>
+                    $validated['first_name'],
+
+                'last_name' =>
+                    $validated['last_name'],
+
+                'phone' =>
+                    $validated['phone'],
+
+                'address' =>
+                    $validated['address'],
+
+                'postal_code' =>
+                    $validated['postal_code'],
+
+                'city' =>
+                    $validated['city'],
             ]
         );
 
 
         /*
         |--------------------------------------------------------------------------
-        | RESERVATION REFERENCE
+        | REFERENCE
         |--------------------------------------------------------------------------
         */
 
         do {
-            $reference = 'RES-' . strtoupper(
-                Str::random(8)
-            );
+            $reference =
+                'RES-' .
+                strtoupper(
+                    Str::random(8)
+                );
+
         } while (
             Reservation::where(
                 'reference',
@@ -1085,21 +1203,23 @@ public function store(Request $request)
         | PAYMENT PROOF
         |--------------------------------------------------------------------------
         |
-        | Store directly in:
-        |
-        | backend/public/payments/proofs/
+        | Save directly inside public/
         |
         */
 
         $paymentProof = null;
 
-        if ($request->hasFile('payment_proof')) {
+        if (
+            $request->hasFile('payment_proof')
+        ) {
 
-            $directory = public_path(
-                'payments/proofs'
-            );
+            $directory =
+                public_path(
+                    'payments/proofs'
+                );
 
             if (!is_dir($directory)) {
+
                 mkdir(
                     $directory,
                     0755,
@@ -1107,22 +1227,28 @@ public function store(Request $request)
                 );
             }
 
-            $file = $request->file(
-                'payment_proof'
-            );
+
+            $file =
+                $request->file(
+                    'payment_proof'
+                );
+
 
             $filename =
                 (string) Str::uuid()
                 . '.'
                 . $file->getClientOriginalExtension();
 
+
             $file->move(
                 $directory,
                 $filename
             );
 
+
             $paymentProof =
-                'payments/proofs/' . $filename;
+                'payments/proofs/' .
+                $filename;
         }
 
 
@@ -1145,8 +1271,17 @@ public function store(Request $request)
             'customer_id' =>
                 $customer->id,
 
+            'pricing_type' =>
+                $validated['pricing_type'],
+
+            'sold_price' =>
+                $soldPrice,
+
+            'payment_installments' =>
+                $paymentInstallments,
+
             'total_amount' =>
-                $totalAmount,
+                $soldPrice,
 
             'deposit_amount' =>
                 $depositAmount,
@@ -1161,7 +1296,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | CREATE PAYMENT
+        | CREATE FIRST PAYMENT
         |--------------------------------------------------------------------------
         */
 
@@ -1194,7 +1329,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | RESERVE ONE PLACE
+        | DECREASE PLACE
         |--------------------------------------------------------------------------
         */
 
@@ -1209,7 +1344,7 @@ public function store(Request $request)
 
     /*
     |--------------------------------------------------------------------------
-    | LOAD RELATIONSHIPS
+    | LOAD
     |--------------------------------------------------------------------------
     */
 
@@ -1224,7 +1359,7 @@ public function store(Request $request)
 
     /*
     |--------------------------------------------------------------------------
-    | SEND ADMIN NOTIFICATION
+    | ADMIN EMAIL
     |--------------------------------------------------------------------------
     */
 
@@ -1239,18 +1374,19 @@ public function store(Request $request)
     |--------------------------------------------------------------------------
     */
 
-    $settings = SiteSetting::first();
+    $settings =
+        SiteSetting::first();
 
 
     /*
     |--------------------------------------------------------------------------
-    | REMAINING AMOUNT
+    | REMAINING
     |--------------------------------------------------------------------------
     */
 
     $remainingAmount = max(
         0,
-        (float) $reservation->total_amount
+        (float) $reservation->sold_price
         - (float) $reservation->deposit_amount
     );
 
@@ -1266,19 +1402,24 @@ public function store(Request $request)
     if (
         $reservation->payment?->payment_proof
     ) {
-        $paymentProofUrl = asset(
-            $reservation->payment->payment_proof
-        );
+
+        $paymentProofUrl =
+            asset(
+                $reservation
+                    ->payment
+                    ->payment_proof
+            );
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | JSON RESPONSE
+    | RESPONSE
     |--------------------------------------------------------------------------
     */
 
     return response()->json([
+
         'success' => true,
 
         'message' =>
@@ -1295,19 +1436,35 @@ public function store(Request $request)
             'status' =>
                 $reservation->status,
 
-            /*
-            |--------------------------------------------------------------------------
-            | Formation
-            |--------------------------------------------------------------------------
-            */
+            'pricing_type' =>
+                $reservation->pricing_type,
+
+            'base_price' =>
+                $basePrice,
+
+            'sold_price' =>
+                $reservation->sold_price,
+
+            'payment_installments' =>
+                $reservation->payment_installments,
+
+            'deposit_amount' =>
+                $reservation->deposit_amount,
+
+            'remaining_amount' =>
+                $remainingAmount,
 
             'formation' => [
 
                 'id' =>
-                    $reservation->formation->id,
+                    $reservation
+                        ->formation
+                        ->id,
 
                 'title' =>
-                    $reservation->formation->title,
+                    $reservation
+                        ->formation
+                        ->title,
 
                 'programme' =>
                     $reservation
@@ -1315,12 +1472,6 @@ public function store(Request $request)
                         ->programme
                         ?->name,
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Selected session
-            |--------------------------------------------------------------------------
-            */
 
             'session' => [
 
@@ -1344,27 +1495,16 @@ public function store(Request $request)
                         ->formationDay
                         ->end_date,
 
-                /*
-                | Real database column:
-                | formation_days.price
-                */
-
-                'price' =>
+                'normal_price' =>
                     $reservation
                         ->formationDay
                         ->price,
 
-                'remaining_places' =>
+                'cpf_price' =>
                     $reservation
                         ->formationDay
-                        ->remaining_places,
+                        ->cpf_price,
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Customer
-            |--------------------------------------------------------------------------
-            */
 
             'customer' => [
 
@@ -1389,27 +1529,6 @@ public function store(Request $request)
                         ->phone,
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | Amounts
-            |--------------------------------------------------------------------------
-            */
-
-            'total_amount' =>
-                $reservation->total_amount,
-
-            'deposit_amount' =>
-                $reservation->deposit_amount,
-
-            'remaining_amount' =>
-                $remainingAmount,
-
-            /*
-            |--------------------------------------------------------------------------
-            | Payment proof
-            |--------------------------------------------------------------------------
-            */
-
             'payment_proof' =>
                 $reservation
                     ->payment
@@ -1418,12 +1537,6 @@ public function store(Request $request)
             'payment_proof_url' =>
                 $paymentProofUrl,
         ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | Bank information
-        |--------------------------------------------------------------------------
-        */
 
         'bank_information' => [
 
@@ -1437,8 +1550,10 @@ public function store(Request $request)
                 $settings
                     ?->account_holder_address,
         ],
+
     ], 201);
 }
+
 
     /**
      * Send reservation notification to admin.
