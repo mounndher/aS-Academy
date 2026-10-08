@@ -227,6 +227,8 @@ class ReservationResource extends Resource
             ])
 
             ->actions([
+                 Tables\Actions\ViewAction::make()
+                 ->label('Voir'),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -246,16 +248,13 @@ class ReservationResource extends Resource
 
 
     public static function getPages(): array
-    {
-        return [
-            'index' =>
-                Pages\ListReservations::route('/'),
+{
+    return [
+        'index' => Pages\ListReservations::route('/'),
+        'create' => Pages\CreateReservation::route('/create'),
+        'view' => Pages\ViewReservation::route('/{record}'),
+        'edit' => Pages\EditReservation::route('/{record}/edit'),
+    ];
+}
 
-            'create' =>
-                Pages\CreateReservation::route('/create'),
-
-            'edit' =>
-                Pages\EditReservation::route('/{record}/edit'),
-        ];
-    }
 }
