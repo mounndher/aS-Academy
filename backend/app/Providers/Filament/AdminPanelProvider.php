@@ -35,10 +35,25 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
 
+            /*
+            |--------------------------------------------------------------------------
+            | RESOURCES
+            |--------------------------------------------------------------------------
+            */
+
             ->discoverResources(
                 in: app_path('Filament/Resources'),
                 for: 'App\\Filament\\Resources'
             )
+
+            /*
+            |--------------------------------------------------------------------------
+            | PAGES
+            |--------------------------------------------------------------------------
+            |
+            | Keep the default Filament dashboard.
+            |
+            */
 
             ->discoverPages(
                 in: app_path('Filament/Pages'),
@@ -49,6 +64,16 @@ class AdminPanelProvider extends PanelProvider
                 Pages\Dashboard::class,
             ])
 
+            /*
+            |--------------------------------------------------------------------------
+            | WIDGETS
+            |--------------------------------------------------------------------------
+            |
+            | All widgets inside app/Filament/Widgets
+            | will be discovered automatically.
+            |
+            */
+
             ->discoverWidgets(
                 in: app_path('Filament/Widgets'),
                 for: 'App\\Filament\\Widgets'
@@ -58,6 +83,12 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
             ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | MIDDLEWARE
+            |--------------------------------------------------------------------------
+            */
 
             ->middleware([
                 EncryptCookies::class,
@@ -70,6 +101,12 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | AUTHENTICATION
+            |--------------------------------------------------------------------------
+            */
 
             ->authMiddleware([
                 Authenticate::class,
