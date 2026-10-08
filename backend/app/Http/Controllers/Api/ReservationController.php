@@ -852,6 +852,7 @@ class ReservationController extends Controller
     ], 201);
 }
 
+
 public function store(Request $request)
 {
     /*
@@ -951,7 +952,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | Selected session
+        | Selected Formation Day
         |--------------------------------------------------------------------------
         */
 
@@ -971,7 +972,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | Available places
+        | Check available places
         |--------------------------------------------------------------------------
         */
 
@@ -992,16 +993,15 @@ public function store(Request $request)
         |--------------------------------------------------------------------------
         |
         | IMPORTANT:
-        | The price belongs to FormationDay.
+        | Your real database column is:
         |
-        | Example:
-        | formation_day_id = 1
-        | Paris
-        | personal_price = 850
+        | formation_days.price
+        |
+        | NOT personal_price.
         |
         */
 
-        $totalAmount = (float) $formationDay->personal_price;
+        $totalAmount = (float) $formationDay->price;
 
         if ($totalAmount <= 0) {
             abort(
@@ -1016,10 +1016,7 @@ public function store(Request $request)
         | DEPOSIT
         |--------------------------------------------------------------------------
         |
-        | Fixed deposit configured on Formation.
-        |
-        | Example:
-        | deposit_amount = 150
+        | Deposit comes from formations.deposit_amount.
         |
         */
 
@@ -1087,40 +1084,75 @@ public function store(Request $request)
         |--------------------------------------------------------------------------
         | PAYMENT PROOF
         |--------------------------------------------------------------------------
+        |
+        | Store directly in:
+        |
+        | backend/public/payments/proofs/
+        |
         */
 
         $paymentProof = null;
 
         if ($request->hasFile('payment_proof')) {
-            $paymentProof = $request
-                ->file('payment_proof')
-                ->store(
-                    'payments/proofs',
-                    'public'
+
+            $directory = public_path(
+                'payments/proofs'
+            );
+
+            if (!is_dir($directory)) {
+                mkdir(
+                    $directory,
+                    0755,
+                    true
                 );
+            }
+
+            $file = $request->file(
+                'payment_proof'
+            );
+
+            $filename =
+                (string) Str::uuid()
+                . '.'
+                . $file->getClientOriginalExtension();
+
+            $file->move(
+                $directory,
+                $filename
+            );
+
+            $paymentProof =
+                'payments/proofs/' . $filename;
         }
 
 
         /*
         |--------------------------------------------------------------------------
-        | RESERVATION
+        | CREATE RESERVATION
         |--------------------------------------------------------------------------
         */
 
         $reservation = Reservation::create([
-            'reference' => $reference,
+            'reference' =>
+                $reference,
 
-            'formation_id' => $formation->id,
+            'formation_id' =>
+                $formation->id,
 
-            'formation_day_id' => $formationDay->id,
+            'formation_day_id' =>
+                $formationDay->id,
 
-            'customer_id' => $customer->id,
+            'customer_id' =>
+                $customer->id,
 
-            'total_amount' => $totalAmount,
+            'total_amount' =>
+                $totalAmount,
 
-            'deposit_amount' => $depositAmount,
+            'deposit_amount' =>
+                $depositAmount,
 
-            'status' => 'pending',
+            'status' =>
+                'pending',
 
             'notes' =>
                 $validated['message'] ?? null,
@@ -1129,7 +1161,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | PAYMENT
+        | CREATE PAYMENT
         |--------------------------------------------------------------------------
         */
 
@@ -1162,7 +1194,7 @@ public function store(Request $request)
 
         /*
         |--------------------------------------------------------------------------
-        | DECREASE AVAILABLE PLACES
+        | RESERVE ONE PLACE
         |--------------------------------------------------------------------------
         */
 
@@ -1192,7 +1224,7 @@ public function store(Request $request)
 
     /*
     |--------------------------------------------------------------------------
-    | ADMIN NOTIFICATION
+    | SEND ADMIN NOTIFICATION
     |--------------------------------------------------------------------------
     */
 
@@ -1225,7 +1257,24 @@ public function store(Request $request)
 
     /*
     |--------------------------------------------------------------------------
-    | RESPONSE
+    | PAYMENT PROOF URL
+    |--------------------------------------------------------------------------
+    */
+
+    $paymentProofUrl = null;
+
+    if (
+        $reservation->payment?->payment_proof
+    ) {
+        $paymentProofUrl = asset(
+            $reservation->payment->payment_proof
+        );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | JSON RESPONSE
     |--------------------------------------------------------------------------
     */
 
@@ -1246,6 +1295,12 @@ public function store(Request $request)
             'status' =>
                 $reservation->status,
 
+            /*
+            |--------------------------------------------------------------------------
+            | Formation
+            |--------------------------------------------------------------------------
+            */
+
             'formation' => [
 
                 'id' =>
@@ -1261,10 +1316,18 @@ public function store(Request $request)
                         ?->name,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | Selected session
+            |--------------------------------------------------------------------------
+            */
+
             'session' => [
 
                 'id' =>
-                    $reservation->formationDay->id,
+                    $reservation
+                        ->formationDay
+                        ->id,
 
                 'city' =>
                     $reservation
@@ -1281,16 +1344,27 @@ public function store(Request $request)
                         ->formationDay
                         ->end_date,
 
+                /*
+                | Real database column:
+                | formation_days.price
+                */
+
                 'price' =>
                     $reservation
                         ->formationDay
-                        ->personal_price,
+                        ->price,
 
                 'remaining_places' =>
                     $reservation
                         ->formationDay
                         ->remaining_places,
             ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Customer
+            |--------------------------------------------------------------------------
+            */
 
             'customer' => [
 
@@ -1308,7 +1382,18 @@ public function store(Request $request)
                     $reservation
                         ->customer
                         ->email,
+
+                'phone' =>
+                    $reservation
+                        ->customer
+                        ->phone,
             ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Amounts
+            |--------------------------------------------------------------------------
+            */
 
             'total_amount' =>
                 $reservation->total_amount,
@@ -1319,11 +1404,26 @@ public function store(Request $request)
             'remaining_amount' =>
                 $remainingAmount,
 
+            /*
+            |--------------------------------------------------------------------------
+            | Payment proof
+            |--------------------------------------------------------------------------
+            */
+
             'payment_proof' =>
                 $reservation
                     ->payment
                     ?->payment_proof,
+
+            'payment_proof_url' =>
+                $paymentProofUrl,
         ],
+
+        /*
+        |--------------------------------------------------------------------------
+        | Bank information
+        |--------------------------------------------------------------------------
+        */
 
         'bank_information' => [
 
@@ -1334,10 +1434,12 @@ public function store(Request $request)
                 $settings?->bic,
 
             'account_holder_address' =>
-                $settings?->account_holder_address,
+                $settings
+                    ?->account_holder_address,
         ],
     ], 201);
 }
+
     /**
      * Send reservation notification to admin.
      */
