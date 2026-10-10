@@ -854,7 +854,7 @@ class ReservationController extends Controller
 }
 
 
-public function store(Request $request)
+public function store1(Request $request)
 {
     /*
     |--------------------------------------------------------------------------
@@ -1564,6 +1564,19 @@ public function store(Request $request)
     ], 201);
 }
 
+public function store(Request $request)
+{
+    return response()->json([
+        'reached_controller' => true,
+        'method' => $request->method(),
+        'path' => $request->path(),
+        'data' => $request->except([
+            'payment_proof',
+            'password',
+            '_token',
+        ]),
+    ]);
+}
 
     /**
      * Send reservation notification to admin.
