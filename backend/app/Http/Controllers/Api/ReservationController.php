@@ -1568,37 +1568,28 @@ public function store(Request $request)
     /**
      * Send reservation notification to admin.
      */
+    
+
     private function sendAdminNotification(
-        Reservation $reservation
-    ): void {
+    Reservation $reservation
+): void {
+    $adminEmail = config('mail.admin_email');
 
-        $adminEmail = config(
-            'mail.admin_email'
-        );
-
-        if (!$adminEmail) {
-            return;
-        }
-
-        Mail::send(
-            'emails.reservation-admin',
-            [
-                'reservation' =>
-                    $reservation,
-            ],
-            function ($message) use (
-                $adminEmail,
-                $reservation
-            ) {
-
-                $message
-                    ->to($adminEmail)
-                    ->subject(
-                        'Nouvelle réservation - ' .
-                        $reservation->reference
-                    );
-            }
-        );
+    if (!$adminEmail) {
+        return;
     }
+
+    Mail::send(
+        'emails.reservation-admin',
+        ['reservation' => $reservation],
+        function ($message) use ($adminEmail, $reservation) {
+            $message->to($adminEmail)
+                ->subject(
+                    'Nouvelle réservation - '
+                    . $reservation->reference
+                );
+        }
+    );
+}
 
 }
