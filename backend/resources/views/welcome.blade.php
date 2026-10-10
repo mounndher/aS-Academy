@@ -150,6 +150,7 @@
 
         {{-- FORMATION --}}
         <input type="hidden" name="_expects_json" value="1">
+        <input type="hidden" name="_token" value="{{ csrf_token() }}">
         <div class="field">
             <label for="formation_id">Formation ID</label>
 
