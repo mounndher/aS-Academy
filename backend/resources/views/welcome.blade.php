@@ -149,6 +149,7 @@
     >
 
         {{-- FORMATION --}}
+        <input type="hidden" name="_expects_json" value="1">
         <div class="field">
             <label for="formation_id">Formation ID</label>
 
