@@ -32,6 +32,7 @@ return [
     |            "postmark", "log", "array", "failover", "roundrobin"
     |
     */
+    'admin_email' => env('ADMIN_EMAIL'),
 
     'mailers' => [
         'smtp' => [
