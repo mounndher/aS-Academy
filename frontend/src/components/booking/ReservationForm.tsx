@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 
 
@@ -480,13 +481,7 @@ export function ReservationForm({
 
 
 
-  const [
-
-    submitted,
-
-    setSubmitted,
-
-  ] = useState(false);
+  const navigate = useNavigate();
 
 
 
@@ -690,7 +685,18 @@ export function ReservationForm({
         );
       }
 
-      setSubmitted(true);
+      navigate("/reservation/confirmation", {
+        state: {
+          formationTitle: formation.title,
+          city: formationDay.city || "À confirmer",
+          startDate: formationDay.start_date || "",
+          endDate: formationDay.end_date || formationDay.start_date || "",
+          deposit: formatPrice(formation.deposit_amount),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+        },
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -701,150 +707,6 @@ export function ReservationForm({
       setLoading(false);
     }
   }
-
-  /* =======================================================
-
-     SUCCESS
-
-  ======================================================= */
-
-
-
-  if (submitted) {
-
-
-
-    return (
-
-      <div className="border border-ink/10 bg-[#faf9f6] p-8 md:p-10">
-
-
-
-        <p className="label text-ink/45">
-
-          Réservation
-
-        </p>
-
-
-
-        <h2 className="display mt-6 text-4xl md:text-5xl">
-
-          Merci pour votre demande.
-
-        </h2>
-
-
-
-        <p className="mt-6 max-w-xl text-sm leading-relaxed text-ink/60">
-
-          Votre demande de réservation
-
-          a bien été envoyée. L'académie
-
-          vous contactera pour confirmer
-
-          votre inscription.
-
-        </p>
-
-
-
-        <div className="mt-8 border-t border-ink/10 pt-6">
-
-
-
-          <div className="flex items-center justify-between gap-6 py-3">
-
-
-
-            <span className="label text-[10px] text-ink/45">
-
-              Formation
-
-            </span>
-
-
-
-            <span className="text-right font-serif text-lg">
-
-              {formation.title}
-
-            </span>
-
-
-
-          </div>
-
-
-
-          <div className="flex items-center justify-between gap-6 border-t border-ink/10 py-3">
-
-
-
-            <span className="label text-[10px] text-ink/45">
-
-              Ville
-
-            </span>
-
-
-
-            <span className="font-serif text-lg">
-
-              {formationDay.city ||
-
-                "À confirmer"}
-
-            </span>
-
-
-
-          </div>
-
-
-
-          <div className="flex items-center justify-between gap-6 border-t border-ink/10 py-3">
-
-
-
-            <span className="label text-[10px] text-ink/45">
-
-              Dates
-
-            </span>
-
-
-
-            <span className="text-right font-serif text-lg">
-
-              {formatDateRange(
-
-                formationDay.start_date,
-
-                formationDay.end_date
-
-              )}
-
-            </span>
-
-
-
-          </div>
-
-
-
-        </div>
-
-
-
-      </div>
-
-    );
-
-  }
-
-
 
   /* =======================================================
 

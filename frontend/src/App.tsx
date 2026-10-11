@@ -24,7 +24,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { HomePage } from "@/pages/HomePage";
 import { FormationsListPage } from "@/pages/FormationsListPage";
 import { FormationDetailPage } from "@/pages/FormationDetailPage";
-
+import ReservationConfirmationPage from "./pages/ReservationConfirmationPage";
 
 function Layout() {
   const location = useLocation();
@@ -55,6 +55,10 @@ function Layout() {
               <Route
                 path="/formations/:slug"
                 element={<FormationDetailPage />}
+              />
+              <Route
+                path="/reservation/confirmation"
+                element={<ReservationConfirmationPage />}
               />
 
               <Route
