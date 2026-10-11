@@ -1,9 +1,4 @@
-import {
-  AnimatePresence,
-  MotionConfig,
-  motion,
-} from "framer-motion";
-
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import {
   HashRouter,
   Navigate,
@@ -24,19 +19,18 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { HomePage } from "@/pages/HomePage";
 import { FormationsListPage } from "@/pages/FormationsListPage";
 import { FormationDetailPage } from "@/pages/FormationDetailPage";
-import ReservationConfirmationPage from "./pages/ReservationConfirmationPage";
+import ReservationConfirmationPage from "@/pages/ReservationConfirmationPage";
 
 function Layout() {
   const location = useLocation();
+  const isConfirmationPage = location.pathname === "/reservation/confirmation";
 
   return (
     <>
       <ScrollToTop />
-
       <div className="relative min-h-screen w-full overflow-x-hidden bg-ivory text-ink">
-        <Navbar />
-
-        <MobileMenu />
+        {!isConfirmationPage && <Navbar />}
+        {!isConfirmationPage && <MobileMenu />}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
@@ -46,32 +40,19 @@ function Layout() {
           >
             <Routes location={location}>
               <Route path="/" element={<HomePage />} />
-
-              <Route
-                path="/formations"
-                element={<FormationsListPage />}
-              />
-
-              <Route
-                path="/formations/:slug"
-                element={<FormationDetailPage />}
-              />
+              <Route path="/formations" element={<FormationsListPage />} />
+              <Route path="/formations/:slug" element={<FormationDetailPage />} />
               <Route
                 path="/reservation/confirmation"
                 element={<ReservationConfirmationPage />}
               />
-
-              <Route
-                path="*"
-                element={<Navigate to="/" replace />}
-              />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </motion.main>
         </AnimatePresence>
 
-        <Footer />
-
-        <MobileStickyCTA />
+        {!isConfirmationPage && <Footer />}
+        {!isConfirmationPage && <MobileStickyCTA />}
       </div>
     </>
   );
