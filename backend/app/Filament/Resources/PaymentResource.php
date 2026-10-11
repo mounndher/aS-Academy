@@ -1,3 +1,4 @@
+```php
 <?php
 
 namespace App\Filament\Resources;
@@ -50,8 +51,58 @@ class PaymentResource extends Resource
                         ->preload()
                         ->required(),
 
+                    Forms\Components\Placeholder::make('total_amount')
+                        ->label('Prix total de la formation')
+                        ->content(function (Forms\Get $get): string {
+                            $reservationId = $get('reservation_id');
+
+                            if (!$reservationId) {
+                                return 'Sélectionnez une réservation';
+                            }
+
+                            $reservation = \App\Models\Reservation::find(
+                                $reservationId
+                            );
+
+                            return $reservation
+                                ? number_format(
+                                    (float) $reservation->total_amount,
+                                    2,
+                                    ',',
+                                    ' '
+                                ) . ' €'
+                                : '—';
+                        }),
+
+                    Forms\Components\Placeholder::make('paid_amount')
+                        ->label('Total des paiements confirmés')
+                        ->content(function (Forms\Get $get): string {
+                            $reservationId = $get('reservation_id');
+
+                            if (!$reservationId) {
+                                return '—';
+                            }
+
+                            $paid = Payment::query()
+                                ->where('reservation_id', $reservationId)
+                                ->where('status', 'completed')
+                                ->when(
+                                    $get('record_id'),
+                                    fn ($query, $recordId) =>
+                                        $query->where('id', '!=', $recordId)
+                                )
+                                ->sum('amount');
+
+                            return number_format(
+                                (float) $paid,
+                                2,
+                                ',',
+                                ' '
+                            ) . ' €';
+                        }),
+
                     Forms\Components\TextInput::make('amount')
-                        ->label('Montant payé')
+                        ->label('Montant de ce paiement')
                         ->numeric()
                         ->prefix('€')
                         ->required()
@@ -74,7 +125,9 @@ class PaymentResource extends Resource
                     Forms\Components\TextInput::make('transaction_id')
                         ->label('Référence / ID de transaction')
                         ->maxLength(255)
-                        ->helperText('Facultatif pour un paiement manuel.'),
+                        ->helperText(
+                            'Facultatif pour un paiement manuel.'
+                        ),
 
                     Forms\Components\Select::make('currency')
                         ->label('Devise')
@@ -95,8 +148,18 @@ class PaymentResource extends Resource
                         ->required()
                         ->default('pending')
                         ->live()
+                        ->afterStateUpdated(function (
+                            $state,
+                            Forms\Set $set
+                        ): void {
+                            if ($state === 'completed') {
+                                $set('paid_at', now()->format('Y-m-d H:i:s'));
+                            } else {
+                                $set('paid_at', null);
+                            }
+                        })
                         ->helperText(
-                            'Seuls les paiements confirmés doivent être comptabilisés comme encaissés.'
+                            'Seuls les paiements confirmés sont comptabilisés comme encaissés.'
                         ),
 
                     Forms\Components\DateTimePicker::make('paid_at')
@@ -121,17 +184,19 @@ class PaymentResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('reservation.customer.first_name')
-                    ->label('Prénom du client')
+                Tables\Columns\TextColumn::make(
+                    'reservation.customer.first_name'
+                )
+                    ->label('Prénom')
                     ->placeholder('—')
-                    ->searchable()
-                    ->toggleable(),
+                    ->searchable(),
 
-                Tables\Columns\TextColumn::make('reservation.customer.last_name')
-                    ->label('Nom du client')
+                Tables\Columns\TextColumn::make(
+                    'reservation.customer.last_name'
+                )
+                    ->label('Nom')
                     ->placeholder('—')
-                    ->searchable()
-                    ->toggleable(),
+                    ->searchable(),
 
                 Tables\Columns\TextColumn::make('provider')
                     ->label('Mode de paiement')
@@ -154,7 +219,7 @@ class PaymentResource extends Resource
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('amount')
-                    ->label('Montant payé')
+                    ->label('Montant')
                     ->money('EUR')
                     ->sortable(),
 
@@ -247,3 +312,4 @@ class PaymentResource extends Resource
         ];
     }
 }
+```
