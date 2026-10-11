@@ -1,3 +1,4 @@
+```php
 <?php
 
 namespace App\Filament\Resources;
@@ -28,86 +29,88 @@ class PaymentResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Informations du paiement')
-                    ->schema([
-                        Forms\Components\Select::make('reservation_id')
-    ->label('Réservation / Client')
-    ->relationship(
-        name: 'reservation',
-        titleAttribute: 'reference'
-    )
-    ->getOptionLabelFromRecordUsing(
-        fn ($record) => $record->reference . ' — ' .
-            ($record->customer->first_name ?? '') . ' ' .
-            ($record->customer->last_name ?? '')
-    )
-    ->searchable()
-    ->preload()
-    ->required()
-                        Forms\Components\TextInput::make('amount')
-                            ->label('Montant payé')
-                            ->numeric()
-                            ->prefix('€')
-                            ->required()
-                            ->minValue(0.01)
-                            ->step('0.01')
-                            ->rules(['decimal:0,2']),
+        return $form->schema([
+            Forms\Components\Section::make('Informations du paiement')
+                ->schema([
+                    Forms\Components\Select::make('reservation_id')
+                        ->label('Réservation / Client')
+                        ->relationship(
+                            name: 'reservation',
+                            titleAttribute: 'reference'
+                        )
+                        ->getOptionLabelFromRecordUsing(
+                            fn ($record): string =>
+                                $record->reference . ' — ' .
+                                trim(
+                                    ($record->customer?->first_name ?? '') .
+                                    ' ' .
+                                    ($record->customer?->last_name ?? '')
+                                )
+                        )
+                        ->searchable()
+                        ->preload()
+                        ->required(),
 
-                        Forms\Components\Select::make('provider')
-                            ->label('Mode de paiement')
-                            ->options([
-                                'paypal' => 'PayPal',
-                                'bank_transfer' => 'Virement bancaire',
-                                'card' => 'Carte bancaire',
-                                'cash' => 'Espèces',
-                                'other' => 'Autre',
-                            ])
-                            ->required()
-                            ->default('bank_transfer'),
+                    Forms\Components\TextInput::make('amount')
+                        ->label('Montant payé')
+                        ->numeric()
+                        ->prefix('€')
+                        ->required()
+                        ->minValue(0.01)
+                        ->step('0.01')
+                        ->rules(['decimal:0,2']),
 
-                        Forms\Components\TextInput::make('transaction_id')
-                            ->label('Référence / ID de transaction')
-                            ->maxLength(255)
-                            ->helperText(
-                                'Facultatif pour un paiement manuel.'
-                            ),
+                    Forms\Components\Select::make('provider')
+                        ->label('Mode de paiement')
+                        ->options([
+                            'paypal' => 'PayPal',
+                            'bank_transfer' => 'Virement bancaire',
+                            'card' => 'Carte bancaire',
+                            'cash' => 'Espèces',
+                            'other' => 'Autre',
+                        ])
+                        ->required()
+                        ->default('bank_transfer'),
 
-                        Forms\Components\Select::make('currency')
-                            ->label('Devise')
-                            ->options([
-                                'EUR' => 'EUR (€)',
-                            ])
-                            ->required()
-                            ->default('EUR'),
+                    Forms\Components\TextInput::make('transaction_id')
+                        ->label('Référence / ID de transaction')
+                        ->maxLength(255)
+                        ->helperText('Facultatif pour un paiement manuel.'),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Statut du paiement')
-                            ->options([
-                                'pending' => 'En attente',
-                                'completed' => 'Payé',
-                                'failed' => 'Échoué',
-                                'refunded' => 'Remboursé',
-                            ])
-                            ->required()
-                            ->default('pending')
-                            ->live()
-                            ->helperText(
-                                'Seuls les paiements confirmés doivent être comptabilisés comme encaissés.'
-                            ),
+                    Forms\Components\Select::make('currency')
+                        ->label('Devise')
+                        ->options([
+                            'EUR' => 'EUR (€)',
+                        ])
+                        ->required()
+                        ->default('EUR'),
 
-                        Forms\Components\DateTimePicker::make('paid_at')
-                            ->label('Date du paiement')
-                            ->native(false)
-                            ->seconds(false)
-                            ->visible(
-                                fn (Forms\Get $get): bool =>
-                                    $get('status') === 'completed'
-                            ),
-                    ])
-                    ->columns(2),
-            ]);
+                    Forms\Components\Select::make('status')
+                        ->label('Statut du paiement')
+                        ->options([
+                            'pending' => 'En attente',
+                            'completed' => 'Payé',
+                            'failed' => 'Échoué',
+                            'refunded' => 'Remboursé',
+                        ])
+                        ->required()
+                        ->default('pending')
+                        ->live()
+                        ->helperText(
+                            'Seuls les paiements confirmés doivent être comptabilisés comme encaissés.'
+                        ),
+
+                    Forms\Components\DateTimePicker::make('paid_at')
+                        ->label('Date du paiement')
+                        ->native(false)
+                        ->seconds(false)
+                        ->visible(
+                            fn (Forms\Get $get): bool =>
+                                $get('status') === 'completed'
+                        ),
+                ])
+                ->columns(2),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -117,12 +120,18 @@ class PaymentResource extends Resource
                 Tables\Columns\TextColumn::make('reservation.reference')
                     ->label('Réservation')
                     ->searchable()
-                    ->sortable()
-                    ->description('Réservation associée'),
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('reservation.customer.first_name')
-                    ->label('Client')
+                    ->label('Prénom du client')
                     ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('reservation.customer.last_name')
+                    ->label('Nom du client')
+                    ->placeholder('—')
+                    ->searchable()
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('provider')
@@ -146,7 +155,7 @@ class PaymentResource extends Resource
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('amount')
-                    ->label('Montant')
+                    ->label('Montant payé')
                     ->money('EUR')
                     ->sortable(),
 
@@ -239,3 +248,4 @@ class PaymentResource extends Resource
         ];
     }
 }
+```
