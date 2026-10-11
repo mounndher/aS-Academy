@@ -1,4 +1,3 @@
-```php
 <?php
 
 namespace App\Filament\Resources;
@@ -232,4 +231,3 @@ class ReservationResource extends Resource
         ];
     }
 }
-```
