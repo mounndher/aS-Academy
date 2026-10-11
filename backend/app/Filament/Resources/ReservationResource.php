@@ -1,6 +1,8 @@
+```php
 <?php
 
 namespace App\Filament\Resources;
+
 use App\Filament\Resources\ReservationResource\Pages;
 use App\Models\FormationDay;
 use App\Models\Reservation;
@@ -9,7 +11,6 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class ReservationResource extends Resource
 {
@@ -52,22 +53,21 @@ class ReservationResource extends Resource
                     ->required(),
 
                 Forms\Components\Select::make('formation_day_id')
-                    ->label('Session')
-                    ->options(function () {
-                        return FormationDay::query()
-                            ->orderBy('start_date')
-                            ->get()
-                            ->mapWithKeys(function (FormationDay $day) {
-                                $label = $day->city . ' — ';
+                    ->label('Session de formation')
+                    ->options(fn (): array => FormationDay::query()
+                        ->orderBy('start_date')
+                        ->get()
+                        ->mapWithKeys(function (FormationDay $day): array {
+                            $label = $day->city . ' — ' . $day->start_date;
 
-                                $label .= $day->end_date
-                                    ? $day->start_date . ' → ' . $day->end_date
-                                    : $day->start_date;
+                            if ($day->end_date) {
+                                $label .= ' → ' . $day->end_date;
+                            }
 
-                                return [$day->id => $label];
-                            })
-                            ->toArray();
-                    })
+                            return [$day->id => $label];
+                        })
+                        ->toArray()
+                    )
                     ->searchable()
                     ->preload()
                     ->required(),
@@ -167,9 +167,9 @@ class ReservationResource extends Resource
             ])
 
             ->filters([
-                // Filtrer par statut
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Statut')
+                    ->placeholder('Tous les statuts')
                     ->options([
                         'pending' => 'En attente',
                         'pending_payment' => 'Paiement en attente',
@@ -178,60 +178,24 @@ class ReservationResource extends Resource
                         'completed' => 'Terminée',
                     ]),
 
-                // Filtrer par ville de la session
-                Tables\Filters\SelectFilter::make('city')
-                    ->label('Ville')
-                    ->options(
-                        fn (): array => FormationDay::query()
-                            ->whereNotNull('city')
-                            ->where('city', '!=', '')
-                            ->distinct()
-                            ->orderBy('city')
-                            ->pluck('city', 'city')
-                            ->toArray()
-                    )
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (blank($data['value'] ?? null)) {
-                            return $query;
-                        }
-
-                        return $query->whereHas(
-                            'formationDay',
-                            fn (Builder $subQuery) =>
-                                $subQuery->where('city', $data['value'])
-                        );
-                    }),
-
-                // Filtrer par session (ville + dates)
                 Tables\Filters\SelectFilter::make('formation_day_id')
                     ->label('Session de formation')
-                    ->options(
-                        fn (): array => FormationDay::query()
-                            ->orderBy('start_date')
-                            ->get()
-                            ->mapWithKeys(function (FormationDay $day) {
-                                $label = $day->city . ' — '
-                                    . $day->start_date;
+                    ->placeholder('Toutes les sessions')
+                    ->options(fn (): array => FormationDay::query()
+                        ->orderBy('start_date')
+                        ->get()
+                        ->mapWithKeys(function (FormationDay $day): array {
+                            $label = $day->city . ' — ' . $day->start_date;
 
-                                if ($day->end_date) {
-                                    $label .= ' → ' . $day->end_date;
-                                }
+                            if ($day->end_date) {
+                                $label .= ' → ' . $day->end_date;
+                            }
 
-                                return [$day->id => $label];
-                            })
-                            ->toArray()
+                            return [$day->id => $label];
+                        })
+                        ->toArray()
                     )
-                    ->searchable()
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (blank($data['value'] ?? null)) {
-                            return $query;
-                        }
-
-                        return $query->where(
-                            'formation_day_id',
-                            $data['value']
-                        );
-                    }),
+                    ->searchable(),
             ])
 
             ->actions([
@@ -268,3 +232,4 @@ class ReservationResource extends Resource
         ];
     }
 }
+```
