@@ -9,7 +9,7 @@ import { Gallery } from "@/components/sections/Gallery";
 import { InstagramSection } from "@/components/sections/InstagramSection";
 import { ContactSection } from "@/components/sections/ContactSection";
 import { FinalCTA } from "@/components/sections/FinalCTA";
-
+import { ReviewsSection } from "@/components/sections/ReviewsSection";
 export function HomePage() {
   useScrollToState();
 
@@ -19,6 +19,7 @@ export function HomePage() {
       <IntroSection />
        <FormationGrid />
       <FormationFeature />
+       <ReviewsSection />
       <AcademySection />
       <TrainingExperience />
       <Gallery />
