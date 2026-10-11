@@ -40,6 +40,11 @@ class SiteSettingController extends Controller
                     'address' => $settings->address,
                     'city' => $settings->city,
                     'postal_code' => $settings->postal_code,
+                    'iban'=>$settings->iban,
+                    'bic'=>$settings->bic,
+                    'account_holder_address'=>$settings->account_holder_address,
+                    'cancellation_policy'=>$settings->cancellation_policy,
+
                 ],
 
                 'social' => [
