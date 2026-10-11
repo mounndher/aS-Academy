@@ -591,6 +591,64 @@ export function ReservationForm({
   ======================================================= */
 
   const [error, setError] = useState("");
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState("");
+  const [bankSettings, setBankSettings] = useState<{
+    iban?: string | null;
+    bic?: string | null;
+    account_holder_address?: string | null;
+    address?: string | null;
+    city?: string | null;
+    cancellation_policy?: string | null;
+  } | null>(null);
+
+  const apiBaseUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, "");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSettings() {
+      if (!apiBaseUrl) {
+        setSettingsError("L’URL de l’API est manquante.");
+        setSettingsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/contenu/settings`, {
+          headers: { Accept: "application/json" },
+        });
+        const result = await response.json();
+        if (!response.ok || result?.success === false) {
+          throw new Error(result?.message || `Erreur HTTP ${response.status}`);
+        }
+        if (!cancelled) {
+          setBankSettings(result?.data?.contact ?? null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setSettingsError(err instanceof Error ? err.message : "Impossible de charger les coordonnées bancaires.");
+        }
+      } finally {
+        if (!cancelled) setSettingsLoading(false);
+      }
+    }
+
+    void loadSettings();
+    return () => { cancelled = true; };
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
+    if (!paymentProof) {
+      setPaymentProofPreview("");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(paymentProof);
+    setPaymentProofPreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [paymentProof]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -599,8 +657,6 @@ export function ReservationForm({
     setLoading(true);
     setError("");
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, "");
-
     if (!apiBaseUrl) {
       setError("L’URL de l’API est manquante. Vérifiez VITE_API_URL dans le fichier .env.");
       setLoading(false);
@@ -608,26 +664,25 @@ export function ReservationForm({
     }
 
     try {
+      const formData = new FormData();
+      formData.append("formation_id", String(formation.id));
+      formData.append("formation_day_id", String(formationDay.id));
+      formData.append("first_name", firstName.trim());
+      formData.append("last_name", lastName.trim());
+      formData.append("email", email.trim());
+      formData.append("phone", phone.trim());
+      formData.append("address", address.trim());
+      formData.append("postal_code", postalCode.trim());
+      formData.append("city", customerCity.trim());
+      if (message.trim()) formData.append("message", message.trim());
+      formData.append("pricing_type", "normal");
+      formData.append("payment_installments", "1");
+      if (paymentProof) formData.append("payment_proof", paymentProof);
+
       const response = await fetch(`${apiBaseUrl}/reservations`, {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          formation_id: formation.id,
-          formation_day_id: formationDay.id,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          address: address.trim(),
-          postal_code: postalCode.trim(),
-          city: customerCity.trim(),
-          message: message.trim() || null,
-          pricing_type: "normal",
-          payment_installments: 1,
-        }),
+        headers: { Accept: "application/json" },
+        body: formData,
       });
 
       const data = await response.json().catch(() => ({}));
@@ -1336,6 +1391,61 @@ export function ReservationForm({
       </div>
 
 
+
+      {/* =================================================
+          BANK TRANSFER DETAILS FROM SETTINGS API
+      ================================================= */}
+      <section className="mt-8 border border-ink/10 bg-white p-5 md:p-6" aria-labelledby="bank-details-title">
+        <p id="bank-details-title" className="label text-[10px] text-ink/45">Paiement par virement bancaire</p>
+        {settingsLoading ? (
+          <p className="mt-4 text-sm text-ink/50">Chargement des coordonnées bancaires...</p>
+        ) : bankSettings ? (
+          <div className="mt-4 space-y-4 text-sm">
+            {bankSettings.iban && <div><p className="text-xs text-ink/45">IBAN</p><p className="mt-1 break-all font-medium">{bankSettings.iban}</p></div>}
+            {bankSettings.bic && <div><p className="text-xs text-ink/45">BIC / SWIFT</p><p className="mt-1 font-medium">{bankSettings.bic}</p></div>}
+            {bankSettings.account_holder_address && <div><p className="text-xs text-ink/45">Titulaire du compte</p><p className="mt-1 whitespace-pre-line">{bankSettings.account_holder_address}</p></div>}
+            {(bankSettings.address || bankSettings.city) && <div><p className="text-xs text-ink/45">Adresse de l’académie</p><p className="mt-1">{[bankSettings.address, bankSettings.city].filter(Boolean).join(", ")}</p></div>}
+            {bankSettings.cancellation_policy && <p className="border-t border-ink/10 pt-4 text-xs leading-relaxed text-ink/60">{bankSettings.cancellation_policy}</p>}
+          </div>
+        ) : (
+          <p role="alert" className="mt-4 text-sm text-red-600">{settingsError || "Les coordonnées bancaires ne sont pas disponibles."}</p>
+        )}
+      </section>
+
+      {/* =================================================
+          PAYMENT PROOF IMAGE
+      ================================================= */}
+      <div className="mt-7">
+        <label htmlFor="payment_proof" className="label text-[10px] text-ink/45">Justificatif de paiement (image)</label>
+        <p className="mt-2 text-xs leading-relaxed text-ink/50">Ajoutez une capture d’écran ou une photo du reçu de virement. Formats acceptés : JPG, PNG ou WEBP, 5 Mo maximum.</p>
+        <input
+          id="payment_proof"
+          name="payment_proof"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          required
+          onChange={(event) => {
+            const file = event.target.files?.[0] ?? null;
+            if (file && file.size > 5 * 1024 * 1024) {
+              setError("L’image doit faire 5 Mo maximum.");
+              event.target.value = "";
+              setPaymentProof(null);
+              return;
+            }
+            setError("");
+            setPaymentProof(file);
+          }}
+          className="mt-3 block w-full border border-ink/15 bg-transparent p-3 text-sm file:mr-4 file:border-0 file:bg-ink file:px-4 file:py-2 file:text-xs file:uppercase file:tracking-wider file:text-white"
+        />
+        {paymentProofPreview && (
+          <div className="mt-4">
+            <p className="mb-2 text-xs text-ink/50">Aperçu du justificatif sélectionné</p>
+            <img src={paymentProofPreview} alt="Aperçu du justificatif de paiement" className="max-h-72 max-w-full border border-ink/10 object-contain" />
+            <p className="mt-2 break-all text-xs text-ink/50">{paymentProof?.name}</p>
+            <button type="button" onClick={() => setPaymentProof(null)} className="mt-2 text-xs underline">Supprimer l’image</button>
+          </div>
+        )}
+      </div>
 
       {/* =================================================
 
