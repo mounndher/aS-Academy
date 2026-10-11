@@ -16,8 +16,10 @@ use App\Http\Controllers\Api\Contenu\PortfolioController;
 use App\Http\Controllers\Api\Contenu\TrainingExperienceController;
 use App\Http\Controllers\Api\Contenu\SiteSettingController;
 use App\Http\Controllers\Api\Contenu\FormationApiController;
+use App\Http\Controllers\Api\Contenu\ReviewController;
 use App\Http\Controllers\Api\ReservationController;
 /*
+
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
@@ -91,6 +93,9 @@ Route::get(
         '/planning/formation/{formation}',
         [ProgrammeController::class, 'show']
     );
+
+
+    Route::get('/reviews', [ReviewController::class, 'index']);
 
     
 });
