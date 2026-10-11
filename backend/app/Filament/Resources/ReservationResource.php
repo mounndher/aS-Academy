@@ -1,8 +1,6 @@
-```php
 <?php
 
 namespace App\Filament\Resources;
-
 use App\Filament\Resources\ReservationResource\Pages;
 use App\Models\FormationDay;
 use App\Models\Reservation;
@@ -270,4 +268,3 @@ class ReservationResource extends Resource
         ];
     }
 }
-```

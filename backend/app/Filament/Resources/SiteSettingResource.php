@@ -16,7 +16,7 @@ class SiteSettingResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static ?string $navigationGroup = 'Contenu';
+    protected static ?string $navigationGroup = 'Administration';
 
     protected static ?string $navigationLabel = 'Paramètres du site';
 
@@ -24,7 +24,7 @@ class SiteSettingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Paramètres du site';
 
-    protected static ?int $navigationSort = 99;
+    protected static ?int $navigationSort = 2;
 
     /**
      * Only one settings record is allowed.
