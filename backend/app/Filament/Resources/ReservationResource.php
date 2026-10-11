@@ -1,3 +1,4 @@
+```php
 <?php
 
 namespace App\Filament\Resources;
@@ -10,6 +11,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ReservationResource extends Resource
 {
@@ -27,12 +29,10 @@ class ReservationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Réservations';
 
-
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-
                 Forms\Components\TextInput::make('reference')
                     ->label('Référence')
                     ->required()
@@ -53,35 +53,20 @@ class ReservationResource extends Resource
                     ->preload()
                     ->required(),
 
-                /*
-                 * SESSION / FORMATION DAY
-                 *
-                 * There is no "date" column.
-                 * We use start_date and end_date.
-                 */
                 Forms\Components\Select::make('formation_day_id')
                     ->label('Session')
                     ->options(function () {
-
                         return FormationDay::query()
                             ->orderBy('start_date')
                             ->get()
                             ->mapWithKeys(function (FormationDay $day) {
-
                                 $label = $day->city . ' — ';
 
-                                if ($day->end_date) {
-                                    $label .=
-                                        $day->start_date .
-                                        ' → ' .
-                                        $day->end_date;
-                                } else {
-                                    $label .= $day->start_date;
-                                }
+                                $label .= $day->end_date
+                                    ? $day->start_date . ' → ' . $day->end_date
+                                    : $day->start_date;
 
-                                return [
-                                    $day->id => $label,
-                                ];
+                                return [$day->id => $label];
                             })
                             ->toArray();
                     })
@@ -118,17 +103,14 @@ class ReservationResource extends Resource
                 Forms\Components\Textarea::make('notes')
                     ->label('Notes')
                     ->columnSpanFull(),
-
             ])
             ->columns(2);
     }
-
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-
                 Tables\Columns\TextColumn::make('reference')
                     ->label('Référence')
                     ->searchable()
@@ -147,25 +129,16 @@ class ReservationResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                /*
-                 * START DATE
-                 */
                 Tables\Columns\TextColumn::make('formationDay.start_date')
                     ->label('Début')
                     ->date('d/m/Y')
                     ->sortable(),
 
-                /*
-                 * END DATE
-                 */
                 Tables\Columns\TextColumn::make('formationDay.end_date')
                     ->label('Fin')
                     ->date('d/m/Y')
                     ->sortable(),
 
-                /*
-                 * CITY
-                 */
                 Tables\Columns\TextColumn::make('formationDay.city')
                     ->label('Ville')
                     ->searchable()
@@ -180,24 +153,12 @@ class ReservationResource extends Resource
                     ->badge()
                     ->formatStateUsing(
                         fn (string $state): string => match ($state) {
-
-                            'pending' =>
-                                'En attente',
-
-                            'pending_payment' =>
-                                'Paiement en attente',
-
-                            'confirmed' =>
-                                'Confirmée',
-
-                            'cancelled' =>
-                                'Annulée',
-
-                            'completed' =>
-                                'Terminée',
-
-                            default =>
-                                $state,
+                            'pending' => 'En attente',
+                            'pending_payment' => 'Paiement en attente',
+                            'confirmed' => 'Confirmée',
+                            'cancelled' => 'Annulée',
+                            'completed' => 'Terminée',
+                            default => $state,
                         }
                     ),
 
@@ -205,11 +166,10 @@ class ReservationResource extends Resource
                     ->label('Créée le')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-
             ])
 
             ->filters([
-
+                // Filtrer par statut
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Statut')
                     ->options([
@@ -220,41 +180,94 @@ class ReservationResource extends Resource
                         'completed' => 'Terminée',
                     ]),
 
-                Tables\Filters\SelectFilter::make('formation_id')
-                    ->label('Formation')
-                    ->relationship('formation', 'title'),
+                // Filtrer par ville de la session
+                Tables\Filters\SelectFilter::make('city')
+                    ->label('Ville')
+                    ->options(
+                        fn (): array => FormationDay::query()
+                            ->whereNotNull('city')
+                            ->where('city', '!=', '')
+                            ->distinct()
+                            ->orderBy('city')
+                            ->pluck('city', 'city')
+                            ->toArray()
+                    )
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (blank($data['value'] ?? null)) {
+                            return $query;
+                        }
 
+                        return $query->whereHas(
+                            'formationDay',
+                            fn (Builder $subQuery) =>
+                                $subQuery->where('city', $data['value'])
+                        );
+                    }),
+
+                // Filtrer par session (ville + dates)
+                Tables\Filters\SelectFilter::make('formation_day_id')
+                    ->label('Session de formation')
+                    ->options(
+                        fn (): array => FormationDay::query()
+                            ->orderBy('start_date')
+                            ->get()
+                            ->mapWithKeys(function (FormationDay $day) {
+                                $label = $day->city . ' — '
+                                    . $day->start_date;
+
+                                if ($day->end_date) {
+                                    $label .= ' → ' . $day->end_date;
+                                }
+
+                                return [$day->id => $label];
+                            })
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (blank($data['value'] ?? null)) {
+                            return $query;
+                        }
+
+                        return $query->where(
+                            'formation_day_id',
+                            $data['value']
+                        );
+                    }),
             ])
 
             ->actions([
-                 Tables\Actions\ViewAction::make()
-                 ->label('Voir'),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('Voir'),
+
+                Tables\Actions\EditAction::make()
+                    ->label('Modifier'),
+
+                Tables\Actions\DeleteAction::make()
+                    ->label('Supprimer'),
             ])
 
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Supprimer la sélection'),
                 ]),
             ]);
     }
-
 
     public static function getRelations(): array
     {
         return [];
     }
 
-
     public static function getPages(): array
-{
-    return [
-        'index' => Pages\ListReservations::route('/'),
-        'create' => Pages\CreateReservation::route('/create'),
-        'view' => Pages\ViewReservation::route('/{record}'),
-        'edit' => Pages\EditReservation::route('/{record}/edit'),
-    ];
+    {
+        return [
+            'index' => Pages\ListReservations::route('/'),
+            'create' => Pages\CreateReservation::route('/create'),
+            'view' => Pages\ViewReservation::route('/{record}'),
+            'edit' => Pages\EditReservation::route('/{record}/edit'),
+        ];
+    }
 }
-
-}
+```
