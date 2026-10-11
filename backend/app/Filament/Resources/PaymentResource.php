@@ -1,4 +1,4 @@
-```php
+
 <?php
 
 namespace App\Filament\Resources;
@@ -248,4 +248,3 @@ class PaymentResource extends Resource
         ];
     }
 }
-```
