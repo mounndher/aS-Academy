@@ -2,9 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-//use App\Http\Controllers\Api\Contenu\FormationapiController;
-use App\Http\Controllers\Api\ProgrammeController;
-use App\Http\Controllers\Api\FormationDayController;
+
 use App\Http\Controllers\Api\Contenu\FormationInformationController;
 use App\Http\Controllers\Api\Contenu\HeroSectionController;
 use App\Http\Controllers\Api\Contenu\IntroductionSectionController;
@@ -18,6 +16,10 @@ use App\Http\Controllers\Api\Contenu\SiteSettingController;
 use App\Http\Controllers\Api\Contenu\FormationApiController;
 use App\Http\Controllers\Api\Contenu\ReviewController;
 use App\Http\Controllers\Api\ReservationController;
+use App\Http\Controllers\Api\ProgrammeController;
+use App\Http\Controllers\Api\FormationDayController;
+
+
 /*
 
 |--------------------------------------------------------------------------
