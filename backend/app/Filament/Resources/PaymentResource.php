@@ -33,18 +33,19 @@ class PaymentResource extends Resource
                 Forms\Components\Section::make('Informations du paiement')
                     ->schema([
                         Forms\Components\Select::make('reservation_id')
-                            ->label('Réservation')
-                            ->relationship(
-                                name: 'reservation',
-                                titleAttribute: 'reference'
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->helperText(
-                                'Sélectionnez la réservation concernée par ce paiement.'
-                            ),
-
+    ->label('Réservation / Client')
+    ->relationship(
+        name: 'reservation',
+        titleAttribute: 'reference'
+    )
+    ->getOptionLabelFromRecordUsing(
+        fn ($record) => $record->reference . ' — ' .
+            ($record->customer->first_name ?? '') . ' ' .
+            ($record->customer->last_name ?? '')
+    )
+    ->searchable()
+    ->preload()
+    ->required()
                         Forms\Components\TextInput::make('amount')
                             ->label('Montant payé')
                             ->numeric()
