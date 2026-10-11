@@ -1,4 +1,3 @@
-
 <?php
 
 namespace App\Filament\Resources\ReservationResource\Pages;
@@ -8,7 +7,6 @@ use App\Models\Payment;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class EditReservation extends EditRecord
 {
@@ -18,15 +16,11 @@ class EditReservation extends EditRecord
     {
         $reservation = $this->record;
 
-        // Only process a newly confirmed reservation.
-        if (
-            $reservation->status !== 'confirmed' ||
-            $reservation->getOriginal('status') === 'confirmed'
-        ) {
+        // Process only newly confirmed reservations.
+        if ($reservation->status !== 'confirmed') {
             return;
         }
 
-        // Do not create a payment when no deposit is due.
         $depositAmount = (float) $reservation->deposit_amount;
 
         if ($depositAmount <= 0) {
@@ -34,10 +28,12 @@ class EditReservation extends EditRecord
         }
 
         DB::transaction(function () use ($reservation, $depositAmount) {
-            // Prevent duplicate deposit payments.
+            $transactionId = 'DEPOSIT-' . $reservation->reference;
+
+            // Avoid creating the same deposit twice.
             $existingDeposit = Payment::query()
                 ->where('reservation_id', $reservation->id)
-                ->where('transaction_id', 'DEPOSIT-' . $reservation->reference)
+                ->where('transaction_id', $transactionId)
                 ->exists();
 
             if ($existingDeposit) {
@@ -47,7 +43,7 @@ class EditReservation extends EditRecord
             Payment::create([
                 'reservation_id' => $reservation->id,
                 'provider' => 'bank_transfer',
-                'transaction_id' => 'DEPOSIT-' . $reservation->reference,
+                'transaction_id' => $transactionId,
                 'amount' => $depositAmount,
                 'currency' => 'EUR',
                 'status' => 'completed',
