@@ -580,6 +580,8 @@ export function ReservationForm({
   ======================================================= */
 
   const [error, setError] = useState("");
+  const [pricingType, setPricingType] = useState<"normal" | "cpf">("normal");
+  const [paymentInstallments, setPaymentInstallments] = useState<1 | 2>(1);
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState("");
   const [settingsLoading, setSettingsLoading] = useState(true);
@@ -664,8 +666,8 @@ export function ReservationForm({
       formData.append("postal_code", postalCode.trim());
       formData.append("city", customerCity.trim());
       if (message.trim()) formData.append("message", message.trim());
-      formData.append("pricing_type", "normal");
-      formData.append("payment_installments", "1");
+      formData.append("pricing_type", pricingType);
+      formData.append("payment_installments", String(paymentInstallments));
       if (paymentProof) formData.append("payment_proof", paymentProof);
 
       const response = await fetch(`${apiBaseUrl}/reservations`, {
@@ -692,6 +694,8 @@ export function ReservationForm({
           startDate: formationDay.start_date || "",
           endDate: formationDay.end_date || formationDay.start_date || "",
           deposit: formatPrice(formation.deposit_amount),
+          pricingType,
+          paymentInstallments,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim(),
@@ -1247,6 +1251,48 @@ export function ReservationForm({
       </div>
 
 
+
+      {/* =================================================
+          PRICING TYPE / INSTALLMENTS
+      ================================================= */}
+      <section className="mt-8 border border-ink/10 bg-white p-5 md:p-6">
+        <p className="label text-[10px] text-ink/45">Tarif et modalités de paiement</p>
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <label htmlFor="pricing_type" className="label text-[10px] text-ink/45">
+              Type de financement
+            </label>
+            <select
+              id="pricing_type"
+              name="pricing_type"
+              value={pricingType}
+              onChange={(event) => setPricingType(event.target.value as "normal" | "cpf")}
+              className="mt-3 w-full border border-ink/20 bg-white p-3 text-sm outline-none focus:border-ink"
+            >
+              <option value="normal">Tarif normal</option>
+              <option value="cpf">Financement CPF</option>
+            </select>
+            <p className="mt-2 text-xs leading-relaxed text-ink/50">
+              Le financement CPF est soumis à l’éligibilité de la session. Le serveur vérifiera cette condition.
+            </p>
+          </div>
+          <div>
+            <label htmlFor="payment_installments" className="label text-[10px] text-ink/45">
+              Nombre de paiements
+            </label>
+            <select
+              id="payment_installments"
+              name="payment_installments"
+              value={paymentInstallments}
+              onChange={(event) => setPaymentInstallments(Number(event.target.value) as 1 | 2)}
+              className="mt-3 w-full border border-ink/20 bg-white p-3 text-sm outline-none focus:border-ink"
+            >
+              <option value={1}>1 paiement</option>
+              <option value={2}>2 paiements</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
       {/* =================================================
           BANK TRANSFER DETAILS FROM SETTINGS API
