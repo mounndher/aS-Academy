@@ -854,7 +854,7 @@ class ReservationController extends Controller
 }
 
 
-public function store1(Request $request)
+public function store(Request $request)
 {
     /*
     |--------------------------------------------------------------------------
@@ -1564,7 +1564,7 @@ public function store1(Request $request)
     ], 201);
 }
 
-public function store(Request $request)
+public function store1(Request $request)
 {
     return response()->json([
         'reached_controller' => true,
