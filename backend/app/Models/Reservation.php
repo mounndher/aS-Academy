@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Reservation extends Model
 {
@@ -49,7 +50,7 @@ class Reservation extends Model
     }
 
     /**
-     * Une réservation peut avoir plusieurs paiements.
+     * All payments associated with this reservation.
      */
     public function payments(): HasMany
     {
@@ -57,7 +58,16 @@ class Reservation extends Model
     }
 
     /**
-     * Total des paiements confirmés.
+     * Compatibility with existing code expecting "payment".
+     * Returns the most recently created payment.
+     */
+    public function payment(): HasOne
+    {
+        return $this->hasOne(Payment::class)->latestOfMany();
+    }
+
+    /**
+     * Total of confirmed payments.
      */
     public function getPaidAmountAttribute(): float
     {
@@ -67,7 +77,7 @@ class Reservation extends Model
     }
 
     /**
-     * Solde restant à payer.
+     * Outstanding balance.
      */
     public function getRemainingAmountAttribute(): float
     {
