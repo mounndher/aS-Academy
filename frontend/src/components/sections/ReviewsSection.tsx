@@ -36,7 +36,7 @@ export function ReviewsSection() {
         }
 
         const response = await fetch(
-          `${API_URL.replace(/\/$/, "")}/reviews`,
+          `${API_URL.replace(/\/$/, "")}/contenu/reviews`,
           { signal: controller.signal }
         );
 
