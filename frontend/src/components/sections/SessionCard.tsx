@@ -1,9 +1,7 @@
-
 import { Link } from "react-router-dom";
 import { eur } from "@/data/formations";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
-
 
 interface FormationDay {
   id: number;
@@ -19,6 +17,7 @@ interface FormationDay {
 }
 
 interface Formation {
+  id: number;
   title: string;
   slug: string;
   deposit_amount: string | null;
@@ -76,14 +75,22 @@ export function SessionCard({
   day: FormationDay;
   index: number;
 }) {
-  const to = `/formations/${formation.slug}`;
+  const to =
+    `/formations/${formation.slug}` +
+    `?city=${encodeURIComponent(day.city)}` +
+    `&day=${day.id}`;
+
+  const status = (day.status ?? "").toLowerCase();
 
   const isFull =
     day.remaining_places <= 0 ||
-    day.status.toLowerCase() === "full" ||
-    day.status.toLowerCase() === "complet";
+    status === "full" ||
+    status === "complet";
 
-  const canReserve = !isFull && day.status.toLowerCase() === "available";
+  const canReserve =
+    !isFull &&
+    status === "available" &&
+    day.remaining_places > 0;
 
   return (
     <Reveal delay={index * 0.08} y={24}>
@@ -92,6 +99,7 @@ export function SessionCard({
           <p className="label text-[10px] text-ink/35">
             {formation.title}
           </p>
+
           <h3 className="display mt-2 text-[clamp(2.25rem,7vw,3rem)]">
             <Link
               to={to}
@@ -109,7 +117,7 @@ export function SessionCard({
 
           <p className="label mt-2.5 text-ink/50">
             {isFull
-              ? "Session complète"
+              ? "0 place restante"
               : `${day.remaining_places} place(s) restante(s)`}
           </p>
         </div>
@@ -140,15 +148,15 @@ export function SessionCard({
         <div className="lg:col-span-2 lg:text-right">
           {canReserve ? (
             <Button
-  to={`${to}#reservation`}
-  variant="outline-dark"
-  icon="arrow"
-  className="w-full sm:w-auto"
->
-  Réserver
-</Button>
+              to={`${to}#reservation`}
+              variant="outline-dark"
+              icon="arrow"
+              className="w-full sm:w-auto"
+            >
+              Réserver
+            </Button>
           ) : (
-            <span className="inline-block border border-ink/15 px-4 py-3 text-xs text-ink/50">
+            <span className="inline-block border border-ink/15 px-4 py-3 text-xs uppercase tracking-wider text-ink/50">
               {isFull ? "Complet" : "Indisponible"}
             </span>
           )}
