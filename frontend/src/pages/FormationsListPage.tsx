@@ -870,13 +870,10 @@ export function FormationsListPage() {
                               }
                             `}
                           >
-                            {isAvailable
-                              ? "Réserver"
-                              : "Demander une date"}
                           </Link>
 
                           <Link
-                            to={detailUrl}
+                            to={`${detailUrl}#reservation`}
                             className="
                               inline-flex
                               min-h-[48px]
