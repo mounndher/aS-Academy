@@ -282,13 +282,9 @@ export function FormationCard({
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button
             to={`${detailUrl}#reservation`}
-            variant={isAvailable ? "dark" : "outline-dark"}
+            variant={"dark" }
             icon="arrow"
-            className={
-              isAvailable
-                ? "border border-[#111111] bg-[#111111] text-white hover:bg-[#333333]"
-                : "border border-[#C8C8C8] bg-white text-[#111111] hover:bg-[#E5E5E5]"
-            }
+            className="border border-[#111111] bg-[#111111] text-white hover:bg-[#333333]"
           >
             Réserver
           </Button>
