@@ -44,7 +44,10 @@ function Layout() {
               <Route path="/" element={<HomePage />} />
               <Route path="/formations" element={<FormationsListPage />} />
               <Route path="/formations/:slug" element={<FormationDetailPage />} />
-              <Route path="/planning">{< PlanningPage/>}</Route>
+              <Route
+                path="/planning"
+                element={<PlanningPage />}
+              />
               <Route
                 path="/reservation/confirmation"
                 element={<ReservationConfirmationPage />}
