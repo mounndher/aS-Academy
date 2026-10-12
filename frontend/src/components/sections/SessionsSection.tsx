@@ -1,11 +1,9 @@
-
 import { useEffect, useState } from "react";
-import { eur } from "@/data/formations";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { SessionCard } from "./SessionCard";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 
 interface FormationDay {
   id: number;
@@ -58,12 +56,14 @@ export function SessionsSection() {
         }
 
         const response = await fetch(
-          `${API_URL.replace(/\/$/, "")}/contenu/formations`,
+          `${API_URL}/contenu/formations`,
           { signal: controller.signal }
         );
 
         if (!response.ok) {
-          throw new Error("Erreur lors du chargement des formations.");
+          throw new Error(
+            `Erreur API : ${response.status} ${response.statusText}`
+          );
         }
 
         const result: ApiResponse = await response.json();
@@ -75,7 +75,7 @@ export function SessionsSection() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const allSessions = result.data.flatMap((formation) =>
+        const allSessions: Session[] = result.data.flatMap((formation) =>
           (formation.formationDays ?? []).map((day) => ({
             formation,
             day,
@@ -84,8 +84,15 @@ export function SessionsSection() {
 
         const upcomingSessions = allSessions
           .filter(({ day }) => {
+            if (!day.start_date || !day.end_date) return false;
+
             const endDate = new Date(day.end_date);
-            return !Number.isNaN(endDate.getTime()) && endDate >= today;
+
+            if (Number.isNaN(endDate.getTime())) return false;
+
+            endDate.setHours(0, 0, 0, 0);
+
+            return endDate >= today;
           })
           .sort(
             (a, b) =>
@@ -147,7 +154,7 @@ export function SessionsSection() {
           <div className="mt-16 border-t border-ink/15 lg:mt-24">
             {sessions.map(({ formation, day }, index) => (
               <SessionCard
-                key={day.id}
+                key={`${formation.id}-${day.id}`}
                 formation={formation}
                 day={day}
                 index={index}
