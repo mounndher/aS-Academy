@@ -272,8 +272,8 @@ export function FormationCard({
         {!isAvailable ? (
           <p className="mt-4 text-xs text-ink/50">
             {Number(formationDay.remaining_places) <= 0 ||
-            status === "full" ||
-            status === "complet"
+              status === "full" ||
+              status === "complet"
               ? "Session complète — disponibilité à vérifier"
               : "Disponibilité à confirmer"}
           </p>
@@ -284,10 +284,20 @@ export function FormationCard({
             to={`${detailUrl}#reservation`}
             variant={isAvailable ? "dark" : "outline-dark"}
             icon="arrow"
+            className={
+              isAvailable
+                ? "border border-[#111111] bg-[#111111] text-white hover:bg-[#333333]"
+                : "border border-[#C8C8C8] bg-white text-[#111111] hover:bg-[#E5E5E5]"
+            }
           >
             Réserver
           </Button>
-          <Button to={detailUrl} variant="outline-dark">
+
+          <Button
+            to={detailUrl}
+            variant="outline-dark"
+            className="border border-[#C8C8C8] bg-white text-[#111111] hover:bg-[#E5E5E5]"
+          >
             Voir la formation
           </Button>
         </div>
