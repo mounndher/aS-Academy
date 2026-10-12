@@ -32,10 +32,7 @@ class PaymentResource extends Resource
                 ->schema([
                     Forms\Components\Select::make('reservation_id')
                         ->label('Réservation / Client')
-                        ->relationship(
-                            name: 'reservation',
-                            titleAttribute: 'reference'
-                        )
+                        ->relationship(name: 'reservation', titleAttribute: 'reference')
                         ->getOptionLabelFromRecordUsing(
                             fn (Reservation $record): string =>
                                 $record->reference . ' — ' .
@@ -50,13 +47,17 @@ class PaymentResource extends Resource
                         ->live(),
 
                     Forms\Components\Placeholder::make('total_amount_display')
-                        ->label('Prix total de la formation')
+                        ->label('Prix final de la formation')
                         ->content(function (Forms\Get $get): string {
                             $reservation = Reservation::find($get('reservation_id'));
 
-                            return $reservation
-                                ? number_format((float) $reservation->total_amount, 2, ',', ' ') . ' €'
-                                : 'Sélectionnez une réservation';
+                            if (! $reservation) {
+                                return 'Sélectionnez une réservation';
+                            }
+
+                            $total = (float) ($reservation->sold_price ?? $reservation->total_amount);
+
+                            return number_format($total, 2, ',', ' ') . ' €';
                         }),
 
                     Forms\Components\Placeholder::make('paid_amount_display')
@@ -68,13 +69,8 @@ class PaymentResource extends Resource
                                 return '—';
                             }
 
-                            $paid = Payment::query()
-                                ->where('reservation_id', $reservation->id)
+                            $paid = $reservation->payments()
                                 ->where('status', 'completed')
-                                ->when(
-                                    $get('record_id'),
-                                    fn ($query, $recordId) => $query->where('id', '!=', $recordId)
-                                )
                                 ->sum('amount');
 
                             return number_format((float) $paid, 2, ',', ' ') . ' €';
@@ -84,7 +80,7 @@ class PaymentResource extends Resource
                         ->label('Type de paiement')
                         ->options([
                             'deposit' => 'Acompte',
-                            'installment' => 'Échéance / acompte complémentaire',
+                            'installment' => 'Échéance',
                         ])
                         ->default('installment')
                         ->required(),
@@ -134,21 +130,18 @@ class PaymentResource extends Resource
                         ->required()
                         ->default('EUR'),
 
+                    // A payment must be confirmed only with the dedicated action below.
+                    // This form intentionally does not allow setting status to completed.
                     Forms\Components\Select::make('status')
                         ->label('Statut du paiement')
                         ->options([
                             'pending' => 'En attente de vérification',
-                            'completed' => 'Payé / confirmé',
                             'failed' => 'Échoué',
                             'refunded' => 'Remboursé',
                         ])
                         ->required()
                         ->default('pending')
-                        ->live()
-                        ->afterStateUpdated(function ($state, Forms\Set $set): void {
-                            $set('paid_at', $state === 'completed' ? now()->format('Y-m-d H:i:s') : null);
-                        })
-                        ->helperText('Pour un virement bancaire, vérifiez d’abord la réception des fonds.'),
+                        ->helperText('Pour confirmer un virement reçu, utilisez « Confirmer le paiement » dans la liste.'),
 
                     Forms\Components\TextInput::make('payment_proof')
                         ->label('Chemin du justificatif de paiement')
@@ -159,7 +152,8 @@ class PaymentResource extends Resource
                         ->label('Date du paiement')
                         ->native(false)
                         ->seconds(false)
-                        ->visible(fn (Forms\Get $get): bool => $get('status') === 'completed'),
+                        ->visible(fn (Forms\Get $get): bool => $get('status') === 'completed')
+                        ->dehydrated(false),
                 ])
                 ->columns(2),
         ]);
@@ -227,8 +221,12 @@ class PaymentResource extends Resource
                     ->money('EUR')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('reservation.total_amount')
-                    ->label('Total réservation')
+                Tables\Columns\TextColumn::make('reservation.sold_price')
+                    ->label('Prix final')
+                    ->state(fn (Payment $record) =>
+                        $record->reservation?->sold_price
+                        ?? $record->reservation?->total_amount
+                    )
                     ->money('EUR')
                     ->toggleable(),
 
@@ -307,11 +305,12 @@ class PaymentResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmer la réception du paiement')
-                    ->modalDescription('Confirmez uniquement après avoir vérifié que l’argent est arrivé sur le compte.')
+                    ->modalDescription(
+                        'Confirmez uniquement après avoir vérifié que l’argent est arrivé sur le compte bancaire.'
+                    )
                     ->visible(fn (Payment $record): bool => $record->status === 'pending')
                     ->action(function (Payment $record): void {
                         DB::transaction(function () use ($record): void {
-                            /** @var Payment $payment */
                             $payment = Payment::query()
                                 ->whereKey($record->getKey())
                                 ->lockForUpdate()
@@ -321,24 +320,48 @@ class PaymentResource extends Resource
                                 return;
                             }
 
-                            /** @var Reservation $reservation */
                             $reservation = Reservation::query()
                                 ->whereKey($payment->reservation_id)
                                 ->lockForUpdate()
                                 ->firstOrFail();
 
-                            $alreadyPaid = Payment::query()
+                            if ($reservation->status === 'cancelled') {
+                                throw ValidationException::withMessages([
+                                    'payment' => 'Impossible de confirmer un paiement pour une réservation annulée.',
+                                ]);
+                            }
+
+                            if ($payment->payment_type === 'deposit') {
+                                $anotherConfirmedDeposit = Payment::query()
+                                    ->where('reservation_id', $reservation->id)
+                                    ->where('payment_type', 'deposit')
+                                    ->where('status', 'completed')
+                                    ->where('id', '!=', $payment->id)
+                                    ->exists();
+
+                                if ($anotherConfirmedDeposit) {
+                                    throw ValidationException::withMessages([
+                                        'payment' => 'Un acompte est déjà confirmé pour cette réservation. Vérifiez les doublons avant de continuer.',
+                                    ]);
+                                }
+                            }
+
+                            $totalAmount = round(
+                                (float) ($reservation->sold_price ?? $reservation->total_amount),
+                                2
+                            );
+
+                            $alreadyPaid = (float) Payment::query()
                                 ->where('reservation_id', $reservation->id)
                                 ->where('status', 'completed')
                                 ->where('id', '!=', $payment->id)
                                 ->sum('amount');
 
-                            $newPaidTotal = round((float) $alreadyPaid + (float) $payment->amount, 2);
-                            $totalAmount = round((float) $reservation->total_amount, 2);
+                            $newPaidTotal = round($alreadyPaid + (float) $payment->amount, 2);
 
                             if ($newPaidTotal > $totalAmount) {
                                 throw ValidationException::withMessages([
-                                    'payment' => 'Ce paiement dépasserait le montant total de la réservation. Vérifiez le montant avant confirmation.',
+                                    'payment' => 'Ce paiement dépasserait le prix final de la réservation. Vérifiez les paiements déjà confirmés.',
                                 ]);
                             }
 
@@ -346,7 +369,7 @@ class PaymentResource extends Resource
                             $payment->paid_at = now();
                             $payment->save();
 
-                            if ($payment->payment_type === 'deposit' && $reservation->status !== 'cancelled') {
+                            if ($payment->payment_type === 'deposit') {
                                 $reservation->status = 'confirmed';
                                 $reservation->save();
                             }
@@ -354,22 +377,43 @@ class PaymentResource extends Resource
 
                         Notification::make()
                             ->title('Paiement confirmé')
-                            ->body('Le paiement a été marqué comme reçu et le solde a été recalculé.')
+                            ->body('Le paiement a été confirmé et le solde est recalculé à partir du prix final.')
                             ->success()
                             ->send();
                     }),
 
                 Tables\Actions\EditAction::make()
-                    ->label('Modifier'),
+                    ->label('Modifier')
+                    ->visible(fn (Payment $record): bool => $record->status !== 'completed'),
 
                 Tables\Actions\DeleteAction::make()
                     ->label('Supprimer')
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->visible(fn (Payment $record): bool => $record->status !== 'completed'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->requiresConfirmation(),
+                        ->requiresConfirmation()
+                        ->action(function ($records): void {
+                            $completedExists = $records->contains(
+                                fn (Payment $payment): bool => $payment->status === 'completed'
+                            );
+
+                            if ($completedExists) {
+                                Notification::make()
+                                    ->title('Suppression impossible')
+                                    ->body('Les paiements confirmés ne peuvent pas être supprimés en masse.')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            foreach ($records as $payment) {
+                                $payment->delete();
+                            }
+                        }),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
