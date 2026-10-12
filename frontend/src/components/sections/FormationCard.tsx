@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/utils/cn";
-
 import { Button } from "@/components/ui/Button";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
@@ -16,17 +15,12 @@ export interface FormationDay {
   city: string;
   start_date: string;
   end_date: string;
-
   personal_price: number | string | null;
-
   cpf_eligible: boolean;
   cpf_price: number | string | null;
-
   max_places: number;
   remaining_places: number;
-
   status: string;
-
   image?: string | null;
 }
 
@@ -42,38 +36,25 @@ export interface FormationProgramme {
 export interface Formation {
   id: number;
   programme_id: number | null;
-
   programme: FormationProgramme | null;
-
   title: string;
   slug: string;
   description: string | null;
-
   steps: {
     title: string;
     description?: string;
   }[];
-
   image: string | null;
   pdf_program: string | null;
-
   deposit_amount: number | string | null;
   personal_price: number | string | null;
-
   has_sale: boolean;
   sale_price: number | string | null;
-
   installment_enabled: boolean;
   installment_count: number | null;
-
   is_active: boolean;
-
   formationDays: FormationDay[];
 }
-
-/* =========================================================
-   PROPS
-========================================================= */
 
 interface FormationCardProps {
   formation: Formation;
@@ -106,109 +87,90 @@ export function Meta({
       className={cn(
         "border-b py-4 pr-4",
         dark ? "border-ivory/10" : "border-ink/10",
-        className
+        className,
       )}
     >
       <dt
         className={cn(
           "label text-[10px]",
-          dark ? "text-ivory/40" : "text-ink/40"
+          dark ? "text-ivory/40" : "text-ink/40",
         )}
       >
         {label}
       </dt>
-
       <dd className="mt-2 font-serif text-xl leading-tight md:text-[1.35rem]">
         {value}
       </dd>
-
-      {sub && (
+      {sub ? (
         <dd
           className={cn(
             "mt-1 text-xs font-light",
-            dark ? "text-ivory/45" : "text-ink/45"
+            dark ? "text-ivory/45" : "text-ink/45",
           )}
         >
           {sub}
         </dd>
-      )}
+      ) : null}
     </div>
   );
 }
 
 /* =========================================================
-   DATE
+   DATE HELPERS
 ========================================================= */
 
-export function formatDateRange(
-  start: string,
-  end: string
-): string {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+function parseDate(value: string): Date {
+  // Treat YYYY-MM-DD as a local calendar date to avoid timezone shifts.
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  }
+  return new Date(value);
+}
 
-  const startDay = startDate.toLocaleDateString("fr-FR", {
-    day: "numeric",
-  });
-
-  const endDay = endDate.toLocaleDateString("fr-FR", {
-    day: "numeric",
-  });
-
-  const startMonth = startDate.toLocaleDateString("fr-FR", {
-    month: "long",
-  });
-
-  const endMonth = endDate.toLocaleDateString("fr-FR", {
-    month: "long",
-  });
-
-  const startYear = startDate.getFullYear();
-  const endYear = endDate.getFullYear();
-
-  // Same exact day
-  if (
-    startDay === endDay &&
-    startMonth === endMonth &&
-    startYear === endYear
-  ) {
-    return `${startDay} ${startMonth}`;
+export function formatDateRange(start: string, end: string): string {
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "Dates à confirmer";
   }
 
-  // Same month
+  const day = (date: Date) =>
+    date.toLocaleDateString("fr-FR", { day: "numeric" });
+  const month = (date: Date) =>
+    date.toLocaleDateString("fr-FR", { month: "long" });
+  const year = (date: Date) => date.getFullYear();
+
   if (
-    startMonth === endMonth &&
-    startYear === endYear
+    day(startDate) === day(endDate) &&
+    month(startDate) === month(endDate) &&
+    year(startDate) === year(endDate)
   ) {
-    return `${startDay} — ${endDay} ${endMonth}`;
+    return `${day(startDate)} ${month(startDate)} ${year(startDate)}`;
   }
 
-  // Different months
-  return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
+  if (month(startDate) === month(endDate) && year(startDate) === year(endDate)) {
+    return `${day(startDate)}–${day(endDate)} ${month(endDate)} ${year(endDate)}`;
+  }
+
+  if (year(startDate) === year(endDate)) {
+    return `${day(startDate)} ${month(startDate)} – ${day(endDate)} ${month(endDate)} ${year(endDate)}`;
+  }
+
+  return `${day(startDate)} ${month(startDate)} ${year(startDate)} – ${day(endDate)} ${month(endDate)} ${year(endDate)}`;
 }
 
 /* =========================================================
    PRICE
 ========================================================= */
 
-function formatPrice(
-  price: number | string | null
-): string {
-  if (
-    price === null ||
-    price === undefined ||
-    price === ""
-  ) {
+function formatPrice(price: number | string | null): string {
+  if (price === null || price === undefined || price === "") {
     return "À venir";
   }
-
   const value = Number(price);
-
-  if (Number.isNaN(value)) {
-    return "À venir";
-  }
-
-  return `${value.toLocaleString("fr-FR")} €`;
+  if (!Number.isFinite(value)) return "À venir";
+  return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
 }
 
 /* =========================================================
@@ -224,60 +186,19 @@ export function FormationCard({
   delay = 0,
 }: FormationCardProps) {
   const programme = formation.programme;
-
-  const duration =
-    programme?.duration ?? "3 jours";
-
-  /*
-   * IMPORTANT
-   *
-   * The card opens the formation using:
-   *
-   * /formations/formation-slug?city=Paris&day=12
-   *
-   * The detail page will:
-   *
-   * 1. Load the formation using slug
-   * 2. Read city
-   * 3. Read day
-   * 4. Display the selected city/session
-   * 5. Display all sessions for that city
-   */
-
+  const duration = programme?.duration || "Durée à confirmer";
   const detailUrl =
     `/formations/${formation.slug}` +
     `?city=${encodeURIComponent(formationDay.city)}` +
     `&day=${formationDay.id}`;
 
+  const status = (formationDay.status || "").toLowerCase();
   const isAvailable =
-    formationDay.status === "available" &&
-    formationDay.remaining_places > 0;
-
-  /*
-   * IMAGE
-   *
-   * First:
-   * formation day image
-   *
-   * If no image:
-   * formation image
-   */
-
-  const image =
-    formationDay.image ||
-    formation.image;
+    status === "available" && Number(formationDay.remaining_places) > 0;
+  const image = formationDay.image || formation.image;
 
   return (
-    <article
-      className={cn(
-        "group",
-        className
-      )}
-    >
-      {/* =================================================
-          IMAGE
-      ================================================= */}
-
+    <article className={cn("group", className)}>
       <Link
         to={detailUrl}
         aria-label={`${formation.title} — ${formationDay.city}`}
@@ -287,47 +208,27 @@ export function FormationCard({
           <ImageReveal
             src={image}
             alt={`${formation.title} — ${formationDay.city}`}
-            className={cn(
-              "w-full",
-              imageAspect
-            )}
+            className={cn("w-full", imageAspect)}
             delay={delay}
           />
         ) : (
           <div
-            className={cn(
-              "w-full bg-ink/5",
-              imageAspect
-            )}
+            role="img"
+            aria-label={`Image non disponible pour ${formation.title}`}
+            className={cn("w-full bg-ink/5", imageAspect)}
           />
         )}
       </Link>
 
-      <Reveal
-        delay={delay + 0.15}
-      >
-        {/* =================================================
-            LABEL
-        ================================================= */}
-
+      <Reveal delay={delay + 0.15}>
         <p className="label mt-7 flex items-center gap-4 text-ink/40">
           <span className="font-serif text-lg tracking-normal text-ink/60">
             {String(index + 1).padStart(2, "0")}
           </span>
-
           <span className="h-px w-6 bg-current" />
-
-          {programme?.name ??
-            formation.title}
-
-          {" · "}
-
-          {duration}
+          {programme?.name || formation.title}
+          {duration !== "Durée à confirmer" ? ` · ${duration}` : ""}
         </p>
-
-        {/* =================================================
-            CITY
-        ================================================= */}
 
         <h3 className="display mt-4 text-[clamp(2rem,5vw,3.25rem)]">
           <Link
@@ -338,87 +239,55 @@ export function FormationCard({
           </Link>
         </h3>
 
-        {/* =================================================
-            DATE
-        ================================================= */}
+        <p className="mt-3 text-sm font-light text-ink/60">
+          {formatDateRange(formationDay.start_date, formationDay.end_date)}
+        </p>
 
-        
-
-        {/* =================================================
-            DESCRIPTION
-        ================================================= */}
-
-        {formation.description && (
+        {formation.description ? (
           <div
             className="mt-5 max-w-md text-base font-light leading-relaxed text-ink/60"
-            dangerouslySetInnerHTML={{
-              __html: formation.description,
-            }}
+            dangerouslySetInnerHTML={{ __html: formation.description }}
           />
-        )}
-
-        {/* =================================================
-            INFORMATION
-        ================================================= */}
+        ) : null}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
-          <Meta
-            label="Durée"
-            value={duration}
-          />
-
+          <Meta label="Durée" value={duration} />
           <Meta
             label="Tarif"
-            value={formatPrice(
-              formationDay.personal_price
-            )}
+            value={formatPrice(formationDay.personal_price)}
             sub={
-              formationDay.cpf_eligible &&
-              formationDay.cpf_price
-                ? `CPF ${formatPrice(
-                    formationDay.cpf_price
-                  )}`
+              formationDay.cpf_eligible && formationDay.cpf_price !== null
+                ? `CPF : ${formatPrice(formationDay.cpf_price)}`
                 : undefined
             }
           />
-
           <Meta
             label="Acompte"
-            value={formatPrice(
-              formation.deposit_amount
-            )}
+            value={formatPrice(formation.deposit_amount)}
             sub="À régler après confirmation"
             className="col-span-2 sm:col-span-1"
           />
         </dl>
 
-        {/* =================================================
-            BUTTONS
-        ================================================= */}
+        {!isAvailable ? (
+          <p className="mt-4 text-xs text-ink/50">
+            {Number(formationDay.remaining_places) <= 0 ||
+            status === "full" ||
+            status === "complet"
+              ? "Session complète — disponibilité à vérifier"
+              : "Disponibilité à confirmer"}
+          </p>
+        ) : null}
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
-          {/* RESERVE */}
-
           <Button
             to={`${detailUrl}#reservation`}
-            variant={
-              isAvailable
-                ? "dark"
-                : "outline-dark"
-            }
+            variant={isAvailable ? "dark" : "outline-dark"}
             icon="arrow"
           >
-            {isAvailable
-              ? "Réserver"
-              : "Demander une date"}
+            Réserver
           </Button>
-
-          {/* DETAILS */}
-
-          <Button
-            to={detailUrl}
-            variant="outline-dark"
-          >
+          <Button to={detailUrl} variant="outline-dark">
             Voir la formation
           </Button>
         </div>
