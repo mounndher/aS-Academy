@@ -20,6 +20,8 @@ import { HomePage } from "@/pages/HomePage";
 import { FormationsListPage } from "@/pages/FormationsListPage";
 import { FormationDetailPage } from "@/pages/FormationDetailPage";
 import ReservationConfirmationPage from "@/pages/ReservationConfirmationPage";
+import { PlanningPage } from "@/pages/PlanningPage";
+
 
 function Layout() {
   const location = useLocation();
@@ -42,6 +44,7 @@ function Layout() {
               <Route path="/" element={<HomePage />} />
               <Route path="/formations" element={<FormationsListPage />} />
               <Route path="/formations/:slug" element={<FormationDetailPage />} />
+              <Route path="/planning">Planning</Route>
               <Route
                 path="/reservation/confirmation"
                 element={<ReservationConfirmationPage />}
