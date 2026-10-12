@@ -140,17 +140,13 @@ export function SessionCard({
         <div className="lg:col-span-2 lg:text-right">
           {canReserve ? (
             <Button
-              to={to}
-              state={{
-                ...RESERVE_STATE,
-                formationDayId: day.id,
-              }}
-              variant="outline-dark"
-              icon="arrow"
-              className="w-full sm:w-auto"
-            >
-              Réserver
-            </Button>
+  to={`${to}#reservation`}
+  variant="outline-dark"
+  icon="arrow"
+  className="w-full sm:w-auto"
+>
+  Réserver
+</Button>
           ) : (
             <span className="inline-block border border-ink/15 px-4 py-3 text-xs text-ink/50">
               {isFull ? "Complet" : "Indisponible"}
