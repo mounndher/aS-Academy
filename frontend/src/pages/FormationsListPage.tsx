@@ -1304,29 +1304,7 @@ export function FormationsListPage() {
 
 
 
-                        <p
-
-                          className="
-
-                            mt-4
-
-                            text-sm
-
-                            text-ink/60
-
-                          "
-
-                        >
-
-                          {formatDateRange(
-
-                            day.start_date,
-
-                            day.end_date
-
-                          )}
-
-                        </p>
+                        
 
 
 
