@@ -188,13 +188,13 @@ export function FormationCard({
   const programme = formation.programme;
   const duration = programme?.duration || "Durée à confirmer";
 
-  const detailUrl =
+const detailUrl =
   `/formations/${formation.slug}` +
   `?city=${encodeURIComponent(formationDay.city)}`;
 
 const reserveUrl =
   `${detailUrl}` +
-  `&day=${formationDay.id}` +
+  `&day=${encodeURIComponent(String(formationDay.id))}` +
   `&scrollTo=reservation`;
   
 
