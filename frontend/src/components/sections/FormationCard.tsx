@@ -187,12 +187,16 @@ export function FormationCard({
 }: FormationCardProps) {
   const programme = formation.programme;
   const duration = programme?.duration || "Durée à confirmer";
- const detailUrl =
-  `/formations/${formation.slug}` +
-  `?city=${encodeURIComponent(formationDay.city)}` +
-  `&day=${formationDay.id}`;
 
-const reserveUrl = `${detailUrl}&scrollTo=reservation`;
+  const detailUrl =
+  `/formations/${formation.slug}` +
+  `?city=${encodeURIComponent(formationDay.city)}`;
+
+const reserveUrl =
+  `${detailUrl}` +
+  `&day=${formationDay.id}` +
+  `&scrollTo=reservation`;
+  
 
   const status = (formationDay.status || "").toLowerCase();
   const isAvailable =
