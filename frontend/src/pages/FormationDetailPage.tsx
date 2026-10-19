@@ -872,6 +872,7 @@ export function FormationDetailPage() {
 
 
 
+
 useEffect(() => {
   if (
     searchParams.get("scrollTo") !== "reservation" ||
@@ -881,22 +882,15 @@ useEffect(() => {
   }
 
   const timer = window.setTimeout(() => {
-    const reservationElement = document.getElementById("reservation");
-
-    if (!reservationElement) {
-      return;
-    }
-
-    reservationElement.scrollIntoView({
+    document.getElementById("reservation")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
   }, 1200);
 
-  return () => {
-    window.clearTimeout(timer);
-  };
+  return () => window.clearTimeout(timer);
 }, [selectedSession, searchParams]);
+
 
 
 
