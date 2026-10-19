@@ -245,9 +245,7 @@ const reserveUrl =
           </Link>
         </h3>
 
-        <p className="mt-3 text-sm font-light text-ink/60">
-          {formatDateRange(formationDay.start_date, formationDay.end_date)}
-        </p>
+        
 
         {formation.description ? (
           <div
