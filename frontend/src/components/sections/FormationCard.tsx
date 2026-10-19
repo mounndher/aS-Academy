@@ -187,10 +187,12 @@ export function FormationCard({
 }: FormationCardProps) {
   const programme = formation.programme;
   const duration = programme?.duration || "Durée à confirmer";
-  const detailUrl =
-    `/formations/${formation.slug}` +
-    `?city=${encodeURIComponent(formationDay.city)}` +
-    `&day=${formationDay.id}`;
+ const detailUrl =
+  `/formations/${formation.slug}` +
+  `?city=${encodeURIComponent(formationDay.city)}` +
+  `&day=${formationDay.id}`;
+
+const reserveUrl = `${detailUrl}&scrollTo=reservation`;
 
   const status = (formationDay.status || "").toLowerCase();
   const isAvailable =
@@ -281,7 +283,7 @@ export function FormationCard({
 
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button
-            to={`${detailUrl}#reservation`}
+            to={reserveUrl}
             variant={"dark" }
             icon="arrow"
             className="border border-[#111111] bg-[#111111] text-white hover:bg-[#333333]"
