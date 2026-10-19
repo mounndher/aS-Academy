@@ -871,61 +871,36 @@ export function FormationDetailPage() {
 
 
 
-  useEffect(() => {
+useEffect(() => {
+  if (
+    !selectedSession ||
+    searchParams.get("scrollTo") !== "reservation"
+  ) {
+    return;
+  }
 
-    if (!selectedSession) {
+  const timer = window.setTimeout(() => {
+    const element = document.getElementById("reservation");
 
-      return;
+    if (!element) return;
 
-    }
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
 
+    // Prevent scrolling again on subsequent renders.
+    setSearchParams(
+      (params) => {
+        params.delete("scrollTo");
+        return params;
+      },
+      { replace: true }
+    );
+  }, 900);
 
-
-    const timer =
-
-      window.setTimeout(() => {
-
-        const element =
-
-          document.getElementById(
-
-            "reservation"
-
-          );
-
-
-
-        if (!element) {
-
-          return;
-
-        }
-
-
-
-        element.scrollIntoView({
-
-          behavior: "smooth",
-
-          block: "start",
-
-        });
-
-      }, 100);
-
-
-
-    return () => {
-
-      window.clearTimeout(
-
-        timer
-
-      );
-
-    };
-
-  }, [selectedSession]);
+  return () => window.clearTimeout(timer);
+}, [selectedSession, searchParams, setSearchParams]);
 
 
 
