@@ -18,6 +18,10 @@ export const site = {
     { label: "L'Academy", id: "academy" },
     { label: "Réalisations", id: "realisations" },
     { label: "Contact", id: "contact" },
+    {
+  id: "planning",
+  label: "Planning",
+},
   ],
   cta: {
     book: "Réserver une formation",

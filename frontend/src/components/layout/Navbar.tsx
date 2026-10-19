@@ -109,10 +109,12 @@ export function Navbar() {
                 setMenuOpen(false);
 
                 if (item.id === "formations") {
-                  navigate("/formations");
-                } else {
-                  goTo(item.id);
-                }
+  navigate("/formations");
+} else if (item.id === "planning") {
+  navigate("/planning");
+} else {
+  goTo(item.id);
+}
               }}
               className="label link-line text-[10px] tracking-[0.28em] opacity-75 transition-opacity duration-500 hover:opacity-100"
             >
