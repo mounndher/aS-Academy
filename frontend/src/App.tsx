@@ -21,7 +21,7 @@ import { FormationsListPage } from "@/pages/FormationsListPage";
 import { FormationDetailPage } from "@/pages/FormationDetailPage";
 import ReservationConfirmationPage from "@/pages/ReservationConfirmationPage";
 import { PlanningPage } from "@/pages/PlanningPage";
-
+import FormationReservationPage from "@/pages/FormationReservationPage";
 
 function Layout() {
   const location = useLocation();
@@ -53,6 +53,10 @@ function Layout() {
                 element={<ReservationConfirmationPage />}
               />
               <Route path="*" element={<Navigate to="/" replace />} />
+                <Route
+                path="/formations/:slug/reserver"
+                element={<FormationReservationPage />}
+              />
             </Routes>
           </motion.main>
         </AnimatePresence>

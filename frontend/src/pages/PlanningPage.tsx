@@ -1,6 +1,12 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, MapPin, Users, ArrowRight } from "lucide-react";
+import {
+  CalendarDays,
+  MapPin,
+  Users,
+  ArrowRight,
+} from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
 
@@ -30,12 +36,23 @@ interface Session {
 }
 
 function formatDate(date: string) {
+  const match = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (!match) {
+    return "Date à confirmer";
+  }
+
+  const parsedDate = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3])
+  );
+
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(date));
+  }).format(parsedDate);
 }
 
 function formatDateRange(start: string, end: string) {
@@ -47,13 +64,39 @@ function formatDateRange(start: string, end: string) {
 }
 
 function formatPrice(value: string | null) {
-  if (value === null) return null;
+  if (value === null || value === "") {
+    return null;
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount)) {
+    return null;
+  }
 
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "EUR",
     maximumFractionDigits: 0,
-  }).format(Number(value));
+  }).format(amount);
+}
+
+function isPastSession(endDate: string, today: Date) {
+  const match = String(endDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (!match) {
+    return false;
+  }
+
+  const end = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3])
+  );
+
+  end.setHours(0, 0, 0, 0);
+
+  return end < today;
 }
 
 export function PlanningPage() {
@@ -88,10 +131,12 @@ export function PlanningPage() {
 
         const allSessions: Session[] = result.data.flatMap(
           (formation: Formation) =>
-            (formation.formationDays ?? []).map((day) => ({
-              formation,
-              day,
-            }))
+            (formation.formationDays ?? []).map(
+              (day: FormationDay) => ({
+                formation,
+                day,
+              })
+            )
         );
 
         allSessions.sort(
@@ -102,12 +147,16 @@ export function PlanningPage() {
 
         setSessions(allSessions);
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
 
         console.error("Erreur planning :", err);
         setError(true);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -120,10 +169,7 @@ export function PlanningPage() {
   today.setHours(0, 0, 0, 0);
 
   const visibleSessions = sessions.filter(({ day }) => {
-    const endDate = new Date(day.end_date);
-    endDate.setHours(0, 0, 0, 0);
-
-    return showPast || endDate >= today;
+    return showPast || !isPastSession(day.end_date, today);
   });
 
   return (
@@ -131,6 +177,7 @@ export function PlanningPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 flex items-center gap-4">
           <span className="h-px w-10 bg-neutral-400" />
+
           <p className="text-[10px] uppercase tracking-[0.32em] text-neutral-500 sm:text-xs">
             AS Academy
           </p>
@@ -139,13 +186,16 @@ export function PlanningPage() {
         <div className="flex flex-col justify-between gap-7 border-b border-neutral-300 pb-12 md:flex-row md:items-end lg:pb-16">
           <h1 className="font-serif text-5xl leading-[1.08] tracking-tight sm:text-6xl lg:text-8xl">
             Planning
-            <span className="mt-2 block italic">des formations.</span>
+            <span className="mt-2 block italic">
+              des formations.
+            </span>
           </h1>
 
           <p className="max-w-md text-sm font-light leading-7 text-neutral-600 sm:text-base">
-            Retrouvez toutes les dates, les villes et les disponibilités de
-            nos prochaines formations. Choisissez votre session et réservez
-            votre place en ligne.
+            Retrouvez toutes les dates, les villes et les
+            disponibilités de nos prochaines formations.
+            Choisissez votre session et réservez votre place
+            en ligne.
           </p>
         </div>
 
@@ -158,9 +208,12 @@ export function PlanningPage() {
             <input
               type="checkbox"
               checked={showPast}
-              onChange={(event) => setShowPast(event.target.checked)}
+              onChange={(event) =>
+                setShowPast(event.target.checked)
+              }
               className="h-4 w-4 accent-[#171717]"
             />
+
             Afficher les sessions passées
           </label>
         </div>
@@ -173,7 +226,8 @@ export function PlanningPage() {
 
         {error && !loading && (
           <p className="py-16 text-center text-sm text-red-700">
-            Impossible de charger le planning. Veuillez réessayer plus tard.
+            Impossible de charger le planning. Veuillez réessayer
+            plus tard.
           </p>
         )}
 
@@ -185,21 +239,30 @@ export function PlanningPage() {
 
         {!loading && !error && visibleSessions.length > 0 && (
           <div className="border-t border-neutral-300">
-            {visibleSessions.map(({ formation, day }, index) => {
+            {visibleSessions.map(({ formation, day }) => {
               const status = (day.status ?? "").toLowerCase();
+
               const full =
                 day.remaining_places <= 0 ||
                 status === "full" ||
                 status === "complet";
 
-              const ended = new Date(day.end_date) < today;
+              const ended = isPastSession(day.end_date, today);
+
               const available =
-                !full && !ended && status === "available";
+                !full &&
+                !ended &&
+                status === "available";
+
+              // Nouvelle page de réservation.
+              // Transmettre la ville et l'identifiant de la session.
+              const params = new URLSearchParams();
+
+              params.set("city", day.city);
+              params.set("day", String(day.id));
 
               const bookingUrl =
-                `/formations/${formation.slug}` +
-                `?city=${encodeURIComponent(day.city)}` +
-                `&day=${day.id}#reservation`;
+                `/formations/${formation.slug}/reserver?${params.toString()}`;
 
               return (
                 <article
@@ -218,8 +281,15 @@ export function PlanningPage() {
 
                   <div className="space-y-3 lg:col-span-4">
                     <p className="flex items-start gap-3 text-sm text-neutral-700">
-                      <CalendarDays size={17} className="mt-0.5 shrink-0" />
-                      {formatDateRange(day.start_date, day.end_date)}
+                      <CalendarDays
+                        size={17}
+                        className="mt-0.5 shrink-0"
+                      />
+
+                      {formatDateRange(
+                        day.start_date,
+                        day.end_date
+                      )}
                     </p>
 
                     <p className="flex items-center gap-3 text-sm text-neutral-500">
@@ -229,6 +299,7 @@ export function PlanningPage() {
 
                     <p className="flex items-center gap-3 text-sm text-neutral-500">
                       <Users size={17} />
+
                       {full
                         ? "Session complète"
                         : `${day.remaining_places} place(s) restante(s)`}
@@ -243,15 +314,17 @@ export function PlanningPage() {
                         </p>
                       )}
 
-                      {day.cpf_eligible && day.cpf_price !== null && (
-                        <p className="mt-1 text-xs text-neutral-500">
-                          CPF : {formatPrice(day.cpf_price)}
-                        </p>
-                      )}
+                      {day.cpf_eligible &&
+                        day.cpf_price !== null && (
+                          <p className="mt-1 text-xs text-neutral-500">
+                            CPF : {formatPrice(day.cpf_price)}
+                          </p>
+                        )}
 
                       {formation.deposit_amount !== null && (
                         <p className="mt-1 text-xs text-neutral-500">
-                          Acompte : {formatPrice(formation.deposit_amount)}
+                          Acompte :{" "}
+                          {formatPrice(formation.deposit_amount)}
                         </p>
                       )}
                     </div>
@@ -266,7 +339,11 @@ export function PlanningPage() {
                       </Link>
                     ) : (
                       <span className="border border-neutral-200 px-5 py-3 text-[10px] uppercase tracking-[0.18em] text-neutral-400">
-                        {ended ? "Terminée" : full ? "Complet" : "Indisponible"}
+                        {ended
+                          ? "Terminée"
+                          : full
+                            ? "Complet"
+                            : "Indisponible"}
                       </span>
                     )}
                   </div>
@@ -279,3 +356,5 @@ export function PlanningPage() {
     </main>
   );
 }
+
+export default PlanningPage;
