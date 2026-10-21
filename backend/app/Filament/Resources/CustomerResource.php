@@ -9,7 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-
+use Filament\Tables\Columns\TextColumn;
 class CustomerResource extends Resource
 {
     protected static ?string $model = Customer::class;
