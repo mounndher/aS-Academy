@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Http\Controllers\Api\Contenu;
@@ -34,17 +35,22 @@ class SiteSettingController extends Controller
                     ? asset($settings->favicon)
                     : null,
 
+                // Paramètres de paiement
+                'payment' => [
+                    'deposit_amount' => (float) ($settings->deposit_amount ?? 150),
+                    'installment_options' => $settings->payment_installment_options ?? [1, 2],
+                ],
+
                 'contact' => [
                     'email' => $settings->email,
                     'phone' => $settings->phone,
                     'address' => $settings->address,
                     'city' => $settings->city,
                     'postal_code' => $settings->postal_code,
-                    'iban'=>$settings->iban,
-                    'bic'=>$settings->bic,
-                    'account_holder_address'=>$settings->account_holder_address,
-                    'cancellation_policy'=>$settings->cancellation_policy,
-
+                    'iban' => $settings->iban,
+                    'bic' => $settings->bic,
+                    'account_holder_address' => $settings->account_holder_address,
+                    'cancellation_policy' => $settings->cancellation_policy,
                 ],
 
                 'social' => [
