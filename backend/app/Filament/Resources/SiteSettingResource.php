@@ -233,6 +233,12 @@ class SiteSettingResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+                    Forms\Components\TextInput::make('deposit_amount')
+    ->label('Montant de l’acompte (€)')
+    ->numeric()
+    ->prefix('€')
+    ->minValue(0)
+    ->required(),
                     
 Forms\Components\Section::make('Options de paiement')
     ->description('Choisissez les nombres de paiements proposés aux clients.')
