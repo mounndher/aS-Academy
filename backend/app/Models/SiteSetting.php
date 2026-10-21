@@ -42,5 +42,6 @@ class SiteSetting extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'payment_installment_options' => 'array',
+        
     ];
 }
