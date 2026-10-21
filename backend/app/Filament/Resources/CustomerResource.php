@@ -87,6 +87,46 @@ class CustomerResource extends Resource
 
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Téléphone'),
+                TextColumn::make('reservations_sum_total_amount')
+    ->label('Montant total')
+    ->sum('reservations', 'total_amount')
+    ->money('EUR'),
+
+TextColumn::make('reservations_sum_deposit_amount')
+    ->label('Acompte prévu')
+    ->sum('reservations', 'deposit_amount')
+    ->money('EUR'),
+
+TextColumn::make('paid_amount')
+    ->label('Payé confirmé')
+    ->state(function ($record): float {
+        return (float) \App\Models\Payment::query()
+            ->whereHas('reservation', function ($query) use ($record) {
+                $query->where('customer_id', $record->id);
+            })
+            ->whereIn('status', ['paid', 'completed'])
+            ->sum('amount');
+    })
+    ->money('EUR')
+    ->color('success'),
+
+TextColumn::make('remaining_amount')
+    ->label('Reste à payer')
+    ->state(function ($record): float {
+        $total = (float) \App\Models\Reservation::query()
+            ->where('customer_id', $record->id)
+            ->sum('total_amount');
+
+        $paid = (float) \App\Models\Payment::query()
+            ->whereHas('reservation', function ($query) use ($record) {
+                $query->where('customer_id', $record->id);
+            })
+            ->whereIn('status', ['paid', 'completed'])
+            ->sum('amount');
+
+        return max(0, $total - $paid);
+    })
+    ->money('EUR'),
 
                 Tables\Columns\TextColumn::make('city')
                     ->label('Ville')
