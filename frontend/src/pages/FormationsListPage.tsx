@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Link } from "react-router-dom";
 
@@ -300,6 +300,22 @@ function formatPrice(
 
 
 
+interface PaymentSettingsResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    payment?: {
+      deposit_amount?: number | string | null;
+      installment_options?: number[];
+    };
+  };
+}
+
+const API_URL = String(import.meta.env.VITE_API_URL ?? "")
+  .trim()
+  .replace(/\/+$/, "");
+
+
 /* =========================================================
 
    PAGE
@@ -319,6 +335,56 @@ export function FormationsListPage() {
     error,
 
   } = useFormations();
+
+  const [depositAmount, setDepositAmount] = useState<number | null>(null);
+  const [depositLoading, setDepositLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadPaymentSettings() {
+      try {
+        if (!API_URL) {
+          throw new Error("VITE_API_URL n'est pas configurée.");
+        }
+
+        const response = await fetch(`${API_URL}/contenu/settings`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+
+        const result: PaymentSettingsResponse = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message || "Impossible de charger les paramètres de paiement."
+          );
+        }
+
+        const rawAmount = result.data?.payment?.deposit_amount;
+        if (rawAmount === null || rawAmount === undefined || rawAmount === "") {
+          throw new Error("Le montant de l'acompte n'est pas configuré.");
+        }
+
+        const amount = Number(rawAmount);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error("Le montant de l'acompte reçu est invalide.");
+        }
+
+        setDepositAmount(amount);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("Erreur de chargement de l'acompte :", error);
+        setDepositAmount(null);
+      } finally {
+        if (!controller.signal.aborted) setDepositLoading(false);
+      }
+    }
+
+    void loadPaymentSettings();
+    return () => controller.abort();
+  }, []);
 
 
 
@@ -1366,7 +1432,9 @@ export function FormationsListPage() {
 
                             border-ink/10
 
-                            sm:grid-cols-3
+                            sm:grid-cols-2
+
+                            lg:grid-cols-4
 
                           "
 
@@ -1546,6 +1614,32 @@ export function FormationsListPage() {
 
                               )}
 
+                          </div>
+
+
+
+                          {/* ACOMPTE DYNAMIQUE */}
+
+                          <div
+                            className="
+                              min-w-0
+                              border-b
+                              border-ink/10
+                              py-4
+                              pr-4
+                            "
+                          >
+                            <dt className="label text-[10px] text-ink/40">
+                              Acompte
+                            </dt>
+
+                            <dd className="mt-2 break-words font-serif text-xl">
+                              {depositLoading
+                                ? "Chargement..."
+                                : depositAmount !== null
+                                  ? formatPrice(depositAmount)
+                                  : "Indisponible"}
+                            </dd>
                           </div>
 
 

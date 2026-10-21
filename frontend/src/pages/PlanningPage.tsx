@@ -26,13 +26,23 @@ interface Formation {
   id: number;
   title: string;
   slug: string;
-  deposit_amount: string | null;
   formationDays: FormationDay[];
 }
 
 interface Session {
   formation: Formation;
   day: FormationDay;
+}
+
+interface SettingsResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    payment?: {
+      deposit_amount?: number | string | null;
+      installment_options?: number[];
+    };
+  };
 }
 
 function formatDate(date: string) {
@@ -63,8 +73,8 @@ function formatDateRange(start: string, end: string) {
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
 
-function formatPrice(value: string | null) {
-  if (value === null || value === "") {
+function formatPrice(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
@@ -77,7 +87,7 @@ function formatPrice(value: string | null) {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "EUR",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -105,6 +115,9 @@ export function PlanningPage() {
   const [error, setError] = useState(false);
   const [showPast, setShowPast] = useState(false);
 
+  const [depositAmount, setDepositAmount] = useState<number | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -116,7 +129,10 @@ export function PlanningPage() {
 
         const response = await fetch(
           `${API_URL}/contenu/formations`,
-          { signal: controller.signal }
+          {
+            signal: controller.signal,
+            headers: { Accept: "application/json" },
+          }
         );
 
         if (!response.ok) {
@@ -160,7 +176,70 @@ export function PlanningPage() {
       }
     }
 
-    loadSessions();
+    void loadSessions();
+
+    return () => controller.abort();
+  }, []);
+
+  // Load the deposit amount configured in the Laravel admin panel.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadPaymentSettings() {
+      try {
+        if (!API_URL) {
+          throw new Error("VITE_API_URL n'est pas configurée.");
+        }
+
+        const response = await fetch(
+          `${API_URL}/contenu/settings`,
+          {
+            signal: controller.signal,
+            headers: { Accept: "application/json" },
+          }
+        );
+
+        const result: SettingsResponse = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ||
+              "Impossible de charger les paramètres de paiement."
+          );
+        }
+
+        const rawAmount = result.data?.payment?.deposit_amount;
+
+        if (
+          rawAmount === null ||
+          rawAmount === undefined ||
+          rawAmount === ""
+        ) {
+          throw new Error("Le montant de l'acompte n'est pas configuré.");
+        }
+
+        const amount = Number(rawAmount);
+
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error("Le montant de l'acompte est invalide.");
+        }
+
+        setDepositAmount(amount);
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
+        console.error("Erreur paramètres de paiement :", err);
+        setDepositAmount(null);
+      } finally {
+        if (!controller.signal.aborted) {
+          setSettingsLoading(false);
+        }
+      }
+    }
+
+    void loadPaymentSettings();
 
     return () => controller.abort();
   }, []);
@@ -254,8 +333,6 @@ export function PlanningPage() {
                 !ended &&
                 status === "available";
 
-              // Nouvelle page de réservation.
-              // Transmettre la ville et l'identifiant de la session.
               const params = new URLSearchParams();
 
               params.set("city", day.city);
@@ -263,6 +340,8 @@ export function PlanningPage() {
 
               const bookingUrl =
                 `/formations/${formation.slug}/reserver?${params.toString()}`;
+
+              const formattedDeposit = formatPrice(depositAmount);
 
               return (
                 <article
@@ -321,12 +400,12 @@ export function PlanningPage() {
                           </p>
                         )}
 
-                      {formation.deposit_amount !== null && (
-                        <p className="mt-1 text-xs text-neutral-500">
-                          Acompte :{" "}
-                          {formatPrice(formation.deposit_amount)}
-                        </p>
-                      )}
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Acompte :{" "}
+                        {settingsLoading
+                          ? "Chargement..."
+                          : formattedDeposit ?? "Indisponible"}
+                      </p>
                     </div>
 
                     {available ? (

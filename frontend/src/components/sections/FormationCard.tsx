@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/Button";
@@ -65,6 +65,25 @@ interface FormationCardProps {
   delay?: number;
 }
 
+interface PaymentSettingsResponse {
+  success?: boolean;
+  data?: {
+    payment?: {
+      deposit_amount?: number | string | null;
+    };
+  };
+}
+
+/* =========================================================
+   API CONFIGURATION
+========================================================= */
+
+const API_URL = String(import.meta.env.VITE_API_URL ?? "")
+  .trim()
+  .replace(/\/+$/, "");
+
+const SETTINGS_URL = `${API_URL}/contenu/settings`;
+
 /* =========================================================
    META
 ========================================================= */
@@ -98,9 +117,11 @@ export function Meta({
       >
         {label}
       </dt>
+
       <dd className="mt-2 font-serif text-xl leading-tight md:text-[1.35rem]">
         {value}
       </dd>
+
       {sub ? (
         <dd
           className={cn(
@@ -120,25 +141,36 @@ export function Meta({
 ========================================================= */
 
 function parseDate(value: string): Date {
-  // Treat YYYY-MM-DD as a local calendar date to avoid timezone shifts.
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+
   if (match) {
-    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    return new Date(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+    );
   }
+
   return new Date(value);
 }
 
 export function formatDateRange(start: string, end: string): string {
   const startDate = parseDate(start);
   const endDate = parseDate(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
     return "Dates à confirmer";
   }
 
   const day = (date: Date) =>
     date.toLocaleDateString("fr-FR", { day: "numeric" });
+
   const month = (date: Date) =>
     date.toLocaleDateString("fr-FR", { month: "long" });
+
   const year = (date: Date) => date.getFullYear();
 
   if (
@@ -149,7 +181,10 @@ export function formatDateRange(start: string, end: string): string {
     return `${day(startDate)} ${month(startDate)} ${year(startDate)}`;
   }
 
-  if (month(startDate) === month(endDate) && year(startDate) === year(endDate)) {
+  if (
+    month(startDate) === month(endDate) &&
+    year(startDate) === year(endDate)
+  ) {
     return `${day(startDate)}–${day(endDate)} ${month(endDate)} ${year(endDate)}`;
   }
 
@@ -168,9 +203,16 @@ function formatPrice(price: number | string | null): string {
   if (price === null || price === undefined || price === "") {
     return "À venir";
   }
+
   const value = Number(price);
-  if (!Number.isFinite(value)) return "À venir";
-  return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
+
+  if (!Number.isFinite(value)) {
+    return "À venir";
+  }
+
+  return `${value.toLocaleString("fr-FR", {
+    maximumFractionDigits: 2,
+  })} €`;
 }
 
 /* =========================================================
@@ -185,22 +227,97 @@ export function FormationCard({
   imageAspect = "aspect-[4/3]",
   delay = 0,
 }: FormationCardProps) {
+  const [depositAmount, setDepositAmount] = useState<
+    number | string | null
+  >(null);
+
+  const [depositLoading, setDepositLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchPaymentSettings() {
+      if (!API_URL) {
+        setDepositLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(SETTINGS_URL, {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Erreur API : ${response.status}`,
+          );
+        }
+
+        const result: PaymentSettingsResponse =
+          await response.json();
+
+        if (result.success !== true) {
+          throw new Error(
+            "Impossible de récupérer les paramètres de paiement.",
+          );
+        }
+
+        const amount = result.data?.payment?.deposit_amount;
+
+        if (
+          amount !== null &&
+          amount !== undefined &&
+          amount !== "" &&
+          Number.isFinite(Number(amount)) &&
+          Number(amount) >= 0
+        ) {
+          setDepositAmount(amount);
+        } else {
+          setDepositAmount(null);
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name !== "AbortError"
+        ) {
+          console.error(
+            "Erreur lors du chargement de l'acompte :",
+            error,
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setDepositLoading(false);
+        }
+      }
+    }
+
+    void fetchPaymentSettings();
+
+    return () => controller.abort();
+  }, []);
+
   const programme = formation.programme;
   const duration = programme?.duration || "Durée à confirmer";
 
-const detailUrl =
-  `/formations/${formation.slug}` +
-  `?city=${encodeURIComponent(formationDay.city)}`;
+  const detailUrl =
+    `/formations/${formation.slug}` +
+    `?city=${encodeURIComponent(formationDay.city)}`;
 
-const reserveUrl =
-  `${detailUrl}` +
-  `&day=${encodeURIComponent(String(formationDay.id))}` +
-  `&scrollTo=reservation`;
-  
+  const reserveUrl =
+    `${detailUrl}` +
+    `&day=${encodeURIComponent(String(formationDay.id))}` +
+    `&scrollTo=reservation`;
 
   const status = (formationDay.status || "").toLowerCase();
+
   const isAvailable =
-    status === "available" && Number(formationDay.remaining_places) > 0;
+    status === "available" &&
+    Number(formationDay.remaining_places) > 0;
+
   const image = formationDay.image || formation.image;
 
   return (
@@ -231,7 +348,9 @@ const reserveUrl =
           <span className="font-serif text-lg tracking-normal text-ink/60">
             {String(index + 1).padStart(2, "0")}
           </span>
+
           <span className="h-px w-6 bg-current" />
+
           {programme?.name || formation.title}
           {duration !== "Durée à confirmer" ? ` · ${duration}` : ""}
         </p>
@@ -245,29 +364,39 @@ const reserveUrl =
           </Link>
         </h3>
 
-        
-
         {formation.description ? (
           <div
             className="mt-5 max-w-md text-base font-light leading-relaxed text-ink/60"
-            dangerouslySetInnerHTML={{ __html: formation.description }}
+            dangerouslySetInnerHTML={{
+              __html: formation.description,
+            }}
           />
         ) : null}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
-          <Meta label="Durée" value={duration} />
+          <Meta
+            label="Durée"
+            value={duration}
+          />
+
           <Meta
             label="Tarif"
             value={formatPrice(formationDay.personal_price)}
             sub={
-              formationDay.cpf_eligible && formationDay.cpf_price !== null
+              formationDay.cpf_eligible &&
+              formationDay.cpf_price !== null
                 ? `CPF : ${formatPrice(formationDay.cpf_price)}`
                 : undefined
             }
           />
+
           <Meta
             label="Acompte"
-            value={formatPrice(formation.deposit_amount)}
+            value={
+              depositLoading
+                ? "Chargement..."
+                : formatPrice(depositAmount)
+            }
             sub="À régler après confirmation"
             className="col-span-2 sm:col-span-1"
           />
@@ -276,8 +405,8 @@ const reserveUrl =
         {!isAvailable ? (
           <p className="mt-4 text-xs text-ink/50">
             {Number(formationDay.remaining_places) <= 0 ||
-              status === "full" ||
-              status === "complet"
+            status === "full" ||
+            status === "complet"
               ? "Session complète — disponibilité à vérifier"
               : "Disponibilité à confirmer"}
           </p>
@@ -286,7 +415,7 @@ const reserveUrl =
         <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button
             to={reserveUrl}
-            variant={"dark" }
+            variant="dark"
             icon="arrow"
             className="border border-[#111111] bg-[#111111] text-white hover:bg-[#333333]"
           >
