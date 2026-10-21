@@ -1,4 +1,6 @@
 @php
+    use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
 
     $reservation = $record;
 
@@ -6,188 +8,93 @@
     $programme = $formation?->programme;
     $day = $reservation->formationDay;
     $customer = $reservation->customer;
-    $payment = $reservation->payment;
 
-    /*
-    |--------------------------------------------------------------------------
-    | PRICING
-    |--------------------------------------------------------------------------
-    */
+    // Prefer a payment that has a proof attached; otherwise use the reservation's latest payment.
+    $payment = $reservation->payments()
+        ->whereNotNull('payment_proof')
+        ->where('payment_proof', '!=', '')
+        ->latest('created_at')
+        ->first() ?? $reservation->payment;
 
-    /*
-     * Prix officiel selon le type de tarif :
-     *
-     * normal => formation_days.price
-     * cpf    => formation_days.cpf_price
-     */
+    /* PRICING */
     $basePrice = $reservation->pricing_type === 'cpf'
         ? (float) ($day?->cpf_price ?? 0)
         : (float) ($day?->price ?? 0);
 
-    /*
-     * Prix réellement vendu.
-     */
-    $soldPrice = (float) (
-        $reservation->sold_price
-        ?? $basePrice
-    );
+    $soldPrice = (float) ($reservation->sold_price ?? $reservation->total_amount ?? $basePrice);
 
-    /*
-    |--------------------------------------------------------------------------
-    | PAYMENT
-    |--------------------------------------------------------------------------
-    */
+    /* PAYMENT */
+    $deposit = (float) ($reservation->deposit_amount ?? 0);
 
-    $deposit = (float) (
-        $reservation->deposit_amount
-        ?? 0
-    );
+    // Count only payments confirmed as paid/completed. A submitted proof is not automatically a payment.
+    $paidAmount = (float) $reservation->payments()
+        ->whereIn('status', ['paid', 'completed'])
+        ->sum('amount');
 
-    /*
-     * Reste à payer.
-     */
-    $remaining = max(
-        0,
-        $soldPrice - $deposit
-    );
+    // When payment records have not been created yet, show the deposit as outstanding/expected,
+    // but never claim that it was paid unless its payment status confirms it.
+    $remaining = max(0, $soldPrice - $paidAmount);
 
-    /*
-     * Remise.
-     */
-    $discount = max(
-        0,
-        $basePrice - $soldPrice
-    );
+    $discount = max(0, $basePrice - $soldPrice);
 
-    /*
-     * Type de tarif.
-     */
     $pricingLabel = match ($reservation->pricing_type) {
-
         'cpf' => 'Tarif CPF',
-
         'normal' => 'Tarif normal',
-
-        default => ucfirst(
-            $reservation->pricing_type ?? 'normal'
-        ),
+        default => ucfirst($reservation->pricing_type ?? 'normal'),
     };
 
-    /*
-     * Nombre de paiements.
-     */
-    $paymentInstallments = (int) (
-        $reservation->payment_installments ?? 1
-    );
-
-    /*
-     * Plan de paiement.
-     */
-    $paymentPlanLabel = $paymentInstallments === 2
-        ? '2 paiements'
-        : 'Paiement en 1 fois';
-
-    /*
-    |--------------------------------------------------------------------------
-    | STATUS
-    |--------------------------------------------------------------------------
-    */
+    $paymentInstallments = (int) ($reservation->payment_installments ?? 1);
+    $paymentPlanLabel = $paymentInstallments === 2 ? '2 paiements' : 'Paiement en 1 fois';
 
     $statusLabel = match ($reservation->status) {
-
-        'pending' =>
-            'En attente',
-
-        'pending_payment' =>
-            'Paiement en attente',
-
-        'confirmed' =>
-            'Confirmée',
-
-        'cancelled' =>
-            'Annulée',
-
-        'completed' =>
-            'Terminée',
-
-        default =>
-            ucfirst(
-                str_replace(
-                    '_',
-                    ' ',
-                    $reservation->status
-                )
-            ),
+        'pending' => 'En attente',
+        'pending_payment' => 'Paiement en attente',
+        'confirmed' => 'Confirmée',
+        'cancelled' => 'Annulée',
+        'completed' => 'Terminée',
+        default => ucfirst(str_replace('_', ' ', $reservation->status ?? 'pending')),
     };
 
     $statusClass = match ($reservation->status) {
-
-        'confirmed',
-        'completed' =>
-            'status-success',
-
-        'cancelled' =>
-            'status-danger',
-
-        'pending_payment' =>
-            'status-warning',
-
-        default =>
-            'status-pending',
+        'confirmed', 'completed' => 'status-success',
+        'cancelled' => 'status-danger',
+        'pending_payment' => 'status-warning',
+        default => 'status-pending',
     };
 
-    /*
-    |--------------------------------------------------------------------------
-    | SESSION DATE
-    |--------------------------------------------------------------------------
-    */
-
+    /* SESSION DATE */
     $sessionDate = 'Date à confirmer';
 
     if ($day) {
-
         $start = $day->start_date
-            ? \Carbon\Carbon::parse(
-                $day->start_date
-            )
-                ->locale('fr')
-                ->translatedFormat('d F Y')
+            ? \Carbon\Carbon::parse($day->start_date)->locale('fr')->translatedFormat('d F Y')
             : null;
-
         $end = $day->end_date
-            ? \Carbon\Carbon::parse(
-                $day->end_date
-            )
-                ->locale('fr')
-                ->translatedFormat('d F Y')
+            ? \Carbon\Carbon::parse($day->end_date)->locale('fr')->translatedFormat('d F Y')
             : null;
 
         if ($start && $end) {
-
-            $sessionDate =
-                $start . ' → ' . $end;
-
+            $sessionDate = $start . ' → ' . $end;
         } elseif ($start) {
-
             $sessionDate = $start;
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | PAYMENT PROOF
-    |--------------------------------------------------------------------------
-    */
-
+    /* PAYMENT PROOF URL */
+    $paymentProofPath = $payment?->payment_proof ?: $reservation->payment_proof;
     $paymentProofUrl = null;
 
-    if ($payment?->payment_proof) {
-
-        $paymentProofUrl = asset(
-            $payment->payment_proof
-        );
+    if (filled($paymentProofPath)) {
+        if (Str::startsWith($paymentProofPath, ['https://', 'http://'])) {
+            $paymentProofUrl = $paymentProofPath;
+        } else {
+            // Accept paths stored as "payments/proofs/file.jpg", "storage/payments/proofs/file.jpg",
+            // or "public/payments/proofs/file.jpg" on Laravel's public disk.
+            $normalizedPath = ltrim($paymentProofPath, '/');
+            $normalizedPath = preg_replace('#^(storage/|public/)#', '', $normalizedPath);
+            $paymentProofUrl = Storage::disk('public')->url($normalizedPath);
+        }
     }
-
 @endphp
 
 
