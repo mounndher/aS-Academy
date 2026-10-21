@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+
 import { Link } from "react-router-dom";
 import { eur } from "@/data/formations";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 /* =========================================================
    TYPES
@@ -26,25 +27,6 @@ interface Formation {
   title: string;
   slug: string;
 }
-
-interface PaymentSettingsResponse {
-  success?: boolean;
-  data?: {
-    payment?: {
-      deposit_amount?: number | string | null;
-    };
-  };
-}
-
-/* =========================================================
-   API CONFIGURATION
-========================================================= */
-
-const API_URL = String(import.meta.env.VITE_API_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-
-const SETTINGS_URL = `${API_URL}/contenu/settings`;
 
 /* =========================================================
    DATE HELPERS
@@ -133,77 +115,11 @@ export function SessionCard({
   day: FormationDay;
   index: number;
 }) {
-  const [depositAmount, setDepositAmount] = useState<
-    number | string | null
-  >(null);
+  // Reuse shared settings instead of fetching inside each card.
+  const { settings, loading: depositLoading } = useSiteSettings();
 
-  const [depositLoading, setDepositLoading] = useState(true);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetchPaymentSettings() {
-      if (!API_URL) {
-        console.error("VITE_API_URL n'est pas configurée.");
-        setDepositLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(SETTINGS_URL, {
-          signal: controller.signal,
-          headers: {
-            Accept: "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur API : ${response.status}`);
-        }
-
-        const result: PaymentSettingsResponse =
-          await response.json();
-
-        if (result.success !== true) {
-          throw new Error(
-            "Impossible de récupérer les paramètres de paiement.",
-          );
-        }
-
-        const amount = result.data?.payment?.deposit_amount;
-
-        if (
-          amount !== null &&
-          amount !== undefined &&
-          amount !== "" &&
-          Number.isFinite(Number(amount)) &&
-          Number(amount) >= 0
-        ) {
-          setDepositAmount(amount);
-        } else {
-          setDepositAmount(null);
-        }
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name !== "AbortError"
-        ) {
-          console.error(
-            "Erreur lors du chargement de l'acompte :",
-            error,
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setDepositLoading(false);
-        }
-      }
-    }
-
-    void fetchPaymentSettings();
-
-    return () => controller.abort();
-  }, []);
+  const depositAmount =
+    settings?.payment?.deposit_amount ?? null;
 
   const to =
     `/formations/${formation.slug}` +

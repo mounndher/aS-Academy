@@ -1,9 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/Button";
 import { ImageReveal } from "@/components/ui/ImageReveal";
 import { Reveal } from "@/components/ui/Reveal";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 /* =========================================================
    TYPES
@@ -64,25 +67,6 @@ interface FormationCardProps {
   imageAspect?: string;
   delay?: number;
 }
-
-interface PaymentSettingsResponse {
-  success?: boolean;
-  data?: {
-    payment?: {
-      deposit_amount?: number | string | null;
-    };
-  };
-}
-
-/* =========================================================
-   API CONFIGURATION
-========================================================= */
-
-const API_URL = String(import.meta.env.VITE_API_URL ?? "")
-  .trim()
-  .replace(/\/+$/, "");
-
-const SETTINGS_URL = `${API_URL}/contenu/settings`;
 
 /* =========================================================
    META
@@ -227,78 +211,12 @@ export function FormationCard({
   imageAspect = "aspect-[4/3]",
   delay = 0,
 }: FormationCardProps) {
-  const [depositAmount, setDepositAmount] = useState<
-    number | string | null
-  >(null);
+  // Reuse the shared settings hook instead of fetching settings
+  // independently inside every card.
+  const { settings, loading: depositLoading } = useSiteSettings();
 
-  const [depositLoading, setDepositLoading] = useState(true);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetchPaymentSettings() {
-      if (!API_URL) {
-        setDepositLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(SETTINGS_URL, {
-          signal: controller.signal,
-          headers: {
-            Accept: "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `Erreur API : ${response.status}`,
-          );
-        }
-
-        const result: PaymentSettingsResponse =
-          await response.json();
-
-        if (result.success !== true) {
-          throw new Error(
-            "Impossible de récupérer les paramètres de paiement.",
-          );
-        }
-
-        const amount = result.data?.payment?.deposit_amount;
-
-        if (
-          amount !== null &&
-          amount !== undefined &&
-          amount !== "" &&
-          Number.isFinite(Number(amount)) &&
-          Number(amount) >= 0
-        ) {
-          setDepositAmount(amount);
-        } else {
-          setDepositAmount(null);
-        }
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name !== "AbortError"
-        ) {
-          console.error(
-            "Erreur lors du chargement de l'acompte :",
-            error,
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setDepositLoading(false);
-        }
-      }
-    }
-
-    void fetchPaymentSettings();
-
-    return () => controller.abort();
-  }, []);
+  const depositAmount =
+    settings?.payment?.deposit_amount ?? null;
 
   const programme = formation.programme;
   const duration = programme?.duration || "Durée à confirmer";
@@ -374,10 +292,7 @@ export function FormationCard({
         ) : null}
 
         <dl className="mt-7 grid grid-cols-2 border-t border-ink/10 sm:grid-cols-3">
-          <Meta
-            label="Durée"
-            value={duration}
-          />
+          <Meta label="Durée" value={duration} />
 
           <Meta
             label="Tarif"
