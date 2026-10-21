@@ -17,6 +17,8 @@ class SiteSetting extends Model
         'bic',
         'account_holder_address',
         'cancellation_policy',
+        'deposit_amount',
+    'payment_installment_options',
 
         'email',
         'phone',
