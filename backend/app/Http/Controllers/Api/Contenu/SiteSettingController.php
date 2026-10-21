@@ -4,14 +4,80 @@ namespace App\Http\Controllers\Api\Contenu;
 
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
+use Illuminate\Support\Facades\Cache;
 
 class SiteSettingController extends Controller
 {
     public function index()
     {
-        $settings = SiteSetting::where('is_active', true)->first();
+        $data = Cache::remember(
+            'site_settings_public',
+            now()->addMinutes(5),
+            function () {
+                $settings = SiteSetting::where('is_active', true)->first();
 
-        if (! $settings) {
+                if (! $settings) {
+                    return null;
+                }
+
+                return [
+                    'site_name' => $settings->site_name,
+                    'tagline' => $settings->tagline,
+
+                    'logo' => $settings->logo
+                        ? asset($settings->logo)
+                        : null,
+
+                    'favicon' => $settings->favicon
+                        ? asset($settings->favicon)
+                        : null,
+
+                    'payment' => [
+                        'deposit_amount' => (float) (
+                            $settings->deposit_amount ?? 150
+                        ),
+                        'installment_options' =>
+                            $settings->payment_installment_options ?? [1, 2],
+                    ],
+
+                    'contact' => [
+                        'email' => $settings->email,
+                        'phone' => $settings->phone,
+                        'address' => $settings->address,
+                        'city' => $settings->city,
+                        'postal_code' => $settings->postal_code,
+                        'iban' => $settings->iban,
+                        'bic' => $settings->bic,
+                        'account_holder_address' =>
+                            $settings->account_holder_address,
+                        'cancellation_policy' =>
+                            $settings->cancellation_policy,
+                    ],
+
+                    'social' => [
+                        'instagram' => $settings->instagram,
+                        'facebook' => $settings->facebook,
+                        'tiktok' => $settings->tiktok,
+                        'youtube' => $settings->youtube,
+                    ],
+
+                    'footer' => [
+                        'description' => $settings->footer_description,
+                        'copyright' => $settings->copyright,
+                    ],
+
+                    'seo' => [
+                        'meta_title' => $settings->meta_title,
+                        'meta_description' => $settings->meta_description,
+                        'meta_keywords' => $settings->meta_keywords,
+                    ],
+
+                    'is_active' => $settings->is_active,
+                ];
+            }
+        );
+
+        if ($data === null) {
             return response()->json([
                 'success' => false,
                 'data' => null,
@@ -21,57 +87,7 @@ class SiteSettingController extends Controller
 
         return response()->json([
             'success' => true,
-
-            'data' => [
-                'site_name' => $settings->site_name,
-                'tagline' => $settings->tagline,
-
-                'logo' => $settings->logo
-                    ? asset($settings->logo)
-                    : null,
-
-                'favicon' => $settings->favicon
-                    ? asset($settings->favicon)
-                    : null,
-
-                // Paramètres de paiement
-                'payment' => [
-                    'deposit_amount' => (float) ($settings->deposit_amount ?? 150),
-                    'installment_options' => $settings->payment_installment_options ?? [1, 2],
-                ],
-
-                'contact' => [
-                    'email' => $settings->email,
-                    'phone' => $settings->phone,
-                    'address' => $settings->address,
-                    'city' => $settings->city,
-                    'postal_code' => $settings->postal_code,
-                    'iban' => $settings->iban,
-                    'bic' => $settings->bic,
-                    'account_holder_address' => $settings->account_holder_address,
-                    'cancellation_policy' => $settings->cancellation_policy,
-                ],
-
-                'social' => [
-                    'instagram' => $settings->instagram,
-                    'facebook' => $settings->facebook,
-                    'tiktok' => $settings->tiktok,
-                    'youtube' => $settings->youtube,
-                ],
-
-                'footer' => [
-                    'description' => $settings->footer_description,
-                    'copyright' => $settings->copyright,
-                ],
-
-                'seo' => [
-                    'meta_title' => $settings->meta_title,
-                    'meta_description' => $settings->meta_description,
-                    'meta_keywords' => $settings->meta_keywords,
-                ],
-
-                'is_active' => $settings->is_active,
-            ],
+            'data' => $data,
         ]);
     }
 }
