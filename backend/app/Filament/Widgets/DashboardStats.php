@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Filament\Widgets;
@@ -15,163 +16,82 @@ class DashboardStats extends BaseWidget
 
     protected function getStats(): array
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $endOfMonth = Carbon::now()->endOfMonth();
+        $start = Carbon::now()->startOfMonth();
+        $end = Carbon::now()->endOfMonth();
 
-        /*
-        |--------------------------------------------------------------------------
-        | RESERVATIONS THIS MONTH
-        |--------------------------------------------------------------------------
-        */
+        $confirmedPaymentStatuses = ['paid', 'completed'];
 
+        // Réservations créées ce mois
         $reservationsThisMonth = Reservation::query()
-            ->whereBetween('created_at', [
-                $startOfMonth,
-                $endOfMonth,
-            ])
+            ->whereBetween('created_at', [$start, $end])
             ->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | REVENUE THIS MONTH
-        |--------------------------------------------------------------------------
-        */
-
-        $revenueThisMonth = (float) Reservation::query()
-            ->whereBetween('created_at', [
-                $startOfMonth,
-                $endOfMonth,
-            ])
-            ->sum('sold_price');
-
-        /*
-        |--------------------------------------------------------------------------
-        | PAYMENTS RECEIVED THIS MONTH
-        |--------------------------------------------------------------------------
-        */
-
+        // Paiements réellement confirmés ce mois
         $paymentsReceivedThisMonth = (float) Payment::query()
-            ->where('status', 'paid')
+            ->whereIn('status', $confirmedPaymentStatuses)
             ->whereNotNull('paid_at')
-            ->whereBetween('paid_at', [
-                $startOfMonth,
-                $endOfMonth,
-            ])
+            ->whereBetween('paid_at', [$start, $end])
             ->sum('amount');
 
-        /*
-        |--------------------------------------------------------------------------
-        | TOTAL CUSTOMERS
-        |--------------------------------------------------------------------------
-        */
+        // Total des paiements confirmés depuis le début
+        $totalReceived = (float) Payment::query()
+            ->whereIn('status', $confirmedPaymentStatuses)
+            ->sum('amount');
 
+        // Total vendu pour toutes les réservations
+        $totalSold = (float) Reservation::query()
+            ->sum('sold_price');
+
+        // Reste global à payer
+        $remainingAmount = max(0, $totalSold - $totalReceived);
+
+        // Clients
         $totalCustomers = Customer::query()->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | PENDING RESERVATIONS
-        |--------------------------------------------------------------------------
-        */
-
+        // Réservations en attente
         $pendingReservations = Reservation::query()
-            ->whereIn('status', [
-                'pending',
-                'pending_payment',
-            ])
+            ->whereIn('status', ['pending', 'pending_payment'])
             ->count();
 
         return [
-
-            /*
-            |--------------------------------------------------------------------------
-            | RESERVATIONS
-            |--------------------------------------------------------------------------
-            */
-
             Stat::make(
                 'Réservations ce mois',
-                number_format(
-                    $reservationsThisMonth,
-                    0,
-                    ',',
-                    ' '
-                )
+                number_format($reservationsThisMonth, 0, ',', ' ')
             )
-                ->description(
-                    $pendingReservations . ' en attente'
-                )
-                ->descriptionIcon(
-                    'heroicon-m-calendar-days'
-                )
+                ->description($pendingReservations . ' en attente')
+                ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('warning'),
 
-            /*
-            |--------------------------------------------------------------------------
-            | REVENUE
-            |--------------------------------------------------------------------------
-            */
-
             Stat::make(
-                'Chiffre d’affaires',
-                number_format(
-                    $revenueThisMonth,
-                    2,
-                    ',',
-                    ' '
-                ) . ' €'
+                'Argent reçu ce mois',
+                number_format($paymentsReceivedThisMonth, 2, ',', ' ') . ' €'
             )
-                ->description(
-                    'Prix vendu ce mois'
-                )
-                ->descriptionIcon(
-                    'heroicon-m-banknotes'
-                )
+                ->description('Paiements confirmés pendant ce mois')
+                ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
-            /*
-            |--------------------------------------------------------------------------
-            | PAYMENTS
-            |--------------------------------------------------------------------------
-            */
-
             Stat::make(
-                'Paiements reçus',
-                number_format(
-                    $paymentsReceivedThisMonth,
-                    2,
-                    ',',
-                    ' '
-                ) . ' €'
+                'Total encaissé',
+                number_format($totalReceived, 2, ',', ' ') . ' €'
             )
-                ->description(
-                    'Paiements confirmés ce mois'
-                )
-                ->descriptionIcon(
-                    'heroicon-m-credit-card'
-                )
+                ->description('Tous les paiements confirmés')
+                ->descriptionIcon('heroicon-m-credit-card')
                 ->color('primary'),
 
-            /*
-            |--------------------------------------------------------------------------
-            | CUSTOMERS
-            |--------------------------------------------------------------------------
-            */
+            Stat::make(
+                'Reste à payer',
+                number_format($remainingAmount, 2, ',', ' ') . ' €'
+            )
+                ->description('Solde global des réservations')
+                ->descriptionIcon('heroicon-m-clock')
+                ->color($remainingAmount > 0 ? 'warning' : 'success'),
 
             Stat::make(
                 'Clients',
-                number_format(
-                    $totalCustomers,
-                    0,
-                    ',',
-                    ' '
-                )
+                number_format($totalCustomers, 0, ',', ' ')
             )
-                ->description(
-                    'Clients enregistrés'
-                )
-                ->descriptionIcon(
-                    'heroicon-m-users'
-                )
+                ->description('Clients enregistrés')
+                ->descriptionIcon('heroicon-m-users')
                 ->color('gray'),
         ];
     }
