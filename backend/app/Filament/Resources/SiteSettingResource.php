@@ -233,6 +233,34 @@ class SiteSettingResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+                    
+Forms\Components\Section::make('Options de paiement')
+    ->description('Choisissez les nombres de paiements proposés aux clients.')
+    ->schema([
+        Forms\Components\CheckboxList::make('payment_installment_options')
+            ->label('Nombre de paiements autorisés')
+            ->options([
+                1 => '1 paiement',
+                2 => '2 paiements',
+                3 => '3 paiements',
+                4 => '4 paiements',
+                5 => '5 paiements',
+                6 => '6 paiements',
+                7 => '7 paiements',
+                8 => '8 paiements',
+                9 => '9 paiements',
+                10 => '10 paiements',
+                11 => '11 paiements',
+                12 => '12 paiements',
+            ])
+            ->columns(3)
+            ->required()
+            ->minItems(1)
+            ->helperText(
+                'Seuls les choix cochés apparaîtront dans le formulaire de réservation.'
+            ),
+    ]),
+
 
                 /*
                 |--------------------------------------------------------------------------
