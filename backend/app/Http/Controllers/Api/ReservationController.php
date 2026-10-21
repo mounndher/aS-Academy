@@ -854,104 +854,25 @@ class ReservationController extends Controller
 }
 
 
+
 public function store(Request $request)
 {
-    /*
-    |--------------------------------------------------------------------------
-    | 1. VALIDATION
-    |--------------------------------------------------------------------------
-    */
-
+    // 1. Validation
     $validated = $request->validate([
+        'formation_id' => ['required', 'integer', 'exists:formations,id'],
+        'formation_day_id' => ['required', 'integer', 'exists:formation_days,id'],
 
-        'formation_id' => [
-            'required',
-            'integer',
-            'exists:formations,id',
-        ],
+        'first_name' => ['required', 'string', 'max:100'],
+        'last_name' => ['required', 'string', 'max:100'],
+        'email' => ['required', 'email', 'max:255'],
+        'phone' => ['required', 'string', 'max:50'],
+        'address' => ['required', 'string', 'max:255'],
+        'postal_code' => ['required', 'string', 'max:20'],
+        'city' => ['required', 'string', 'max:100'],
+        'message' => ['nullable', 'string', 'max:2000'],
 
-        'formation_day_id' => [
-            'required',
-            'integer',
-            'exists:formation_days,id',
-        ],
-
-        'first_name' => [
-            'required',
-            'string',
-            'max:100',
-        ],
-
-        'last_name' => [
-            'required',
-            'string',
-            'max:100',
-        ],
-
-        'email' => [
-            'required',
-            'email',
-            'max:255',
-        ],
-
-        'phone' => [
-            'required',
-            'string',
-            'max:50',
-        ],
-
-        'address' => [
-            'required',
-            'string',
-            'max:255',
-        ],
-
-        'postal_code' => [
-            'required',
-            'string',
-            'max:20',
-        ],
-
-        'city' => [
-            'required',
-            'string',
-            'max:100',
-        ],
-
-        'message' => [
-            'nullable',
-            'string',
-            'max:2000',
-        ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | NORMAL / CPF
-        |--------------------------------------------------------------------------
-        */
-
-        'pricing_type' => [
-            'required',
-            'in:normal,cpf',
-        ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | 1 OR 2 PAYMENTS ONLY
-        |--------------------------------------------------------------------------
-        */
-
-        'payment_installments' => [
-            'required',
-            'integer',
-            'in:1,2',
-        ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | PAYMENT PROOF
-        |--------------------------------------------------------------------------
-        */
+        'pricing_type' => ['required', 'in:normal,cpf'],
+        'payment_installments' => ['required', 'integer', 'in:1,2'],
 
         'payment_proof' => [
             'nullable',
@@ -961,608 +882,321 @@ public function store(Request $request)
         ],
     ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | 2. TRANSACTION
-    |--------------------------------------------------------------------------
-    */
+    $paymentProof = null;
 
-    $reservation = DB::transaction(function () use ($validated, $request) {
-
-        /*
-        |--------------------------------------------------------------------------
-        | Formation
-        |--------------------------------------------------------------------------
-        */
-
-        $formation = Formation::findOrFail(
-            $validated['formation_id']
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Formation Day
-        |--------------------------------------------------------------------------
-        */
-
-        $formationDay = FormationDay::query()
-            ->where('id', $validated['formation_day_id'])
-            ->where('formation_id', $formation->id)
-            ->lockForUpdate()
-            ->first();
-
-        if (!$formationDay) {
-            abort(
-                422,
-                'La session sélectionnée ne correspond pas à cette formation.'
-            );
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Places
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            $formationDay->remaining_places === null ||
-            $formationDay->remaining_places <= 0
+    try {
+        $reservation = DB::transaction(function () use (
+            $validated,
+            $request,
+            &$paymentProof
         ) {
-            abort(
-                422,
-                'Cette session est complète.'
+            // 2. Formation
+            $formation = Formation::findOrFail(
+                $validated['formation_id']
             );
-        }
 
-        /*
-        |--------------------------------------------------------------------------
-        | BASE PRICE
-        |--------------------------------------------------------------------------
-        |
-        | normal => formation_days.price
-        | cpf    => formation_days.cpf_price
-        |
-        */
+            // 3. Lock selected session and verify availability
+            $formationDay = FormationDay::query()
+                ->where('id', $validated['formation_day_id'])
+                ->where('formation_id', $formation->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($validated['pricing_type'] === 'cpf') {
-
-            if (!$formationDay->cpf_eligible) {
+            if (!$formationDay) {
                 abort(
                     422,
-                    'Le tarif CPF n’est pas disponible pour cette session.'
+                    'La session sélectionnée ne correspond pas à cette formation.'
                 );
             }
 
             if (
-                $formationDay->cpf_price === null ||
-                $formationDay->cpf_price <= 0
+                $formationDay->remaining_places === null ||
+                $formationDay->remaining_places <= 0
             ) {
-                abort(
-                    422,
-                    'Le tarif CPF n’est pas configuré pour cette session.'
-                );
+                abort(422, 'Cette session est complète.');
             }
 
-            $basePrice = (float) $formationDay->cpf_price;
+            // 4. Determine authoritative price
+            if ($validated['pricing_type'] === 'cpf') {
+                if (
+                    !$formationDay->cpf_eligible ||
+                    $formationDay->cpf_price === null ||
+                    (float) $formationDay->cpf_price <= 0
+                ) {
+                    abort(
+                        422,
+                        'Le tarif CPF n’est pas disponible pour cette session.'
+                    );
+                }
 
-        } else {
+                $basePrice = (float) $formationDay->cpf_price;
+            } else {
+                if (
+                    $formationDay->price === null ||
+                    (float) $formationDay->price <= 0
+                ) {
+                    abort(
+                        422,
+                        'Le tarif de cette session n’est pas configuré.'
+                    );
+                }
 
-            if (
-                $formationDay->price === null ||
-                $formationDay->price <= 0
-            ) {
-                abort(
-                    422,
-                    'Le tarif de cette session n’est pas configuré.'
-                );
+                $basePrice = (float) $formationDay->price;
             }
 
-            $basePrice = (float) $formationDay->price;
-        }
+            $soldPrice = round($basePrice, 2);
 
-        /*
-        |--------------------------------------------------------------------------
-        | SOLD PRICE
-        |--------------------------------------------------------------------------
-        |
-        | At creation:
-        | sold_price = base price
-        |
-        | Later, admin can change sold_price
-        | without changing formation_days.price
-        |
-        */
+            // 5. Deposit and installment plan
+            // The chosen number is the number of payments AFTER the deposit.
+            $paymentInstallments = (int) $validated['payment_installments'];
 
-        $soldPrice = $basePrice;
+            $depositAmount = round(
+                (float) ($formation->deposit_amount ?? 0),
+                2
+            );
 
-        /*
-        |--------------------------------------------------------------------------
-        | PAYMENT INSTALLMENTS
-        |--------------------------------------------------------------------------
-        */
-
-        $paymentInstallments = (int) $validated['payment_installments'];
-
-        /*
-        |--------------------------------------------------------------------------
-        | DEPOSIT
-        |--------------------------------------------------------------------------
-        */
-
-        $depositAmount = (float) (
-            $formation->deposit_amount ?? 0
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | 1 PAYMENT = FULL PAYMENT
-        |--------------------------------------------------------------------------
-        */
-
-        if ($paymentInstallments === 1) {
-            $depositAmount = $soldPrice;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | 2 PAYMENTS = DEPOSIT + REMAINING
-        |--------------------------------------------------------------------------
-        */
-
-        if ($paymentInstallments === 2) {
-
-            /*
-            | If formation deposit is not configured,
-            | use 30% of sold price.
-            */
-
+            // Use 30% only if no deposit has been configured.
             if ($depositAmount <= 0) {
-                $depositAmount = round(
-                    $soldPrice * 0.30,
-                    2
-                );
+                $depositAmount = round($soldPrice * 0.30, 2);
             }
 
-            /*
-            | Deposit must be less than final price.
-            */
-
-            if ($depositAmount >= $soldPrice) {
+            if (
+                $soldPrice <= 0 ||
+                $depositAmount <= 0 ||
+                $depositAmount >= $soldPrice
+            ) {
                 abort(
                     422,
-                    'L’acompte doit être inférieur au prix final.'
-                );
-            }
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | CUSTOMER
-        |--------------------------------------------------------------------------
-        */
-
-        $customer = Customer::updateOrCreate(
-            [
-                'email' => $validated['email'],
-            ],
-            [
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'phone' => $validated['phone'],
-                'address' => $validated['address'],
-                'postal_code' => $validated['postal_code'],
-                'city' => $validated['city'],
-            ]
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | REFERENCE
-        |--------------------------------------------------------------------------
-        */
-
-        do {
-            $reference =
-                'RES-' .
-                strtoupper(
-                    Str::random(8)
-                );
-
-        } while (
-            Reservation::where(
-                'reference',
-                $reference
-            )->exists()
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | PAYMENT PROOF
-        |--------------------------------------------------------------------------
-        |
-        | Save directly inside:
-        | public/payments/proofs/
-        |
-        */
-
-        $paymentProof = null;
-
-        if ($request->hasFile('payment_proof')) {
-
-            $directory = public_path(
-                'payments/proofs'
-            );
-
-            if (!is_dir($directory)) {
-                mkdir(
-                    $directory,
-                    0755,
-                    true
+                    'Le prix ou le montant de l’acompte est invalide.'
                 );
             }
 
-            $file = $request->file(
-                'payment_proof'
+            // Never replace the deposit with the full price
+            // when the customer chooses one remaining payment.
+            $remainingAfterDeposit = round(
+                $soldPrice - $depositAmount,
+                2
             );
 
-            $filename =
-                (string) Str::uuid()
-                . '.'
-                . $file->getClientOriginalExtension();
-
-            $file->move(
-                $directory,
-                $filename
+            $standardInstallment = round(
+                $remainingAfterDeposit / $paymentInstallments,
+                2
             );
 
-            $paymentProof =
-                'payments/proofs/' .
-                $filename;
-        }
+            // 6. Create or update customer
+            $customer = Customer::updateOrCreate(
+                ['email' => $validated['email']],
+                [
+                    'first_name' => $validated['first_name'],
+                    'last_name' => $validated['last_name'],
+                    'phone' => $validated['phone'],
+                    'address' => $validated['address'],
+                    'postal_code' => $validated['postal_code'],
+                    'city' => $validated['city'],
+                ]
+            );
 
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE RESERVATION
-        |--------------------------------------------------------------------------
-        */
+            // 7. Unique reservation reference
+            do {
+                $reference = 'RES-' . strtoupper(Str::random(8));
+            } while (
+                Reservation::where('reference', $reference)->exists()
+            );
 
-        $reservation = Reservation::create([
-            'reference' =>
-                $reference,
+            // 8. Save proof, if provided
+            if ($request->hasFile('payment_proof')) {
+                $directory = public_path('payments/proofs');
 
-            'formation_id' =>
-                $formation->id,
+                if (
+                    !is_dir($directory) &&
+                    !mkdir($directory, 0755, true) &&
+                    !is_dir($directory)
+                ) {
+                    abort(500, 'Impossible de créer le dossier des justificatifs.');
+                }
 
-            'formation_day_id' =>
-                $formationDay->id,
+                $file = $request->file('payment_proof');
 
-            'customer_id' =>
-                $customer->id,
+                $filename = (string) Str::uuid()
+                    . '.'
+                    . strtolower($file->getClientOriginalExtension());
 
-            'pricing_type' =>
-                $validated['pricing_type'],
+                $file->move($directory, $filename);
 
-            'sold_price' =>
-                $soldPrice,
+                $paymentProof = 'payments/proofs/' . $filename;
+            }
 
-            'payment_installments' =>
-                $paymentInstallments,
+            // 9. Create reservation
+            $reservation = Reservation::create([
+                'reference' => $reference,
+                'formation_id' => $formation->id,
+                'formation_day_id' => $formationDay->id,
+                'customer_id' => $customer->id,
+                'pricing_type' => $validated['pricing_type'],
+                'sold_price' => $soldPrice,
+                'payment_installments' => $paymentInstallments,
+                'total_amount' => $soldPrice,
+                'deposit_amount' => $depositAmount,
+                'status' => 'pending',
+                'payment_proof' => $paymentProof,
+                'notes' => $validated['message'] ?? null,
+            ]);
 
-            'total_amount' =>
-                $soldPrice,
+            // 10. Create deposit payment.
+            // It remains pending until an administrator confirms receipt.
+            Payment::create([
+                'reservation_id' => $reservation->id,
+                'payment_type' => 'deposit',
+                'installment_number' => null,
+                'provider' => 'bank_transfer',
+                'transaction_id' => null,
+                'amount' => $depositAmount,
+                'currency' => 'EUR',
+                'status' => 'pending',
+                'payment_proof' => $paymentProof,
+                'paid_at' => null,
+            ]);
 
-            'deposit_amount' =>
-                $depositAmount,
+            // 11. Create the remaining payment(s).
+            // The final installment absorbs any rounding difference.
+            for ($i = 1; $i <= $paymentInstallments; $i++) {
+                $amount = $i === $paymentInstallments
+                    ? round(
+                        $remainingAfterDeposit -
+                        ($standardInstallment * ($paymentInstallments - 1)),
+                        2
+                    )
+                    : $standardInstallment;
 
-            'status' =>
-                'pending',
+                Payment::create([
+                    'reservation_id' => $reservation->id,
+                    'payment_type' => 'installment',
+                    'installment_number' => $i,
+                    'provider' => 'bank_transfer',
+                    'transaction_id' => null,
+                    'amount' => $amount,
+                    'currency' => 'EUR',
+                    'status' => 'pending',
+                    'payment_proof' => null,
+                    'paid_at' => null,
+                ]);
+            }
 
-            'notes' =>
-                $validated['message'] ?? null,
-        ]);
+            // 12. Reserve one place
+            $formationDay->decrement('remaining_places');
 
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE FIRST PAYMENT
-        |--------------------------------------------------------------------------
-        */
+            return $reservation;
+        });
+    } catch (\Throwable $e) {
+        // Do not silently swallow unexpected errors.
+        throw $e;
+    }
 
-        Payment::create([
-            'reservation_id' =>
-                $reservation->id,
-
-            'provider' =>
-                'bank_transfer',
-
-            'transaction_id' =>
-                null,
-
-            'amount' =>
-                $depositAmount,
-
-            'currency' =>
-                'EUR',
-
-            'status' =>
-                'pending',
-
-            'payment_proof' =>
-                $paymentProof,
-
-            'paid_at' =>
-                null,
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | DECREASE PLACE
-        |--------------------------------------------------------------------------
-        */
-
-        $formationDay->decrement(
-            'remaining_places'
-        );
-
-        return $reservation;
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | 3. LOAD RELATIONS
-    |--------------------------------------------------------------------------
-    */
-
+    // 13. Load reservation relations
     $reservation->load([
         'formation',
         'formation.programme',
         'formationDay',
         'customer',
-        'payment',
+        'payments',
     ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | 4. BASE PRICE FOR RESPONSE
-    |--------------------------------------------------------------------------
-    |
-    | Important:
-    | $basePrice inside DB::transaction() is not available here.
-    | Recalculate it from the saved reservation.
-    |
-    */
+    // 14. Send admin notification
+    $this->sendAdminNotification($reservation);
+
+    // 15. Bank details
+    $settings = SiteSetting::first();
 
     $basePrice = $reservation->pricing_type === 'cpf'
         ? (float) ($reservation->formationDay?->cpf_price ?? 0)
         : (float) ($reservation->formationDay?->price ?? 0);
 
-    /*
-    |--------------------------------------------------------------------------
-    | 5. ADMIN EMAIL
-    |--------------------------------------------------------------------------
-    */
-
-    $this->sendAdminNotification(
-        $reservation
-    );
-
-    /*
-    |--------------------------------------------------------------------------
-    | 6. BANK INFORMATION
-    |--------------------------------------------------------------------------
-    */
-
-    $settings = SiteSetting::first();
-
-    /*
-    |--------------------------------------------------------------------------
-    | 7. REMAINING AMOUNT
-    |--------------------------------------------------------------------------
-    */
-
-    $remainingAmount = max(
+    $remainingAfterDeposit = max(
         0,
-        (float) $reservation->sold_price
-        - (float) $reservation->deposit_amount
+        round(
+            (float) $reservation->total_amount
+            - (float) $reservation->deposit_amount,
+            2
+        )
     );
 
-    /*
-    |--------------------------------------------------------------------------
-    | 8. PAYMENT PROOF URL
-    |--------------------------------------------------------------------------
-    |
-    | File is directly inside public/
-    |
-    */
-
-    $paymentProofUrl = null;
-
-    if (
-        $reservation->payment?->payment_proof
-    ) {
-        $paymentProofUrl = asset(
-            $reservation
-                ->payment
-                ->payment_proof
-        );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | 9. RESPONSE
-    |--------------------------------------------------------------------------
-    */
+    // This is the planned balance after the deposit,
+    // not the balance calculated from confirmed payments.
+    $installmentAmount = round(
+        $remainingAfterDeposit / $reservation->payment_installments,
+        2
+    );
 
     return response()->json([
-
         'success' => true,
-
-        'message' =>
-            'Votre réservation a été envoyée avec succès.',
+        'message' => 'Votre réservation a été envoyée avec succès.',
 
         'reservation' => [
+            'id' => $reservation->id,
+            'reference' => $reservation->reference,
+            'status' => $reservation->status,
 
-            'id' =>
-                $reservation->id,
+            'pricing_type' => $reservation->pricing_type,
+            'base_price' => $basePrice,
+            'sold_price' => (float) $reservation->sold_price,
+            'total_amount' => (float) $reservation->total_amount,
 
-            'reference' =>
-                $reservation->reference,
+            'payment_installments' => (int) $reservation->payment_installments,
+            'deposit_amount' => (float) $reservation->deposit_amount,
 
-            'status' =>
-                $reservation->status,
+            'remaining_after_deposit' => $remainingAfterDeposit,
+            'installment_amount' => $installmentAmount,
 
-            /*
-            |--------------------------------------------------------------------------
-            | PRICING
-            |--------------------------------------------------------------------------
-            */
+            // Pending payments are not counted as money received.
+            'paid_amount' => $reservation->paid_amount,
+            'outstanding_balance' => $reservation->remaining_amount,
 
-            'pricing_type' =>
-                $reservation->pricing_type,
-
-            'base_price' =>
-                $basePrice,
-
-            'sold_price' =>
-                $reservation->sold_price,
-
-            'payment_installments' =>
-                $reservation->payment_installments,
-
-            'deposit_amount' =>
-                $reservation->deposit_amount,
-
-            'remaining_amount' =>
-                $remainingAmount,
-
-            /*
-            |--------------------------------------------------------------------------
-            | FORMATION
-            |--------------------------------------------------------------------------
-            */
+            'payments' => $reservation->payments->map(fn (Payment $payment) => [
+                'id' => $payment->id,
+                'payment_type' => $payment->payment_type,
+                'installment_number' => $payment->installment_number,
+                'amount' => (float) $payment->amount,
+                'currency' => $payment->currency,
+                'status' => $payment->status,
+                'due_date' => $payment->due_date?->format('Y-m-d'),
+            ])->values(),
 
             'formation' => [
-
-                'id' =>
-                    $reservation
-                        ->formation
-                        ->id,
-
-                'title' =>
-                    $reservation
-                        ->formation
-                        ->title,
-
-                'programme' =>
-                    $reservation
-                        ->formation
-                        ->programme
-                        ?->name,
+                'id' => $reservation->formation->id,
+                'title' => $reservation->formation->title,
+                'programme' => $reservation->formation->programme?->name,
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | SESSION
-            |--------------------------------------------------------------------------
-            */
 
             'session' => [
-
-                'id' =>
-                    $reservation
-                        ->formationDay
-                        ->id,
-
-                'city' =>
-                    $reservation
-                        ->formationDay
-                        ->city,
-
-                'start_date' =>
-                    $reservation
-                        ->formationDay
-                        ->start_date,
-
-                'end_date' =>
-                    $reservation
-                        ->formationDay
-                        ->end_date,
-
-                'normal_price' =>
-                    $reservation
-                        ->formationDay
-                        ->price,
-
-                'cpf_price' =>
-                    $reservation
-                        ->formationDay
-                        ->cpf_price,
+                'id' => $reservation->formationDay->id,
+                'city' => $reservation->formationDay->city,
+                'start_date' => $reservation->formationDay->start_date,
+                'end_date' => $reservation->formationDay->end_date,
+                'normal_price' => $reservation->formationDay->price,
+                'cpf_price' => $reservation->formationDay->cpf_price,
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | CUSTOMER
-            |--------------------------------------------------------------------------
-            */
 
             'customer' => [
-
-                'first_name' =>
-                    $reservation
-                        ->customer
-                        ->first_name,
-
-                'last_name' =>
-                    $reservation
-                        ->customer
-                        ->last_name,
-
-                'email' =>
-                    $reservation
-                        ->customer
-                        ->email,
-
-                'phone' =>
-                    $reservation
-                        ->customer
-                        ->phone,
+                'first_name' => $reservation->customer->first_name,
+                'last_name' => $reservation->customer->last_name,
+                'email' => $reservation->customer->email,
+                'phone' => $reservation->customer->phone,
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | PAYMENT PROOF
-            |--------------------------------------------------------------------------
-            */
-
-            'payment_proof' =>
-                $reservation
-                    ->payment
-                    ?->payment_proof,
-
-            'payment_proof_url' =>
-                $paymentProofUrl,
+            'payment_proof' => $paymentProof,
+            'payment_proof_url' => $paymentProof
+                ? asset($paymentProof)
+                : null,
         ],
-
-        /*
-        |--------------------------------------------------------------------------
-        | BANK INFORMATION
-        |--------------------------------------------------------------------------
-        */
 
         'bank_information' => [
-
-            'iban' =>
-                $settings?->iban,
-
-            'bic' =>
-                $settings?->bic,
-
-            'account_holder_address' =>
-                $settings
-                    ?->account_holder_address,
+            'iban' => $settings?->iban,
+            'bic' => $settings?->bic,
+            'account_holder_address' => $settings?->account_holder_address,
         ],
-
     ], 201);
 }
+
 
 public function store1(Request $request)
 {

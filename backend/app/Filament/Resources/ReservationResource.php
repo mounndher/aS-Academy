@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Filament\Resources;
@@ -29,84 +30,115 @@ class ReservationResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('reference')
-                    ->label('Référence')
-                    ->required()
-                    ->unique(ignoreRecord: true)
-                    ->maxLength(255),
+        return $form->schema([
+            Forms\Components\TextInput::make('reference')
+                ->label('Référence')
+                ->required()
+                ->unique(ignoreRecord: true)
+                ->maxLength(255),
 
-                Forms\Components\Select::make('customer_id')
-                    ->label('Client')
-                    ->relationship('customer', 'email')
-                    ->searchable()
-                    ->preload()
-                    ->required(),
+            Forms\Components\Select::make('customer_id')
+                ->label('Client')
+                ->relationship('customer', 'email')
+                ->searchable()
+                ->preload()
+                ->required(),
 
-                Forms\Components\Select::make('formation_id')
-                    ->label('Formation')
-                    ->relationship('formation', 'title')
-                    ->searchable()
-                    ->preload()
-                    ->required(),
+            Forms\Components\Select::make('formation_id')
+                ->label('Formation')
+                ->relationship('formation', 'title')
+                ->searchable()
+                ->preload()
+                ->required(),
 
-                Forms\Components\Select::make('formation_day_id')
-                    ->label('Session de formation')
-                    ->options(fn (): array => FormationDay::query()
-                        ->orderBy('start_date')
-                        ->get()
-                        ->mapWithKeys(function (FormationDay $day): array {
-                            $label = $day->city . ' — ' . $day->start_date;
+            Forms\Components\Select::make('formation_day_id')
+                ->label('Session de formation')
+                ->options(fn (): array => FormationDay::query()
+                    ->orderBy('start_date')
+                    ->get()
+                    ->mapWithKeys(function (FormationDay $day): array {
+                        $label = $day->city . ' — ' . $day->start_date;
 
-                            if ($day->end_date) {
-                                $label .= ' → ' . $day->end_date;
-                            }
+                        if ($day->end_date) {
+                            $label .= ' → ' . $day->end_date;
+                        }
 
-                            return [$day->id => $label];
-                        })
-                        ->toArray()
-                    )
-                    ->searchable()
-                    ->preload()
-                    ->required(),
+                        return [$day->id => $label];
+                    })
+                    ->toArray())
+                ->searchable()
+                ->preload()
+                ->required(),
 
-                Forms\Components\TextInput::make('total_amount')
-                    ->label('Montant total (€)')
-                    ->numeric()
-                    ->prefix('€')
-                    ->required()
-                    ->minValue(0),
+            Forms\Components\TextInput::make('sold_price')
+                ->label('Prix vendu (€)')
+                ->numeric()
+                ->prefix('€')
+                ->minValue(0),
 
-                Forms\Components\TextInput::make('deposit_amount')
-                    ->label('Acompte (€)')
-                    ->numeric()
-                    ->prefix('€')
-                    ->required()
-                    ->minValue(0),
+            Forms\Components\TextInput::make('total_amount')
+                ->label('Montant total (€)')
+                ->numeric()
+                ->prefix('€')
+                ->required()
+                ->minValue(0),
 
-                Forms\Components\Select::make('status')
-                    ->label('Statut')
-                    ->options([
-                        'pending' => 'En attente',
-                        'pending_payment' => 'Paiement en attente',
-                        'confirmed' => 'Confirmée',
-                        'cancelled' => 'Annulée',
-                        'completed' => 'Terminée',
-                    ])
-                    ->required()
-                    ->default('pending'),
+            Forms\Components\TextInput::make('deposit_amount')
+                ->label('Acompte prévu (€)')
+                ->numeric()
+                ->prefix('€')
+                ->required()
+                ->minValue(0),
 
-                Forms\Components\Textarea::make('notes')
-                    ->label('Notes')
-                    ->columnSpanFull(),
-            ])
-            ->columns(2);
+            Forms\Components\Select::make('payment_installments')
+                ->label('Nombre de paiements après acompte')
+                ->options([
+                    1 => '1 paiement',
+                    2 => '2 paiements',
+                ])
+                ->required()
+                ->default(1),
+
+            Forms\Components\Placeholder::make('remaining_preview')
+                ->label('Solde indicatif après acompte')
+                ->content(function (Forms\Get $get): string {
+                    $total = (float) (
+                        $get('sold_price') !== null
+                            && $get('sold_price') !== ''
+                            ? $get('sold_price')
+                            : ($get('total_amount') ?? 0)
+                    );
+
+                    $deposit = (float) ($get('deposit_amount') ?? 0);
+                    $remaining = max(0, round($total - $deposit, 2));
+
+                    return number_format($remaining, 2, ',', ' ') . ' €';
+                }),
+
+            Forms\Components\Select::make('status')
+                ->label('Statut de réservation')
+                ->options([
+                    'pending' => 'En attente',
+                    'pending_payment' => 'Paiement en attente',
+                    'confirmed' => 'Confirmée',
+                    'cancelled' => 'Annulée',
+                    'completed' => 'Terminée',
+                ])
+                ->required()
+                ->default('pending'),
+
+            Forms\Components\Textarea::make('notes')
+                ->label('Notes')
+                ->columnSpanFull(),
+        ])->columns(2);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query
+                ->with(['customer', 'formation', 'formationDay'])
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('reference')
                     ->label('Référence')
@@ -119,6 +151,10 @@ class ReservationResource extends Resource
 
                 Tables\Columns\TextColumn::make('customer.last_name')
                     ->label('Nom')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('customer.email')
+                    ->label('E-mail')
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('formation.title')
@@ -141,34 +177,61 @@ class ReservationResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('total_amount')
+                    ->label('Montant total')
+                    ->money('EUR')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('deposit_amount')
-                    ->label('Acompte')
+                    ->label('Acompte prévu')
                     ->money('EUR'),
+
+                Tables\Columns\TextColumn::make('payment_installments')
+                    ->label('Paiements restants prévus')
+                    ->formatStateUsing(fn ($state): string =>
+                        (int) $state === 2
+                            ? '2 paiements'
+                            : '1 paiement'
+                    ),
+
+                Tables\Columns\TextColumn::make('paid_amount')
+                    ->label('Payé confirmé')
+                    ->money('EUR')
+                    ->color('success'),
+
+                Tables\Columns\TextColumn::make('remaining_amount')
+                    ->label('Reste à payer')
+                    ->money('EUR')
+                    ->color(fn ($state): string =>
+                        (float) $state > 0 ? 'danger' : 'success'
+                    ),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Statut')
                     ->badge()
-                    ->formatStateUsing(
-                        fn (string $state): string => match ($state) {
-                            'pending' => 'En attente',
-                            'pending_payment' => 'Paiement en attente',
-                            'confirmed' => 'Confirmée',
-                            'cancelled' => 'Annulée',
-                            'completed' => 'Terminée',
-                            default => $state,
-                        }
-                    ),
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'En attente',
+                        'pending_payment' => 'Paiement en attente',
+                        'confirmed' => 'Confirmée',
+                        'cancelled' => 'Annulée',
+                        'completed' => 'Terminée',
+                        default => $state,
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'confirmed', 'completed' => 'success',
+                        'pending', 'pending_payment' => 'warning',
+                        'cancelled' => 'danger',
+                        default => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Créée le')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
-
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Statut')
-                    ->placeholder('Tous les statuts')
                     ->options([
                         'pending' => 'En attente',
                         'pending_payment' => 'Paiement en attente',
@@ -177,9 +240,15 @@ class ReservationResource extends Resource
                         'completed' => 'Terminée',
                     ]),
 
+                Tables\Filters\SelectFilter::make('payment_installments')
+                    ->label('Nombre de paiements')
+                    ->options([
+                        1 => '1 paiement',
+                        2 => '2 paiements',
+                    ]),
+
                 Tables\Filters\SelectFilter::make('formation_day_id')
                     ->label('Session de formation')
-                    ->placeholder('Toutes les sessions')
                     ->options(fn (): array => FormationDay::query()
                         ->orderBy('start_date')
                         ->get()
@@ -192,11 +261,9 @@ class ReservationResource extends Resource
 
                             return [$day->id => $label];
                         })
-                        ->toArray()
-                    )
+                        ->toArray())
                     ->searchable(),
             ])
-
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Voir'),
@@ -207,7 +274,6 @@ class ReservationResource extends Resource
                 Tables\Actions\DeleteAction::make()
                     ->label('Supprimer'),
             ])
-
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()

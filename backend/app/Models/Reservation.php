@@ -69,24 +69,38 @@ class Reservation extends Model
     /**
      * Total of confirmed payments.
      */
-    public function getPaidAmountAttribute(): float
-    {
-        return (float) $this->payments()
-            ->where('status', 'completed')
-            ->sum('amount');
-    }
-
     /**
-     * Outstanding balance.
-     */
-    public function getRemainingAmountAttribute(): float
-    {
-        return max(
-            0,
-            round(
-                (float) $this->total_amount - $this->paid_amount,
-                2
-            )
-        );
-    }
+ * السعر النهائي المعتمد للحجز.
+ */
+public function getFinalAmountAttribute(): float
+{
+    return round(
+        (float) ($this->sold_price ?? $this->total_amount ?? 0),
+        2
+    );
+}
+
+/**
+ * مجموع الدفعات المؤكدة فقط.
+ */
+public function getPaidAmountAttribute(): float
+{
+    return round(
+        (float) $this->payments()
+            ->where('status', 'completed')
+            ->sum('amount'),
+        2
+    );
+}
+
+/**
+ * المبلغ المتبقي على العميل.
+ */
+public function getRemainingAmountAttribute(): float
+{
+    return max(
+        0,
+        round($this->final_amount - $this->paid_amount, 2)
+    );
+}
 }
