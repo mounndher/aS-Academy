@@ -330,6 +330,21 @@ class FormationDayResource extends Resource
             ])
 
             ->defaultSort('start_date', 'asc')
+            /* filters
+            */
+            
+->filters([
+    Tables\Filters\SelectFilter::make('status')
+        ->label('Filtrer par statut')
+        ->options([
+            'available' => 'Disponible',
+            'full' => 'Complet',
+            'finished' => 'Terminée',
+            'cancelled' => 'Annulée',
+        ])
+        ->placeholder('Tous les statuts'),
+])
+
 
             /*
             |--------------------------------------------------------------------------
