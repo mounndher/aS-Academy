@@ -1,7 +1,12 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { eur } from "@/data/formations";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 interface FormationDay {
   id: number;
@@ -20,32 +25,80 @@ interface Formation {
   id: number;
   title: string;
   slug: string;
-  deposit_amount: string | null;
 }
 
-function formatDate(date: string) {
+interface PaymentSettingsResponse {
+  success?: boolean;
+  data?: {
+    payment?: {
+      deposit_amount?: number | string | null;
+    };
+  };
+}
+
+/* =========================================================
+   API CONFIGURATION
+========================================================= */
+
+const API_URL = String(import.meta.env.VITE_API_URL ?? "")
+  .trim()
+  .replace(/\/+$/, "");
+
+const SETTINGS_URL = `${API_URL}/contenu/settings`;
+
+/* =========================================================
+   DATE HELPERS
+========================================================= */
+
+function parseLocalDate(value: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+
+  if (match) {
+    return new Date(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+    );
+  }
+
+  return new Date(value);
+}
+
+function formatDate(date: string): string {
+  const parsedDate = parseLocalDate(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Date à confirmer";
+  }
+
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(date));
+  }).format(parsedDate);
 }
 
-function formatDateRange(start: string, end: string) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+function formatDateRange(start: string, end: string): string {
+  const startDate = parseLocalDate(start);
+  const endDate = parseLocalDate(end);
 
-  const sameDay =
-    startDate.toISOString().slice(0, 10) ===
-    endDate.toISOString().slice(0, 10);
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime())
+  ) {
+    return "Dates à confirmer";
+  }
 
-  if (sameDay) {
+  if (startDate.getTime() === endDate.getTime()) {
     return formatDate(start);
   }
 
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
+
+/* =========================================================
+   PRICE
+========================================================= */
 
 function Price({
   label,
@@ -59,12 +112,17 @@ function Price({
       <dt className="label text-[10px] leading-snug text-ink/45">
         {label}
       </dt>
+
       <dd className="font-serif text-2xl leading-none sm:mt-3">
         {value}
       </dd>
     </div>
   );
 }
+
+/* =========================================================
+   SESSION CARD
+========================================================= */
 
 export function SessionCard({
   formation,
@@ -75,22 +133,94 @@ export function SessionCard({
   day: FormationDay;
   index: number;
 }) {
+  const [depositAmount, setDepositAmount] = useState<
+    number | string | null
+  >(null);
+
+  const [depositLoading, setDepositLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchPaymentSettings() {
+      if (!API_URL) {
+        console.error("VITE_API_URL n'est pas configurée.");
+        setDepositLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(SETTINGS_URL, {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erreur API : ${response.status}`);
+        }
+
+        const result: PaymentSettingsResponse =
+          await response.json();
+
+        if (result.success !== true) {
+          throw new Error(
+            "Impossible de récupérer les paramètres de paiement.",
+          );
+        }
+
+        const amount = result.data?.payment?.deposit_amount;
+
+        if (
+          amount !== null &&
+          amount !== undefined &&
+          amount !== "" &&
+          Number.isFinite(Number(amount)) &&
+          Number(amount) >= 0
+        ) {
+          setDepositAmount(amount);
+        } else {
+          setDepositAmount(null);
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name !== "AbortError"
+        ) {
+          console.error(
+            "Erreur lors du chargement de l'acompte :",
+            error,
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setDepositLoading(false);
+        }
+      }
+    }
+
+    void fetchPaymentSettings();
+
+    return () => controller.abort();
+  }, []);
+
   const to =
     `/formations/${formation.slug}` +
     `?city=${encodeURIComponent(day.city)}` +
-    `&day=${day.id}`;
+    `&day=${encodeURIComponent(String(day.id))}`;
 
   const status = (day.status ?? "").toLowerCase();
 
   const isFull =
-    day.remaining_places <= 0 ||
+    Number(day.remaining_places) <= 0 ||
     status === "full" ||
     status === "complet";
 
   const canReserve =
     !isFull &&
     status === "available" &&
-    day.remaining_places > 0;
+    Number(day.remaining_places) > 0;
 
   return (
     <Reveal delay={index * 0.08} y={24}>
@@ -137,12 +267,16 @@ export function SessionCard({
             />
           )}
 
-          {formation.deposit_amount !== null && (
-            <Price
-              label="Acompte"
-              value={eur(Number(formation.deposit_amount))}
-            />
-          )}
+          <Price
+            label="Acompte"
+            value={
+              depositLoading
+                ? "Chargement..."
+                : depositAmount !== null
+                  ? eur(Number(depositAmount))
+                  : "Indisponible"
+            }
+          />
         </dl>
 
         <div className="lg:col-span-2 lg:text-right">
