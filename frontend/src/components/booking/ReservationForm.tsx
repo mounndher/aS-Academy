@@ -1,601 +1,171 @@
+
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-
-
 import type { Formation } from "@/types/formation";
 
-
-
-/* =========================================================
-
-   TYPES
-
-\========================================================= */
-
-
-
-type FormationDay =
-
-  Formation["formationDays"][number];
-
-
+type FormationDay = Formation["formationDays"][number];
+type PricingType = "normal" | "cpf";
 
 interface ReservationFormProps {
-
   formation: Formation;
-
   formationDay: FormationDay;
-
 }
 
+interface PaymentSettings {
+  deposit_amount: number;
+  installment_options: number[];
+}
 
+interface BankSettings {
+  iban?: string | null;
+  bic?: string | null;
+  account_holder_address?: string | null;
+  address?: string | null;
+  city?: string | null;
+  cancellation_policy?: string | null;
+}
 
-/* =========================================================
+interface SettingsResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    payment?: {
+      deposit_amount?: number | string;
+      installment_options?: number[];
+    };
+    contact?: BankSettings;
+  };
+}
 
-   SAFE DATE
-
-\========================================================= */
-
-
-
-function parseDate(
-
-  value: unknown
-
-): Date | null {
-
-  if (
-
-    value === null ||
-
-    value === undefined
-
-  ) {
-
+function parseDate(value: unknown): Date | null {
+  if (value === null || value === undefined || value === "") {
     return null;
-
   }
-
-
 
   if (value instanceof Date) {
-
-    return Number.isNaN(
-
-      value.getTime()
-
-    )
-
-      ? null
-
-      : value;
-
+    return Number.isNaN(value.getTime()) ? null : value;
   }
 
-
-
-  const raw =
-
-    String(value).trim();
-
-
-
-  if (!raw) {
-
-    return null;
-
-  }
-
-
-
-  /*
-
-   * YYYY-MM-DD
-
-   */
-
-
-
-  const match =
-
-    raw.match(
-
-      /^(\d{4})-(\d{2})-(\d{2})/
-
-    );
-
-
+  const raw = String(value).trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
 
   if (match) {
-
-    const year =
-
-      Number(match[1]);
-
-
-
-    const month =
-
-      Number(match[2]);
-
-
-
-    const day =
-
-      Number(match[3]);
-
-
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
 
     if (
-
-      !Number.isInteger(year) ||
-
-      !Number.isInteger(month) ||
-
-      !Number.isInteger(day) ||
-
-      month < 1 ||
-
-      month > 12 ||
-
-      day < 1 ||
-
-      day > 31
-
-    ) {
-
-      return null;
-
-    }
-
-
-
-    const date = new Date(
-
-      year,
-
-      month - 1,
-
-      day
-
-    );
-
-
-
-    if (
-
-      date.getFullYear() !==
-
-        year ||
-
-      date.getMonth() !==
-
-        month - 1 ||
-
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
       date.getDate() !== day
-
     ) {
-
       return null;
-
     }
-
-
 
     return date;
-
   }
 
-
-
-  const parsed =
-
-    new Date(raw);
-
-
-
-  if (
-
-    Number.isNaN(
-
-      parsed.getTime()
-
-    )
-
-  ) {
-
-    return null;
-
-  }
-
-
-
-  return parsed;
-
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function formatDateRange(start: unknown, end: unknown): string {
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
 
+  if (!startDate && !endDate) return "Dates à confirmer";
 
-/* =========================================================
+  const formatter = new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
-   SAFE DATE RANGE
+  if (startDate && !endDate) return formatter.format(startDate);
+  if (!startDate || !endDate) return "Dates à confirmer";
 
-\========================================================= */
-
-
-
-function formatDateRange(
-
-  start: unknown,
-
-  end: unknown
-
-): string {
-
-  const startDate =
-
-    parseDate(start);
-
-
-
-  const endDate =
-
-    parseDate(end);
-
-
-
-  if (
-
-    !startDate &&
-
-    !endDate
-
-  ) {
-
-    return "Dates à confirmer";
-
+  if (startDate.getTime() === endDate.getTime()) {
+    return formatter.format(startDate);
   }
 
+  const sameMonth =
+    startDate.getMonth() === endDate.getMonth() &&
+    startDate.getFullYear() === endDate.getFullYear();
 
+  if (sameMonth) {
+    const monthYear = new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+      year: "numeric",
+    }).format(endDate);
 
-  if (
-
-    startDate &&
-
-    !endDate
-
-  ) {
-
-    return new Intl.DateTimeFormat(
-
-      "fr-FR",
-
-      {
-
-        day: "numeric",
-
-        month: "long",
-
-      }
-
-    ).format(startDate);
-
+    return `${startDate.getDate()} — ${endDate.getDate()} ${monthYear}`;
   }
 
-
-
-  if (
-
-    !startDate ||
-
-    !endDate
-
-  ) {
-
-    return "Dates à confirmer";
-
-  }
-
-
-
-  const startDay =
-
-    startDate.getDate();
-
-
-
-  const endDay =
-
-    endDate.getDate();
-
-
-
-  const startMonth =
-
-    new Intl.DateTimeFormat(
-
-      "fr-FR",
-
-      {
-
-        month: "long",
-
-      }
-
-    ).format(startDate);
-
-
-
-  const endMonth =
-
-    new Intl.DateTimeFormat(
-
-      "fr-FR",
-
-      {
-
-        month: "long",
-
-      }
-
-    ).format(endDate);
-
-
-
-  const startYear =
-
-    startDate.getFullYear();
-
-
-
-  const endYear =
-
-    endDate.getFullYear();
-
-
-
-  if (
-
-    startMonth ===
-
-      endMonth &&
-
-    startYear === endYear
-
-  ) {
-
-    return `${startDay} — ${endDay} ${endMonth}`;
-
-  }
-
-
-
-  if (
-
-    startYear === endYear
-
-  ) {
-
-    return `${startDay} ${startMonth} — ${endDay} ${endMonth}`;
-
-  }
-
-
-
-  return `${startDay} ${startMonth} ${startYear} — ${endDay} ${endMonth} ${endYear}`;
-
+  return `${formatter.format(startDate)} — ${formatter.format(endDate)}`;
 }
 
-
-
-/* =========================================================
-
-   PRICE
-
-\========================================================= */
-
-
-
-function formatPrice(
-
-  price:
-
-    | number
-
-    | string
-
-    | null
-
-    | undefined
-
-): string {
-
-  if (
-
-    price === null ||
-
-    price === undefined ||
-
-    price === ""
-
-  ) {
-
+function formatPrice(price: number | string | null | undefined): string {
+  if (price === null || price === undefined || price === "") {
     return "À venir";
-
   }
 
+  const amount = Number(price);
 
+  if (!Number.isFinite(amount)) return "À venir";
 
-  const number =
-
-    Number(price);
-
-
-
-  if (
-
-    Number.isNaN(number)
-
-  ) {
-
-    return `${String(price)} €`;
-
-  }
-
-
-
-  return `${number.toLocaleString(
-
-    "fr-FR"
-
-  )} €`;
-
+  return `${amount.toLocaleString("fr-FR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })} €`;
 }
 
+function normalizeInstallmentOptions(value: unknown): number[] {
+  if (!Array.isArray(value)) return [1, 2];
 
+  const options = [...new Set(
+    value
+      .map(Number)
+      .filter(
+        (item) => Number.isInteger(item) && item >= 1 && item <= 12
+      )
+  )].sort((a, b) => a - b);
 
-/* =========================================================
-
-   COMPONENT
-
-\========================================================= */
-
-
+  return options.length ? options : [1, 2];
+}
 
 export function ReservationForm({
-
   formation,
-
   formationDay,
-
 }: ReservationFormProps) {
-
-
-
-  /* =======================================================
-
-     FORM STATE
-
-  ======================================================= */
-
-
-
   const navigate = useNavigate();
 
-
-
-  const [
-
-    loading,
-
-    setLoading,
-
-  ] = useState(false);
-
-
-
-  const [
-
-    firstName,
-
-    setFirstName,
-
-  ] = useState("");
-
-
-
-  const [
-
-    lastName,
-
-    setLastName,
-
-  ] = useState("");
-
-
-
-  const [
-
-    email,
-
-    setEmail,
-
-  ] = useState("");
-
-
-
-  const [
-
-    phone,
-
-    setPhone,
-
-  ] = useState("");
-
-
-
-  const [
-
-    address,
-
-    setAddress,
-
-  ] = useState("");
-
-
-
-  const [
-
-    postalCode,
-
-    setPostalCode,
-
-  ] = useState("");
-
-
-
-  const [
-
-    customerCity,
-
-    setCustomerCity,
-
-  ] = useState("");
-
-
-
-  const [
-
-    message,
-
-    setMessage,
-
-  ] = useState("");
-
-
-
-  /* =======================================================
-     FORM SUBMIT — Laravel API
-  ======================================================= */
-
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pricingType, setPricingType] = useState<"normal" | "cpf">("normal");
-  const [paymentInstallments, setPaymentInstallments] = useState<1 | 2>(1);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [customerCity, setCustomerCity] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [pricingType, setPricingType] = useState<PricingType>("normal");
+  const [paymentInstallments, setPaymentInstallments] = useState(1);
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState("");
+
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsError, setSettingsError] = useState("");
-  const [bankSettings, setBankSettings] = useState<{
-    iban?: string | null;
-    bic?: string | null;
-    account_holder_address?: string | null;
-    address?: string | null;
-    city?: string | null;
-    cancellation_policy?: string | null;
-  } | null>(null);
+  const [paymentSettings, setPaymentSettings] =
+    useState<PaymentSettings | null>(null);
+  const [bankSettings, setBankSettings] = useState<BankSettings | null>(null);
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, "");
+  const apiBaseUrl = import.meta.env.VITE_API_URL
+    ?.trim()
+    .replace(/\/+$/, "");
 
   useEffect(() => {
     let cancelled = false;
@@ -611,16 +181,41 @@ export function ReservationForm({
         const response = await fetch(`${apiBaseUrl}/contenu/settings`, {
           headers: { Accept: "application/json" },
         });
-        const result = await response.json();
-        if (!response.ok || result?.success === false) {
-          throw new Error(result?.message || `Erreur HTTP ${response.status}`);
+
+        const result: SettingsResponse = await response.json();
+
+        if (!response.ok || result.success === false) {
+          throw new Error(
+            result.message || `Erreur HTTP ${response.status}`
+          );
         }
+
+        const rawDeposit = Number(result.data?.payment?.deposit_amount);
+        const deposit = Number.isFinite(rawDeposit) && rawDeposit >= 0
+          ? rawDeposit
+          : 150;
+
+        const options = normalizeInstallmentOptions(
+          result.data?.payment?.installment_options
+        );
+
         if (!cancelled) {
-          setBankSettings(result?.data?.contact ?? null);
+          setPaymentSettings({
+            deposit_amount: deposit,
+            installment_options: options,
+          });
+          setPaymentInstallments((current) =>
+            options.includes(current) ? current : options[0]
+          );
+          setBankSettings(result.data?.contact ?? null);
         }
       } catch (err) {
         if (!cancelled) {
-          setSettingsError(err instanceof Error ? err.message : "Impossible de charger les coordonnées bancaires.");
+          setSettingsError(
+            err instanceof Error
+              ? err.message
+              : "Impossible de charger les paramètres du site."
+          );
         }
       } finally {
         if (!cancelled) setSettingsLoading(false);
@@ -628,7 +223,10 @@ export function ReservationForm({
     }
 
     void loadSettings();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [apiBaseUrl]);
 
   useEffect(() => {
@@ -636,26 +234,44 @@ export function ReservationForm({
       setPaymentProofPreview("");
       return;
     }
+
     const previewUrl = URL.createObjectURL(paymentProof);
     setPaymentProofPreview(previewUrl);
+
     return () => URL.revokeObjectURL(previewUrl);
   }, [paymentProof]);
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setError("");
 
     if (!apiBaseUrl) {
-      setError("L’URL de l’API est manquante. Vérifiez VITE_API_URL dans le fichier .env.");
-      setLoading(false);
+      setError("Vérifiez VITE_API_URL dans le fichier .env.");
       return;
     }
 
+    if (settingsLoading || !paymentSettings) {
+      setError("Les paramètres de paiement ne sont pas encore disponibles.");
+      return;
+    }
+
+    if (
+      !paymentSettings.installment_options.includes(paymentInstallments)
+    ) {
+      setError("Le nombre de paiements sélectionné n’est pas autorisé.");
+      return;
+    }
+
+    if (!paymentProof) {
+      setError("Veuillez ajouter votre justificatif de paiement.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const formData = new FormData();
+
       formData.append("formation_id", String(formation.id));
       formData.append("formation_day_id", String(formationDay.id));
       formData.append("first_name", firstName.trim());
@@ -665,10 +281,17 @@ export function ReservationForm({
       formData.append("address", address.trim());
       formData.append("postal_code", postalCode.trim());
       formData.append("city", customerCity.trim());
-      if (message.trim()) formData.append("message", message.trim());
+
+      if (message.trim()) {
+        formData.append("message", message.trim());
+      }
+
       formData.append("pricing_type", pricingType);
-      formData.append("payment_installments", String(paymentInstallments));
-      if (paymentProof) formData.append("payment_proof", paymentProof);
+      formData.append(
+        "payment_installments",
+        String(paymentInstallments)
+      );
+      formData.append("payment_proof", paymentProof);
 
       const response = await fetch(`${apiBaseUrl}/reservations`, {
         method: "POST",
@@ -682,8 +305,11 @@ export function ReservationForm({
         const validationErrors = data?.errors
           ? Object.values(data.errors).flat().join(" ")
           : "";
+
         throw new Error(
-          validationErrors || data?.message || `Erreur HTTP ${response.status}. Impossible d’envoyer la réservation.`
+          validationErrors ||
+            data?.message ||
+            `Erreur HTTP ${response.status}. Impossible d’envoyer la réservation.`
         );
       }
 
@@ -692,8 +318,9 @@ export function ReservationForm({
           formationTitle: formation.title,
           city: formationDay.city || "À confirmer",
           startDate: formationDay.start_date || "",
-          endDate: formationDay.end_date || formationDay.start_date || "",
-          deposit: formatPrice(formation.deposit_amount),
+          endDate:
+            formationDay.end_date || formationDay.start_date || "",
+          deposit: formatPrice(paymentSettings.deposit_amount),
           pricingType,
           paymentInstallments,
           firstName: firstName.trim(),
@@ -712,551 +339,164 @@ export function ReservationForm({
     }
   }
 
-  /* =======================================================
-
-     FORM
-
-  ======================================================= */
-
-
-
   return (
-
     <form
-
       onSubmit={handleSubmit}
-
       className="border border-ink/15 bg-[#faf9f6] p-7 md:p-10"
-
     >
-
-
-
-      {/* =================================================
-
-          TITLE
-
-      ================================================= */}
-
-
-
-      <p className="label text-ink/45">
-
-        Vos coordonnées
-
-      </p>
-
-
-
-      {/* =================================================
-
-          SELECTED SESSION
-
-      ================================================= */}
-
-
+      <p className="label text-ink/45">Vos coordonnées</p>
 
       <div className="mt-6 border border-ink/10 bg-white p-5">
-
-
-
         <p className="label text-[10px] text-ink/40">
-
           Session sélectionnée
-
         </p>
-
-
 
         <p className="mt-3 font-serif text-xl">
-
-          {formationDay.city ||
-
-            "Ville à confirmer"}
-
+          {formationDay.city || "Ville à confirmer"}
         </p>
-
-
 
         <p className="mt-1 text-sm text-ink/55">
-
           {formatDateRange(
-
             formationDay.start_date,
-
             formationDay.end_date
-
           )}
-
         </p>
 
-
-
         <div className="mt-4 border-t border-ink/10 pt-4">
-
-
-
           <div className="flex items-center justify-between gap-5">
-
-
-
             <span className="label text-[10px] text-ink/40">
-
               Places disponibles
-
             </span>
-
-
-
             <span className="text-sm">
-
-              {Number(
-
-                formationDay.remaining_places
-
-              ) || 0}
-
+              {Number(formationDay.remaining_places) || 0}
             </span>
-
-
-
           </div>
-
-
-
         </div>
-
-
-
       </div>
-
-
-
-      {/* =================================================
-
-          NAME
-
-      ================================================= */}
-
-
 
       <div className="mt-8 grid gap-7 md:grid-cols-2">
-
-
-
         <div>
-
-
-
-          <label
-
-            htmlFor="first_name"
-
-            className="label text-[10px] text-ink/45"
-
-          >
-
+          <label htmlFor="first_name" className="label text-[10px] text-ink/45">
             Prénom
-
           </label>
-
-
-
           <input
-
             id="first_name"
-
             name="first_name"
-
             type="text"
-
             required
-
             value={firstName}
-
-            onChange={(event) =>
-
-              setFirstName(
-
-                event.target.value
-
-              )
-
-            }
-
+            onChange={(event) => setFirstName(event.target.value)}
             placeholder="Votre prénom"
-
-            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
           />
-
-
-
         </div>
-
-
 
         <div>
-
-
-
-          <label
-
-            htmlFor="last_name"
-
-            className="label text-[10px] text-ink/45"
-
-          >
-
+          <label htmlFor="last_name" className="label text-[10px] text-ink/45">
             Nom
-
           </label>
-
-
-
           <input
-
             id="last_name"
-
             name="last_name"
-
             type="text"
-
             required
-
             value={lastName}
-
-            onChange={(event) =>
-
-              setLastName(
-
-                event.target.value
-
-              )
-
-            }
-
+            onChange={(event) => setLastName(event.target.value)}
             placeholder="Votre nom"
-
-            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
           />
-
-
-
         </div>
-
-
-
       </div>
-
-
-
-      {/* =================================================
-
-          EMAIL / PHONE
-
-      ================================================= */}
-
-
 
       <div className="mt-7 grid gap-7 md:grid-cols-2">
-
-
-
         <div>
-
-
-
-          <label
-
-            htmlFor="email"
-
-            className="label text-[10px] text-ink/45"
-
-          >
-
+          <label htmlFor="email" className="label text-[10px] text-ink/45">
             Email
-
           </label>
-
-
-
           <input
-
             id="email"
-
             name="email"
-
             type="email"
-
             required
-
             value={email}
-
-            onChange={(event) =>
-
-              setEmail(
-
-                event.target.value
-
-              )
-
-            }
-
-            placeholder="vous\@exemple.com"
-
-            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="vous@exemple.com"
+            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
           />
-
-
-
         </div>
-
-
 
         <div>
-
-
-
-          <label
-
-            htmlFor="phone"
-
-            className="label text-[10px] text-ink/45"
-
-          >
-
+          <label htmlFor="phone" className="label text-[10px] text-ink/45">
             Téléphone
-
           </label>
-
-
-
           <input
-
             id="phone"
-
             name="phone"
-
             type="tel"
-
             required
-
             value={phone}
-
-            onChange={(event) =>
-
-              setPhone(
-
-                event.target.value
-
-              )
-
-            }
-
+            onChange={(event) => setPhone(event.target.value)}
             placeholder="06 00 00 00 00"
-
-            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
           />
-
-
-
         </div>
-
-
-
       </div>
-
-
-
-      {/* =================================================
-
-          ADDRESS
-
-      ================================================= */}
-
-
 
       <div className="mt-7">
-
-
-
-        <label
-
-          htmlFor="address"
-
-          className="label text-[10px] text-ink/45"
-
-        >
-
+        <label htmlFor="address" className="label text-[10px] text-ink/45">
           Adresse
-
         </label>
-
-
-
         <input
-
           id="address"
-
           name="address"
-
           type="text"
-
           required
-
           value={address}
-
-          onChange={(event) =>
-
-            setAddress(
-
-              event.target.value
-
-            )
-
-          }
-
+          onChange={(event) => setAddress(event.target.value)}
           placeholder="Numéro et rue"
-
-          className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+          className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
         />
-
-
-
       </div>
-
-
-
-      {/* =================================================
-
-          POSTAL / CITY
-
-      ================================================= */}
-
-
 
       <div className="mt-7 grid gap-7 md:grid-cols-2">
-
-
-
         <div>
-
-
-
-          <label
-
-            htmlFor="postal_code"
-
-            className="label text-[10px] text-ink/45"
-
-          >
-
+          <label htmlFor="postal_code" className="label text-[10px] text-ink/45">
             Code postal
-
           </label>
-
-
-
           <input
-
             id="postal_code"
-
             name="postal_code"
-
             type="text"
-
             required
-
             value={postalCode}
-
-            onChange={(event) =>
-
-              setPostalCode(
-
-                event.target.value
-
-              )
-
-            }
-
+            onChange={(event) => setPostalCode(event.target.value)}
             placeholder="75000"
-
-            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
           />
-
-
-
         </div>
-
-
 
         <div>
-
-
-
-          <label
-
-            htmlFor="customer_city"
-
-            className="label text-[10px] text-ink/45"
-
-          >
-
+          <label htmlFor="customer_city" className="label text-[10px] text-ink/45">
             Ville
-
           </label>
-
-
-
           <input
-
             id="customer_city"
-
-            name="customer_city"
-
+            name="city"
             type="text"
-
             required
-
             value={customerCity}
-
-            onChange={(event) =>
-
-              setCustomerCity(
-
-                event.target.value
-
-              )
-
-            }
-
+            onChange={(event) => setCustomerCity(event.target.value)}
             placeholder="Votre ville"
-
-            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+            className="mt-3 w-full border-b border-ink/20 bg-transparent px-0 pb-3 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
           />
-
-
-
         </div>
-
-
-
       </div>
 
-
-
-      {/* =================================================
-          PRICING TYPE / INSTALLMENTS
-      ================================================= */}
       <section className="mt-8 border border-ink/10 bg-white p-5 md:p-6">
-        <p className="label text-[10px] text-ink/45">Tarif et modalités de paiement</p>
+        <p className="label text-[10px] text-ink/45">
+          Tarif et modalités de paiement
+        </p>
+
         <div className="mt-4 grid gap-6 md:grid-cols-2">
           <div>
             <label htmlFor="pricing_type" className="label text-[10px] text-ink/45">
@@ -1266,60 +506,117 @@ export function ReservationForm({
               id="pricing_type"
               name="pricing_type"
               value={pricingType}
-              onChange={(event) => setPricingType(event.target.value as "normal" | "cpf")}
+              onChange={(event) =>
+                setPricingType(event.target.value as PricingType)
+              }
               className="mt-3 w-full border border-ink/20 bg-white p-3 text-sm outline-none focus:border-ink"
             >
               <option value="normal">Tarif normal</option>
               <option value="cpf">Financement CPF</option>
             </select>
             <p className="mt-2 text-xs leading-relaxed text-ink/50">
-              Le financement CPF est soumis à l’éligibilité de la session. Le serveur vérifiera cette condition.
+              Le financement CPF est soumis à l’éligibilité de la session.
+              Le serveur doit vérifier cette condition.
             </p>
           </div>
+
           <div>
-            <label htmlFor="payment_installments" className="label text-[10px] text-ink/45">
+            <label
+              htmlFor="payment_installments"
+              className="label text-[10px] text-ink/45"
+            >
               Nombre de paiements
             </label>
             <select
               id="payment_installments"
               name="payment_installments"
               value={paymentInstallments}
-              onChange={(event) => setPaymentInstallments(Number(event.target.value) as 1 | 2)}
-              className="mt-3 w-full border border-ink/20 bg-white p-3 text-sm outline-none focus:border-ink"
+              onChange={(event) =>
+                setPaymentInstallments(Number(event.target.value))
+              }
+              disabled={settingsLoading || !paymentSettings}
+              required
+              className="mt-3 w-full border border-ink/20 bg-white p-3 text-sm outline-none focus:border-ink disabled:opacity-50"
             >
-              <option value={1}>1 paiement</option>
-              <option value={2}>2 paiements</option>
+              {(paymentSettings?.installment_options ?? []).map((count) => (
+                <option key={count} value={count}>
+                  {count === 1 ? "1 paiement" : `${count} paiements`}
+                </option>
+              ))}
             </select>
           </div>
         </div>
       </section>
 
-      {/* =================================================
-          BANK TRANSFER DETAILS FROM SETTINGS API
-      ================================================= */}
-      <section className="mt-8 border border-ink/10 bg-white p-5 md:p-6" aria-labelledby="bank-details-title">
-        <p id="bank-details-title" className="label text-[10px] text-ink/45">Paiement par virement bancaire</p>
+      <section
+        className="mt-8 border border-ink/10 bg-white p-5 md:p-6"
+        aria-labelledby="bank-details-title"
+      >
+        <p id="bank-details-title" className="label text-[10px] text-ink/45">
+          Paiement par virement bancaire
+        </p>
+
         {settingsLoading ? (
-          <p className="mt-4 text-sm text-ink/50">Chargement des coordonnées bancaires...</p>
+          <p className="mt-4 text-sm text-ink/50">
+            Chargement des coordonnées bancaires...
+          </p>
         ) : bankSettings ? (
           <div className="mt-4 space-y-4 text-sm">
-            {bankSettings.iban && <div><p className="text-xs text-ink/45">IBAN</p><p className="mt-1 break-all font-medium">{bankSettings.iban}</p></div>}
-            {bankSettings.bic && <div><p className="text-xs text-ink/45">BIC / SWIFT</p><p className="mt-1 font-medium">{bankSettings.bic}</p></div>}
-            {bankSettings.account_holder_address && <div><p className="text-xs text-ink/45">Titulaire du compte</p><p className="mt-1 whitespace-pre-line">{bankSettings.account_holder_address}</p></div>}
-            {(bankSettings.address || bankSettings.city) && <div><p className="text-xs text-ink/45">Adresse de l’académie</p><p className="mt-1">{[bankSettings.address, bankSettings.city].filter(Boolean).join(", ")}</p></div>}
-            {bankSettings.cancellation_policy && <p className="border-t border-ink/10 pt-4 text-xs leading-relaxed text-ink/60">{bankSettings.cancellation_policy}</p>}
+            {bankSettings.iban && (
+              <div>
+                <p className="text-xs text-ink/45">IBAN</p>
+                <p className="mt-1 break-all font-medium">{bankSettings.iban}</p>
+              </div>
+            )}
+
+            {bankSettings.bic && (
+              <div>
+                <p className="text-xs text-ink/45">BIC / SWIFT</p>
+                <p className="mt-1 font-medium">{bankSettings.bic}</p>
+              </div>
+            )}
+
+            {bankSettings.account_holder_address && (
+              <div>
+                <p className="text-xs text-ink/45">Titulaire du compte</p>
+                <p className="mt-1 whitespace-pre-line">
+                  {bankSettings.account_holder_address}
+                </p>
+              </div>
+            )}
+
+            {(bankSettings.address || bankSettings.city) && (
+              <div>
+                <p className="text-xs text-ink/45">Adresse de l’académie</p>
+                <p className="mt-1">
+                  {[bankSettings.address, bankSettings.city]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+              </div>
+            )}
+
+            {bankSettings.cancellation_policy && (
+              <p className="border-t border-ink/10 pt-4 text-xs leading-relaxed text-ink/60">
+                {bankSettings.cancellation_policy}
+              </p>
+            )}
           </div>
         ) : (
-          <p role="alert" className="mt-4 text-sm text-red-600">{settingsError || "Les coordonnées bancaires ne sont pas disponibles."}</p>
+          <p role="alert" className="mt-4 text-sm text-red-600">
+            {settingsError || "Les coordonnées bancaires ne sont pas disponibles."}
+          </p>
         )}
       </section>
 
-      {/* =================================================
-          PAYMENT PROOF IMAGE
-      ================================================= */}
       <div className="mt-7">
-        <label htmlFor="payment_proof" className="label text-[10px] text-ink/45">Justificatif de paiement (image)</label>
-        <p className="mt-2 text-xs leading-relaxed text-ink/50">Ajoutez une capture d’écran ou une photo du reçu de virement. Formats acceptés : JPG, PNG ou WEBP, 5 Mo maximum.</p>
+        <label htmlFor="payment_proof" className="label text-[10px] text-ink/45">
+          Justificatif de paiement (image)
+        </label>
+        <p className="mt-2 text-xs leading-relaxed text-ink/50">
+          Ajoutez une capture d’écran ou une photo du reçu de virement.
+          Formats acceptés : JPG, PNG ou WEBP, 5 Mo maximum.
+        </p>
         <input
           id="payment_proof"
           name="payment_proof"
@@ -1328,128 +625,87 @@ export function ReservationForm({
           required
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
+
             if (file && file.size > 5 * 1024 * 1024) {
               setError("L’image doit faire 5 Mo maximum.");
               event.target.value = "";
               setPaymentProof(null);
               return;
             }
+
+            if (
+              file &&
+              !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+            ) {
+              setError("Format invalide. Utilisez JPG, PNG ou WEBP.");
+              event.target.value = "";
+              setPaymentProof(null);
+              return;
+            }
+
             setError("");
             setPaymentProof(file);
           }}
           className="mt-3 block w-full border border-ink/15 bg-transparent p-3 text-sm file:mr-4 file:border-0 file:bg-ink file:px-4 file:py-2 file:text-xs file:uppercase file:tracking-wider file:text-white"
         />
+
         {paymentProofPreview && (
           <div className="mt-4">
-            <p className="mb-2 text-xs text-ink/50">Aperçu du justificatif sélectionné</p>
-            <img src={paymentProofPreview} alt="Aperçu du justificatif de paiement" className="max-h-72 max-w-full border border-ink/10 object-contain" />
-            <p className="mt-2 break-all text-xs text-ink/50">{paymentProof?.name}</p>
-            <button type="button" onClick={() => setPaymentProof(null)} className="mt-2 text-xs underline">Supprimer l’image</button>
+            <p className="mb-2 text-xs text-ink/50">
+              Aperçu du justificatif sélectionné
+            </p>
+            <img
+              src={paymentProofPreview}
+              alt="Aperçu du justificatif de paiement"
+              className="max-h-72 max-w-full border border-ink/10 object-contain"
+            />
+            <p className="mt-2 break-all text-xs text-ink/50">
+              {paymentProof?.name}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPaymentProof(null)}
+              className="mt-2 text-xs underline"
+            >
+              Supprimer l’image
+            </button>
           </div>
         )}
       </div>
 
-      {/* =================================================
-
-          MESSAGE
-
-      ================================================= */}
-
-
-
       <div className="mt-7">
-
-
-
-        <label
-
-          htmlFor="message"
-
-          className="label text-[10px] text-ink/45"
-
-        >
-
+        <label htmlFor="message" className="label text-[10px] text-ink/45">
           Message
-
         </label>
-
-
-
         <textarea
-
           id="message"
-
           name="message"
-
           rows={5}
-
           value={message}
-
-          onChange={(event) =>
-
-            setMessage(
-
-              event.target.value
-
-            )
-
-          }
-
+          onChange={(event) => setMessage(event.target.value)}
           placeholder="Une question ou une information complémentaire..."
-
-          className="mt-3 w-full resize-none border border-ink/15 bg-transparent p-4 text-sm outline-none transition-colors placeholder:text-ink/30 focus:border-ink"
-
+          className="mt-3 w-full resize-none border border-ink/15 bg-transparent p-4 text-sm outline-none placeholder:text-ink/30 focus:border-ink"
         />
-
-
-
       </div>
-
-
-
-      {/* =================================================
-
-          SUMMARY
-
-      ================================================= */}
-
-
 
       <div className="mt-8 border-t border-ink/10 pt-6">
-
-
-
-        <div className="flex items-center justify-between">
-
-
-
-          <span className="label text-[10px] text-ink/45">
-
-            Acompte
-
-          </span>
-
-
-
+        <div className="flex items-center justify-between gap-4">
+          <span className="label text-[10px] text-ink/45">Acompte</span>
           <span className="font-serif text-2xl">
-
-            {formatPrice(
-
-              formation.deposit_amount
-
-            )}
-
+            {settingsLoading
+              ? "Chargement..."
+              : paymentSettings
+                ? formatPrice(paymentSettings.deposit_amount)
+                : "Indisponible"}
           </span>
-
-
-
         </div>
-
-
-
       </div>
 
-
+      {settingsError && (
+        <p role="alert" className="mt-4 text-sm text-red-600">
+          Paramètres du site : {settingsError}
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="mt-6 text-sm text-red-600">
@@ -1457,48 +713,17 @@ export function ReservationForm({
         </p>
       )}
 
-      {/* =================================================
-
-          SEND
-
-      ================================================= */}
-
-
-
       <div className="mt-8 border-t border-ink/10 pt-6">
-
-
-
         <button
-
           type="submit"
-
-          disabled={loading}
-
+          disabled={loading || settingsLoading || !paymentSettings}
           className="inline-flex min-h-[52px] w-full items-center justify-center bg-[#111111] px-8 text-xs font-medium uppercase tracking-[0.18em] text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
-
         >
-
-          {loading
-
-            ? "Envoi..."
-
-            : "Envoyer"}
-
+          {loading ? "Envoi..." : "Envoyer"}
         </button>
-
-
-
       </div>
-
-
-
     </form>
-
   );
-
 }
-
-
 
 export default ReservationForm;
