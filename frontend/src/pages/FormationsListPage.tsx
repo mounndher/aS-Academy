@@ -1648,55 +1648,7 @@ export function FormationsListPage() {
 
 
 
-                          <div
-
-                            className="
-
-                              col-span-2
-
-                              min-w-0
-
-                              border-b
-
-                              border-ink/10
-
-                              py-4
-
-                              pr-4
-
-                              sm:col-span-1
-
-                            "
-
-                          >
-
-                            <dt
-
-                              className="
-
-                                label
-
-                                text-[10px]
-
-                                text-ink/40
-
-                              "
-
-                            >
-
-                              Places
-
-                            </dt>
-
-
-
-                            
-
-
-
-                            
-
-                          </div>
+                         
 
 
 
