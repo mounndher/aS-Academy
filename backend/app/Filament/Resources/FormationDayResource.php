@@ -338,14 +338,51 @@ class FormationDayResource extends Resource
             */
 
             ->actions([
+    Tables\Actions\Action::make('duplicate')
+        ->label('Copier')
+        ->icon('heroicon-o-document-duplicate')
+        ->color('info')
+        ->form([
+            Forms\Components\DatePicker::make('start_date')
+                ->label('Nouvelle date de début')
+                ->required()
+                ->native(false)
+                ->displayFormat('d/m/Y')
+                ->default(fn (FormationDay $record) => $record->start_date)
+                ->live(),
 
-                Tables\Actions\EditAction::make()
-                    ->label('Modifier'),
+            Forms\Components\DatePicker::make('end_date')
+                ->label('Nouvelle date de fin')
+                ->required()
+                ->native(false)
+                ->displayFormat('d/m/Y')
+                ->default(fn (FormationDay $record) => $record->end_date)
+                ->afterOrEqual('start_date'),
+        ])
+        ->modalHeading('Copier une session de formation')
+        ->modalSubmitActionLabel('Créer la copie')
+        ->action(function (FormationDay $record, array $data): void {
+            $copy = $record->replicate();
 
-                Tables\Actions\DeleteAction::make()
-                    ->label('Supprimer'),
+            $copy->start_date = $data['start_date'];
+            $copy->end_date = $data['end_date'];
 
-            ])
+            // Réinitialiser les places pour la nouvelle session
+            $copy->remaining_places = $record->max_places;
+
+            // La nouvelle session est disponible
+            $copy->status = 'available';
+
+            $copy->save();
+        })
+        ->successNotificationTitle('Session copiée avec succès'),
+
+    Tables\Actions\EditAction::make()
+        ->label('Modifier'),
+
+    Tables\Actions\DeleteAction::make()
+        ->label('Supprimer'),
+])
 
             /*
             |--------------------------------------------------------------------------
