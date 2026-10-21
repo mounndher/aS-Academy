@@ -1690,49 +1690,11 @@ export function FormationsListPage() {
 
 
 
-                            <dd
-
-                              className="
-
-                                mt-2
-
-                                break-words
-
-                                font-serif
-
-                                text-xl
-
-                              "
-
-                            >
-
-                              {remaining}
-
-                            </dd>
+                            
 
 
 
-                            <dd
-
-                              className="
-
-                                mt-1
-
-                                text-xs
-
-                                text-ink/40
-
-                              "
-
-                            >
-
-                              {remaining === 1
-
-                                ? "place restante"
-
-                                : "places restantes"}
-
-                            </dd>
+                            
 
                           </div>
 
